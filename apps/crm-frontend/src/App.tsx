@@ -1,35 +1,34 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useState } from "react";
+import reactLogo from "./assets/react.svg";
+import viteLogo from "/vite.svg";
+import "./App.css";
+import { Button, Card, Image, Text, Badge, Group } from "@mantine/core";
 
-function App() {
-  const [count, setCount] = useState(0)
-
+function CostumeCard() {
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+    <Card shadow="sm" padding="lg" radius="md" withBorder w={300} m="xl">
+      <Card.Section>
+        <Image
+          src="../src/assets/react.svg"
+          height={160}
+          alt="Spider-man costume"
+        />
+      </Card.Section>
 
-export default App
+      <Group justify="space-between" mt="md" mb="xs">
+        <Text fw={500}>Костюм Человека-Паука</Text>
+        <Badge color="pink">New</Badge>
+      </Group>
+
+      <Text size="sm" c="dimmed">
+        Идеальный костюм для детского праздника. Легкий, дышащий и очень
+        реалистичный.
+      </Text>
+
+      <Button color="blue" fullWidth mt="md" radius="md">
+        Забронировать сейчас
+      </Button>
+    </Card>
+  );
+}
+export default CostumeCard;
