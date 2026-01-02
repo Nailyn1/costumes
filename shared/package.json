@@ -1,0 +1,23 @@
+{
+  "name": "shared",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "gen:api": "tsp compile api-spec/main.tsp --emit @typespec/openapi3 --output-dir api-spec/tsp-output && npx openapi-zod-client api-spec/tsp-output/schema/openapi.yaml --output src/openapi-client"
+  },
+  "devDependencies": {
+    "@typespec/compiler": "latest",
+    "@typespec/http": "latest",
+    "@typespec/openapi": "latest",
+    "@typespec/openapi3": "latest",
+    "@typespec/rest": "latest",
+    "openapi-zod-client": "^1.18.3",
+    "typescript": "5.9.3"
+  },
+  "dependencies": {
+    "@zodios/core": "^10.9.6",
+    "zod": "^3.25.76"
+  }
+}
