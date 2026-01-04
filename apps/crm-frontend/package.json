@@ -13,6 +13,7 @@
     "@emotion/react": "^11.14.0",
     "@mantine/core": "^8.3.10",
     "@mantine/hooks": "^8.3.10",
+    "axios": "^1.13.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
@@ -31,6 +32,7 @@
     "postcss-simple-vars": "^7.0.1",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
-    "vite": "^7.2.4"
+    "vite": "^7.2.4",
+    "vite-tsconfig-paths": "^6.0.3"
   }
 }
