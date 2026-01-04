@@ -2,10 +2,16 @@
   "name": "shared",
   "version": "0.1.0",
   "private": true,
-  "main": "index.js",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "license": "MIT",
   "scripts": {
-    "gen:api": "tsp compile api-spec/main.tsp --emit @typespec/openapi3 --output-dir api-spec/tsp-output && npx openapi-zod-client api-spec/tsp-output/schema/openapi.yaml --output src/openapi-client"
+    "gen:api": "tsp compile api-spec/main.tsp --emit @typespec/openapi3 --output-dir api-spec/tsp-output && npx openapi-zod-client api-spec/tsp-output/schema/openapi.yaml --output src/openapi-client.ts",
+    "build": "tsc --build"
   },
   "devDependencies": {
     "@typespec/compiler": "latest",
