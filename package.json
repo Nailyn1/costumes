@@ -9,5 +9,9 @@
   "scripts": {
     "dev:crm": "npm --workspace @crm-frontend start",
     "dev:backend": "npm --workspace @backend start"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "typescript-eslint": "^8.46.4"
   }
 }
