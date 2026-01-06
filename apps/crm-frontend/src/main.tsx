@@ -8,7 +8,6 @@ import { RouterProvider } from "react-router-dom";
 import { router } from "./app/router.tsx";
 import { initSentry } from "./app/sentry.ts";
 import { queryClient } from "./app/queryClient.ts";
-// import "./index.css";
 import "@mantine/core/styles.css";
 import "@mantine/notifications/styles.css";
 
