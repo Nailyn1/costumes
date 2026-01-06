@@ -20,13 +20,11 @@ export const LoginForm = () => {
   });
 
   return (
-    <Paper radius="md" p="xl" withBorder>
+    <Paper radius="md" p="xl" withBorder shadow="md">
       <Stack gap="md">
-        <Title order={2} c="#111111">
-          Вход в систему
-        </Title>
+        <Title order={2}>Вход в систему</Title>
 
-        <Text size="sm" c="#888888">
+        <Text size="sm" c="dimmed">
           Введите логин и пароль для доступа к CRM
         </Text>
 
@@ -45,12 +43,7 @@ export const LoginForm = () => {
               {...form.getInputProps("password")}
             />
 
-            <Button
-              type="submit"
-              loading={loginMutation.isPending}
-              fullWidth
-              color="blue"
-            >
+            <Button type="submit" loading={loginMutation.isPending} fullWidth>
               Войти
             </Button>
           </Stack>
