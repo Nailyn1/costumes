@@ -4,6 +4,7 @@ import { BookingsPage } from "src/pages/BookingsPage";
 import { CreateBookingPage } from "src/pages/CreateBookingPage";
 import { ProfilePage } from "src/pages/ProfilePage";
 import { PrivateRoute } from "./providers/PrivateRoute";
+import { MainLayout } from "src/components/MainLayout";
 
 export const router = createBrowserRouter([
   {
@@ -15,25 +16,30 @@ export const router = createBrowserRouter([
     element: <PrivateRoute />,
     children: [
       {
-        index: true,
-        element: <Navigate to="/bookings" replace />,
-      },
-      {
-        path: "bookings",
+        element: <MainLayout />,
         children: [
           {
             index: true,
-            element: <CreateBookingPage />,
+            element: <Navigate to="/bookings" replace />,
           },
           {
-            path: "all",
-            element: <BookingsPage />,
+            path: "bookings",
+            children: [
+              {
+                index: true,
+                element: <CreateBookingPage />,
+              },
+              {
+                path: "all",
+                element: <BookingsPage />,
+              },
+            ],
+          },
+          {
+            path: "profile",
+            element: <ProfilePage />,
           },
         ],
-      },
-      {
-        path: "profile",
-        element: <ProfilePage />,
       },
     ],
   },
