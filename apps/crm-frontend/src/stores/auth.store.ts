@@ -8,6 +8,7 @@ interface AuthState {
   isAuth: boolean;
 
   setAuth: (data: LoginSuccessResponseDto) => void;
+  setAccessToken: (token: string) => void;
   logout: () => void;
 }
 
@@ -25,6 +26,12 @@ export const useAuthStore = create<AuthState>()(
             accessToken: data.accessToken,
             isAuth: true,
           }),
+
+        setAccessToken: (token: string) =>
+          set((state) => ({
+            ...state,
+            accessToken: token,
+          })),
 
         logout: () =>
           set({
