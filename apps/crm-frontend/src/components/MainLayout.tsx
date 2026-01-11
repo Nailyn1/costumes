@@ -3,85 +3,104 @@ import {
   Burger,
   Group,
   NavLink,
-  Container,
   Title,
-  Button,
+  Stack,
+  Text,
+  Divider,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { Outlet, Link, useLocation } from "react-router-dom";
+import {
+  IconCalendarPlus,
+  IconTag,
+  IconPackageExport,
+  IconPackageImport,
+  IconCalendarStats,
+  IconUserCircle,
+} from "@tabler/icons-react";
 
 export function MainLayout() {
   const [opened, { toggle }] = useDisclosure();
   const location = useLocation();
 
-  const links = [
-    { link: "/bookings", label: "Создать бронь" },
-    { link: "/bookings/all", label: "Все брони" },
-    { link: "/profile", label: "Профиль" },
+  const mainLinks = [
+    { link: "/bookings/new", label: "Создать бронь", icon: IconCalendarPlus },
+    {
+      link: "/bookings/issue",
+      label: "Выдача костюмов",
+      icon: IconPackageExport,
+    },
+    {
+      link: "/bookings/return",
+      label: "Возврат костюмов",
+      icon: IconPackageImport,
+    },
+    {
+      link: "/bookings/schedule",
+      label: "Просмотр брони",
+      icon: IconCalendarStats,
+    },
+    { link: "/bookings/unrecorded", label: "Незаписанные", icon: IconTag },
+    { link: "/profile", label: "Профиль", icon: IconUserCircle },
   ];
 
-  const items = links.map((link) => (
+  const renderNavLink = (link: (typeof mainLinks)[0]) => (
     <NavLink
-      key={link.label}
+      key={link.link}
       component={Link}
       to={link.link}
       label={link.label}
+      leftSection={<link.icon size="1.2rem" stroke={1.5} />}
       active={location.pathname === link.link}
-      onClick={toggle}
-      variant="filled"
+      onClick={() => {
+        if (opened) toggle();
+      }}
+      variant="light"
       color="blue"
-      style={{ borderRadius: "8px" }}
+      styles={{
+        root: { borderRadius: "8px", marginBottom: "4px" },
+        label: { fontWeight: 500 },
+      }}
     />
-  ));
+  );
 
   return (
     <AppShell
       header={{ height: 60 }}
       navbar={{
-        width: 300,
+        width: 280,
         breakpoint: "sm",
-        collapsed: { desktop: true, mobile: !opened },
+        collapsed: { mobile: !opened },
       }}
       padding="md"
     >
-      <AppShell.Header bg="blue.7">
-        <Container size="lg" h="100%">
-          <Group h="100%" justify="space-between">
-            <Title order={3} c="white">
-              ProkatPupavka
-            </Title>
-            <Group gap={5} visibleFrom="sm">
-              {links.map((link) => (
-                <Button
-                  key={link.label}
-                  component={Link}
-                  to={link.link}
-                  variant={location.pathname === link.link ? "white" : "subtle"}
-                  color={location.pathname === link.link ? "blue" : "gray.0"}
-                  size="sm"
-                >
-                  {link.label}
-                </Button>
-              ))}
-            </Group>
-
-            <Burger
-              opened={opened}
-              onClick={toggle}
-              hiddenFrom="sm"
-              size="sm"
-              color="white"
-            />
-          </Group>
-        </Container>
+      <AppShell.Header>
+        <Group h="100%" px="md">
+          <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" />
+          <Title order={4} c="blue.7" style={{ letterSpacing: "1px" }}>
+            PROKAT PUPAVKA
+          </Title>
+        </Group>
       </AppShell.Header>
 
-      <AppShell.Navbar p="md">{items}</AppShell.Navbar>
+      <AppShell.Navbar p="md">
+        <AppShell.Section grow>
+          <Text size="xs" fw={700} c="dimmed" mb="xs" tt="uppercase">
+            Операции
+          </Text>
+          <Stack gap={0}>{mainLinks.map(renderNavLink)}</Stack>
+        </AppShell.Section>
 
-      <AppShell.Main>
-        <Container size="lg">
-          <Outlet />
-        </Container>
+        <AppShell.Section>
+          <Divider my="sm" />
+          <Text size="xs" c="dimmed" ta="center">
+            v1.0.4 • 2026
+          </Text>
+        </AppShell.Section>
+      </AppShell.Navbar>
+
+      <AppShell.Main bg="gray.0">
+        <Outlet />
       </AppShell.Main>
     </AppShell>
   );

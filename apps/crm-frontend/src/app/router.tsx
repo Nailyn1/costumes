@@ -1,7 +1,10 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import { LoginPage } from "src/pages/LoginPage";
-import { BookingsPage } from "src/pages/BookingsPage";
-import { CreateBookingPage } from "src/pages/CreateBookingPage";
+import { CreateBookingPage } from "src/pages/CreateBooking";
+import { IssuePage } from "src/pages/IssuePage";
+import { ReturnPage } from "src/pages/ReturnPage";
+import { SchedulePage } from "src/pages/SchedulePage";
+import { UnrecordedCostumesPage } from "src/pages/UnrecordedCostumes";
 import { ProfilePage } from "src/pages/ProfilePage";
 import { PrivateRoute } from "./providers/PrivateRoute";
 import { MainLayout } from "src/components/MainLayout";
@@ -20,18 +23,30 @@ export const router = createBrowserRouter([
         children: [
           {
             index: true,
-            element: <Navigate to="/bookings" replace />,
+            element: <Navigate to="/bookings/new" replace />,
           },
           {
             path: "bookings",
             children: [
               {
-                index: true,
+                path: "new",
                 element: <CreateBookingPage />,
               },
               {
-                path: "all",
-                element: <BookingsPage />,
+                path: "unrecorded",
+                element: <UnrecordedCostumesPage />,
+              },
+              {
+                path: "issue",
+                element: <IssuePage />,
+              },
+              {
+                path: "return",
+                element: <ReturnPage />,
+              },
+              {
+                path: "schedule",
+                element: <SchedulePage />,
               },
             ],
           },
@@ -43,7 +58,6 @@ export const router = createBrowserRouter([
       },
     ],
   },
-
   {
     path: "*",
     element: <Navigate to="/" replace />,
