@@ -7,6 +7,8 @@ import "./modules/auth.tsp";
 import "./modules/clients.tsp";
 import "./modules/children.tsp";
 import "./modules/costumes.tsp";
+import "./modules/orders.tsp";
+import "./modules/visits.tsp";
 
 using Http;
 @service(#{ title: "Costume Rental Service API" })
