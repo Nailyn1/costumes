@@ -9,6 +9,7 @@ import { router } from "./app/router.tsx";
 import { initSentry } from "./app/sentry.ts";
 import { queryClient } from "./app/queryClient.ts";
 import "@mantine/core/styles.css";
+import "@mantine/dates/styles.css";
 import "@mantine/notifications/styles.css";
 
 initSentry();

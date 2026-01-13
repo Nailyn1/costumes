@@ -1,0 +1,11 @@
+.card {
+  background-color: white;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: var(--mantine-spacing-md); /* или 16px */
+  transition: background-color 0.2s;
+}
+
+.card:hover {
+  background-color: #f8f9fa; /* или theme.colors.gray[0] */
+}
