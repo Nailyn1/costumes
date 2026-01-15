@@ -36,8 +36,8 @@ model AvailabilityPeriod {
   visitCode: VisitCode;
   childName: string;
   clientPhone: string;
-  startDateTime: utcDateTime;
-  endDateTime: utcDateTime;
+  startDateTime: plainDate;
+  endDateTime: plainDate;
 }
 
 model CostumeFullAvailability extends Costume {
