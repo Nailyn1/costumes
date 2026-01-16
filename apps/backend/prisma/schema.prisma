@@ -7,21 +7,21 @@
 generator client {
   provider = "prisma-client"
   output   = "../generated/prisma"
+  moduleFormat    = "cjs"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  login     String   @unique
-  password  String
-  name      String?
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id Int @default(autoincrement()) @id
+  login String @unique
+  password String 
+  name String
 
-  @@map("users") 
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("user")
 }
