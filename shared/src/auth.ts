@@ -8,3 +8,7 @@ export type LoginSuccessResponseDto = z.infer<
 export type RefreshSuccessResponseDto = z.infer<
   typeof schemas.Auth_RefreshSuccessResponse
 >;
+
+export const LoginRequestSchema = schemas.Auth_LoginRequest;
+export const LoginResponseSchema = schemas.Auth_LoginSuccessResponse;
+export const RefreshResponseSchema = schemas.Auth_RefreshSuccessResponse;
