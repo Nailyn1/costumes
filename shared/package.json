@@ -23,7 +23,6 @@
     "typescript": "5.9.3"
   },
   "dependencies": {
-    "@zodios/core": "^10.9.6",
-    "zod": "^3.23.8"
+    "@zodios/core": "^10.9.6"
   }
 }
