@@ -18,6 +18,7 @@ model LoginSuccessResponse {
 
     user: {
         login: string;
+        name: string;
     };
 }
 

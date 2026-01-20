@@ -7,7 +7,7 @@ const Auth_LoginRequest = z
 const Auth_LoginSuccessResponse = z
   .object({
     accessToken: z.string(),
-    user: z.object({ login: z.string() }).passthrough(),
+    user: z.object({ login: z.string(), name: z.string() }).passthrough(),
   })
   .passthrough();
 const Common_Error = z
