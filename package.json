@@ -1,7 +1,6 @@
 {
   "name": "costumes",
   "version": "1.0.0",
-  "private": true,
   "workspaces": [
     "apps/*",
     "shared"
@@ -10,10 +9,13 @@
     "zod": "4.3.5"
   },
   "scripts": {
-    "dev:crm": "npm --workspace @crm-frontend start",
-    "dev:backend": "npm --workspace @backend start"
+    "dev:shared": "tsc -b shared --watch",
+    "dev:backend": "nest start backend --watch",
+    "start:dev": "concurrently \"npm run dev:shared\" \"npm run dev:backend\"",
+    "build": "nest build backend"
   },
   "devDependencies": {
+    "concurrently": "^9.2.1",
     "typescript": "5.9.3",
     "typescript-eslint": "^8.46.4"
   },

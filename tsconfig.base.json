@@ -8,9 +8,7 @@
     "strict": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "baseUrl": ".",
-    "paths": {
-      "@shared/*": ["shared/src/*"]
-    }
-  }
+    "baseUrl": "."
+  },
+  "exclude": ["node_modules", "dist"]
 }
