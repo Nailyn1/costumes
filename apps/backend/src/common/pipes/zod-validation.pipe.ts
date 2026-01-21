@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { z } from 'zod';
 
-interface MetatypeWithSchema {
+interface ZodMetatype {
   schema: z.ZodTypeAny;
 }
 
@@ -15,6 +15,7 @@ export class ZodValidationPipe implements PipeTransform {
   transform(value: unknown, metadata: ArgumentMetadata) {
     const metatype = metadata.metatype;
 
+    // Если схемы нет, возвращаем данные как есть
     if (!this.hasSchema(metatype)) {
       return value;
     }
@@ -22,22 +23,23 @@ export class ZodValidationPipe implements PipeTransform {
     const result = metatype.schema.safeParse(value);
 
     if (!result.success) {
-      const treeifiedErrors = z.treeifyError(result.error);
-
+      // Используем flatten или формат ошибок, который вам удобен
       throw new BadRequestException({
         message: 'Validation failed',
-        errors: treeifiedErrors,
+        errors: result.error.format(),
       });
     }
 
+    // Возвращаем чистый провалидированный объект
     return result.data;
   }
 
-  private hasSchema(metatype: unknown): metatype is MetatypeWithSchema {
+  private hasSchema(metatype: unknown): metatype is ZodMetatype {
     return (
       typeof metatype === 'function' &&
+      metatype !== null &&
       'schema' in metatype &&
-      metatype.schema instanceof z.ZodType
+      (metatype as ZodMetatype).schema instanceof z.ZodType
     );
   }
 }
