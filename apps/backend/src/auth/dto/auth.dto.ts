@@ -7,6 +7,8 @@ import { createZodDto } from '../../common/zod-dto';
 
 export class LoginDto extends createZodDto(LoginRequestSchema) {}
 
-export class RefreshTokenDto extends createZodDto(RefreshResponseSchema) {}
+export class RefreshTokenResponseDto extends createZodDto(
+  RefreshResponseSchema,
+) {}
 
 export class LoginResponseDto extends createZodDto(LoginResponseSchema) {}

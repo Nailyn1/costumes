@@ -3,6 +3,11 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import * as argon2 from 'argon2';
 import { LoginRequestDto } from '@costumes/shared';
+
+interface tokenPayload {
+  sub: number;
+  login: string;
+}
 @Injectable()
 export class AuthService {
   constructor(
@@ -37,35 +42,16 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const payload = {
-      sub: user.id,
-      name: user.name,
-    };
+    const { accessToken, refreshToken } = await this.issueTokens(
+      user.id,
+      user.login,
+    );
 
-    const accessToken = await this.jwtService.signAsync(payload, {
-      expiresIn: '15m',
-    });
-
-    const refreshToken = await this.jwtService.signAsync(payload, {
-      expiresIn: '7d',
-    });
-
-    const refreshHashed = await argon2.hash(refreshToken, {
-      type: argon2.argon2id,
-    });
-
-    await this.prisma.user.update({
-      where: {
-        id: user.id,
-      },
-      data: {
-        refreshToken: refreshHashed,
-      },
-    });
+    await this.updateRefreshToken(user.id, refreshToken);
 
     return {
-      accessToken: accessToken,
-      refreshToken: refreshToken,
+      accessToken,
+      refreshToken,
       user: {
         login: user.login,
         name: user.name,
@@ -73,23 +59,67 @@ export class AuthService {
     };
   }
 
-  // Генерация пары токенов
-  private async issueTokens(userId: string, login: string) {
-    const payload = { sub: userId, login };
+  async refreshTokens(oldRefreshToken: string) {
+    try {
+      const result: tokenPayload =
+        await this.jwtService.verifyAsync(oldRefreshToken);
+
+      const user = await this.prisma.user.findUnique({
+        where: { id: result.sub },
+      });
+
+      if (!user || !user.refreshToken) {
+        throw new UnauthorizedException('Invalid Credentials');
+      }
+
+      const isMatched = await argon2.verify(user.refreshToken, oldRefreshToken);
+
+      if (!isMatched) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      const { accessToken, refreshToken } = await this.issueTokens(
+        user.id,
+        user.login,
+      );
+
+      await this.updateRefreshToken(user.id, refreshToken);
+
+      return {
+        accessToken,
+        refreshToken,
+        user: {
+          login: user.login,
+          name: user.name,
+        },
+      };
+    } catch {
+      throw new UnauthorizedException('Token expired or invalid');
+    }
+  }
+
+  async logout(userId: number) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { refreshToken: null },
+    });
+  }
+
+  private async issueTokens(userId: number, login: string) {
+    const payload = { id: userId, login };
 
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
-        expiresIn: '15m', // Access живет недолго
+        expiresIn: '15m',
       }),
       this.jwtService.signAsync(payload, {
-        expiresIn: '7d', // Refresh живет неделю
+        expiresIn: '7d',
       }),
     ]);
 
     return { accessToken, refreshToken };
   }
 
-  // Хешируем и сохраняем refresh токен в базу
   private async updateRefreshToken(userId: number, refreshToken: string) {
     const hashedToken = await argon2.hash(refreshToken);
     await this.prisma.user.update({
