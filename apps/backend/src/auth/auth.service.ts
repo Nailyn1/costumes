@@ -5,7 +5,7 @@ import * as argon2 from 'argon2';
 import { LoginRequestDto } from '@costumes/shared';
 
 interface tokenPayload {
-  sub: number;
+  id: number;
   login: string;
 }
 @Injectable()
@@ -65,7 +65,7 @@ export class AuthService {
         await this.jwtService.verifyAsync(oldRefreshToken);
 
       const user = await this.prisma.user.findUnique({
-        where: { id: result.sub },
+        where: { id: result.id },
       });
 
       if (!user || !user.refreshToken) {
