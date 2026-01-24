@@ -4,15 +4,17 @@ import {
   Body,
   Res,
   Req,
-  UnauthorizedException,
   UseGuards,
   HttpCode,
 } from '@nestjs/common';
 import type { Response, Request } from 'express';
 import { AuthService } from './auth.service';
-import { LoginDto, RefreshTokenResponseDto } from './dto/auth.dto';
-import { LoginSuccessResponseDto } from '@costumes/shared';
-import { JwtAuthGuard } from './jwt-auth.guard';
+import { LoginDto } from './dto/auth.dto';
+import {
+  LoginSuccessResponseDto,
+  RefreshSuccessResponseDto,
+} from '@costumes/shared';
+import { JwtAuthGuard, JwtRefreshGuard } from './jwt/jwt-auth.guard';
 import { RequestWithUser } from './active-user.interface';
 
 @Controller('auth')
@@ -44,19 +46,17 @@ export class AuthController {
   }
 
   @Post('refresh')
+  @UseGuards(JwtRefreshGuard)
   async refresh(
-    @Req() req: Request,
+    @Req() req: RequestWithUser,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const refreshTokenFromCookie = req.cookies['refreshToken'] as
-      | string
-      | undefined;
+    const { id, refreshToken } = req.user;
 
-    if (!refreshTokenFromCookie) {
-      throw new UnauthorizedException('Refresh token not found');
-    }
-
-    const result = await this.authService.refreshTokens(refreshTokenFromCookie);
+    const result = await this.authService.refreshTokens(
+      Number(id),
+      refreshToken as string,
+    );
 
     res.cookie(
       'refreshToken',
@@ -64,7 +64,7 @@ export class AuthController {
       this.authService.getCookieOptions(),
     );
 
-    const response: RefreshTokenResponseDto = {
+    const response: RefreshSuccessResponseDto = {
       accessToken: result.accessToken,
     };
     return response;

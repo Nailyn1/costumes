@@ -1,16 +1,15 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, Inject } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import * as argon2 from 'argon2';
 import { LoginRequestDto } from '@costumes/shared';
+import Redis from 'ioredis';
+import { REDIS_CLIENT } from '../redis/redis.constants';
 
-interface tokenPayload {
-  id: number;
-  login: string;
-}
 @Injectable()
 export class AuthService {
   constructor(
+    @Inject(REDIS_CLIENT) private readonly redis: Redis,
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
   ) {}
@@ -59,50 +58,41 @@ export class AuthService {
     };
   }
 
-  async refreshTokens(oldRefreshToken: string) {
-    try {
-      const result: tokenPayload =
-        await this.jwtService.verifyAsync(oldRefreshToken);
+  async refreshTokens(userId: number, oldRefreshToken: string) {
+    const savedToken = await this.redis.get(`rf:${userId}`);
 
-      const user = await this.prisma.user.findUnique({
-        where: { id: result.id },
-      });
-
-      if (!user || !user.refreshToken) {
-        throw new UnauthorizedException('Invalid Credentials');
-      }
-
-      const isMatched = await argon2.verify(user.refreshToken, oldRefreshToken);
-
-      if (!isMatched) {
-        throw new UnauthorizedException('Invalid refresh token');
-      }
-
-      const { accessToken, refreshToken } = await this.issueTokens(
-        user.id,
-        user.login,
-      );
-
-      await this.updateRefreshToken(user.id, refreshToken);
-
-      return {
-        accessToken,
-        refreshToken,
-        user: {
-          login: user.login,
-          name: user.name,
-        },
-      };
-    } catch {
-      throw new UnauthorizedException('Token expired or invalid');
+    if (!savedToken || savedToken !== oldRefreshToken) {
+      throw new UnauthorizedException('Invalid or expired refresh token');
     }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User no longer exists');
+    }
+
+    const { accessToken, refreshToken } = await this.issueTokens(
+      user.id,
+      user.login,
+    );
+
+    await this.updateRefreshToken(user.id, refreshToken);
+
+    return {
+      accessToken,
+      refreshToken,
+      user: {
+        login: user.login,
+        name: user.name,
+      },
+    };
   }
 
   async logout(userId: number) {
-    return this.prisma.user.update({
-      where: { id: userId },
-      data: { refreshToken: null },
-    });
+    const key = `rf:${userId}`;
+    return await this.redis.del(key);
   }
 
   private async issueTokens(userId: number, login: string) {
@@ -121,10 +111,7 @@ export class AuthService {
   }
 
   private async updateRefreshToken(userId: number, refreshToken: string) {
-    const hashedToken = await argon2.hash(refreshToken);
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { refreshToken: hashedToken },
-    });
+    const key = `rf:${userId}`;
+    await this.redis.set(key, refreshToken, 'EX', 604800);
   }
 }
