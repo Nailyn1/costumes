@@ -42,3 +42,13 @@ export { Prisma }
  * 
  */
 export type User = Prisma.UserModel
+/**
+ * Model Client
+ * 
+ */
+export type Client = Prisma.ClientModel
+/**
+ * Model Child
+ * 
+ */
+export type Child = Prisma.ChildModel
