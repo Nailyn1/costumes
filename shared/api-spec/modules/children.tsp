@@ -10,7 +10,7 @@ namespace CostumeApp.Children;
 @pattern("^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\\s-]+$")
 scalar ChildName extends string;
 
-model Child {
+model ChildResponse {
   childId: int32;
   name: ChildName;
   clientId: int32;
@@ -35,7 +35,7 @@ interface ChildOperations {
     @post
   create(@body child: CreateChildRequest): {
     @statusCode statusCode: 201;
-    @body body: Child;
+    @body body: ChildResponse;
   } | Common.Error;
 
   @patch(#{ implicitOptionality: true })
@@ -47,4 +47,10 @@ interface ChildOperations {
     @statusCode statusCode: 200;
     @body body: ChildUpdateResponse;
   } | Common.Error;
+
+  @delete
+@route("{childId}")
+delete(@path childId: int32): {
+  @statusCode statusCode: 204;
+} | Common.Error;
 }

@@ -25,7 +25,7 @@ const Children_CreateChildRequest = z
     ),
   })
   .passthrough();
-const Children_Child = z
+const Children_ChildResponse = z
   .object({
     childId: z.number().int(),
     name: Children_ChildName.min(2).regex(
@@ -357,7 +357,7 @@ export const schemas = {
   Auth_RefreshSuccessResponse,
   Children_ChildName,
   Children_CreateChildRequest,
-  Children_Child,
+  Children_ChildResponse,
   Children_UpdateChildRequest,
   Children_ChildUpdateResponse,
   Clients_ClientName,
@@ -445,7 +445,7 @@ const endpoints = makeApi([
         schema: Children_CreateChildRequest,
       },
     ],
-    response: Children_Child,
+    response: Children_ChildResponse,
   },
   {
     method: "patch",
@@ -465,6 +465,20 @@ const endpoints = makeApi([
       },
     ],
     response: Children_ChildUpdateResponse,
+  },
+  {
+    method: "delete",
+    path: "/children/:childId",
+    alias: "ChildOperations_delete",
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "childId",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: z.void(),
   },
   {
     method: "post",
