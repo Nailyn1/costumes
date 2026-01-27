@@ -3,6 +3,10 @@ import {
   UpdateChildRequestSchema,
   CreateChildResponseSchema,
   UpdateChildResponseSchema,
+  CreateClientRequestSchema,
+  CreateClientResponseSchema,
+  UpdateClientRequestSchema,
+  UpdateClientResponseSchema,
 } from '@costumes/shared';
 import { createZodDto } from '../../common/zod-dto';
 
@@ -18,4 +22,18 @@ export class UpdateChildRequest extends createZodDto(
 ) {}
 export class UpdateChildResponse extends createZodDto(
   UpdateChildResponseSchema,
+) {}
+
+export class CreateClientRequest extends createZodDto(
+  CreateClientRequestSchema,
+) {}
+export class CreateClientResponse extends createZodDto(
+  CreateClientResponseSchema,
+) {}
+
+export class UpdateClientRequest extends createZodDto(
+  UpdateClientRequestSchema,
+) {}
+export class UpdateClientResponse extends createZodDto(
+  UpdateClientResponseSchema,
 ) {}
