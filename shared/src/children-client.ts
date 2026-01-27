@@ -22,7 +22,7 @@ export const UpdateChildResponseSchema = schemas.Children_ChildUpdateResponse;
 export type CreateClientRequestDto = z.infer<
   typeof schemas.Clients_CreateClientRequest
 >;
-export type CreateChildResponseDto = z.infer<typeof schemas.Clients_Client>;
+export type CreateClientResponseDto = z.infer<typeof schemas.Clients_Client>;
 export type UpdateClientRequestDto = z.infer<
   typeof schemas.Clients_UpdateClientRequest
 >;
