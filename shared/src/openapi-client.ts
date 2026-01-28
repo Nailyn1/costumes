@@ -514,6 +514,20 @@ const endpoints = makeApi([
     response: Clients_Client,
   },
   {
+    method: "delete",
+    path: "/clients/:clientId",
+    alias: "ClientOperations_delete",
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "clientId",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
     method: "get",
     path: "/clients/search",
     alias: "ClientOperations_search",

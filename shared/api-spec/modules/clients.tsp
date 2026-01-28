@@ -52,5 +52,11 @@ interface ClientOperations {
   ) : {
     @statusCode statusCode: 200;
     @body body: Client;
-  }
+  } | Common.Error;
+  
+  @delete
+  @route("{clientId}")
+  delete(@path clientId: int32): {
+    @statusCode statusCode: 204;
+  } | Common.Error;
 }
