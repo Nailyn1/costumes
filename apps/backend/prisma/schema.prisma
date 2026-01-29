@@ -34,6 +34,8 @@ model Client {
   children Child[]
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+  deleteAt DateTime? @map("delete_at")
+  
   @@map("clients")
 }
 

@@ -685,7 +685,8 @@ export const ClientScalarFieldEnum = {
   phone: 'phone',
   notes: 'notes',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  deleteAt: 'deleteAt'
 } as const
 
 export type ClientScalarFieldEnum = (typeof ClientScalarFieldEnum)[keyof typeof ClientScalarFieldEnum]

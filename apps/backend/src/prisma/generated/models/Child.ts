@@ -428,10 +428,6 @@ export type ChildUncheckedUpdateManyWithoutClientNestedInput = {
   deleteMany?: Prisma.ChildScalarWhereInput | Prisma.ChildScalarWhereInput[]
 }
 
-export type NullableDateTimeFieldUpdateOperationsInput = {
-  set?: Date | string | null
-}
-
 export type ChildCreateWithoutClientInput = {
   name: string
   createdAt?: Date | string
