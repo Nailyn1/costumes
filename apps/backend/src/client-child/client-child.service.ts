@@ -24,7 +24,7 @@ export class ClientChildService {
     });
 
     if (!client) {
-      throw new NotFoundException(`Client with ID ${data.clientId} nod found`);
+      throw new NotFoundException(`Клиент с ID ${data.clientId} не найден`);
     }
 
     const child = (await this.prisma.child.create({
@@ -43,12 +43,19 @@ export class ClientChildService {
     data: UpdateChildRequestDto,
     childId: number,
   ): Promise<UpdateChildResponseDto> {
-    const child = await this.prisma.child.update({
-      where: { id: childId },
-      data: {
-        name: data.name,
-      },
-    });
+    const child = await this.prisma.child
+      .update({
+        where: { id: childId },
+        data: {
+          name: data.name,
+        },
+      })
+      .catch((err) => {
+        if (err.code === 'P2025') {
+          throw new NotFoundException(`Ребенок с этим ID ${childId} не найден`);
+        }
+        throw err;
+      });
 
     const response = {
       childId: child.id,
@@ -64,7 +71,7 @@ export class ClientChildService {
         data: { deleteAt: new Date() },
       })
       .catch(() => {
-        throw new NotFoundException(`Child with ID ${childId} not found`);
+        throw new NotFoundException(`Ребенок с этим ID ${childId} не найден`);
       });
   }
 
