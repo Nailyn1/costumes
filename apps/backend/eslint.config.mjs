@@ -25,11 +25,23 @@ export default tseslint.config(
     },
   },
   {
+    // Общие правила для всего проекта
     rules: {
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-floating-promises': 'warn',
       '@typescript-eslint/no-unsafe-argument': 'warn',
       'prettier/prettier': ['error', { endOfLine: 'auto' }],
+    },
+  },
+  {
+    // Специальная настройка для сервисов, работающих с Prisma
+    files: ['**/*.service.ts'],
+    rules: {
+      // Отключаем правила, которые "спотыкаются" о сложные дженерики Prisma
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-return': 'off',
     },
   },
 );

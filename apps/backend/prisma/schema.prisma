@@ -25,3 +25,29 @@ model User {
 
   @@map("user")
 }
+
+model Client {
+  id Int @default(autoincrement()) @id
+  name String
+  phone String @unique
+  notes String? 
+  children Child[]
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  deleteAt DateTime? @map("delete_at")
+  
+  @@map("clients")
+}
+
+model Child {
+  id Int @default(autoincrement()) @id
+  name String
+  clientId Int @map("client_id")
+  client Client @relation(fields: [clientId], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  deleteAt DateTime? @map("delete_at")
+
+  @@index([deleteAt])
+  @@map("child")
+}
