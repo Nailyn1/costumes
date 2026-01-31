@@ -90,14 +90,46 @@ const Costumes_Costume = z
     inventoryCode: Costumes_InventoryCode.regex(/^C-\d{4}$/),
   })
   .passthrough();
-const Costumes_CostumeSearchResult = Costumes_Costume;
-const Costumes_AvailableCostume = Costumes_Costume;
+const Costumes_CostumeSearchResult = z
+  .object({
+    costumeId: z.number().int(),
+    name: z.string(),
+    inventoryCode: Costumes_InventoryCode.regex(/^C-\d{4}$/),
+    display: z.string(),
+  })
+  .passthrough();
+const Costumes_CostumeStatus = z.enum(["available", "issued"]);
+const Costumes_AvailableCostume = z
+  .object({
+    costumeId: z.number().int(),
+    name: z.string(),
+    inventoryCode: Costumes_InventoryCode.regex(/^C-\d{4}$/),
+    status: Costumes_CostumeStatus,
+  })
+  .passthrough();
 const Costumes_UpdateCostumeRequest = z
   .object({ name: z.string().min(2) })
   .partial()
   .passthrough();
-const Costumes_CostumeFullAvailability = Costumes_Costume;
 const Costumes_VisitCode = z.string();
+const Costumes_AvailabilityPeriod = z
+  .object({
+    visitCode: Costumes_VisitCode.regex(/^\d{4}$/),
+    childName: z.string(),
+    clientPhone: z.string(),
+    startDateTime: z.string(),
+    endDateTime: z.string(),
+  })
+  .passthrough();
+const Costumes_CostumeFullAvailability = z
+  .object({
+    costumeId: z.number().int(),
+    name: z.string(),
+    inventoryCode: Costumes_InventoryCode.regex(/^C-\d{4}$/),
+    periods: z.array(Costumes_AvailabilityPeriod),
+    noPeriodsMessage: z.union([z.string(), z.null()]),
+  })
+  .passthrough();
 const Orders_Order = z
   .object({
     orderId: z.number().int(),
@@ -369,10 +401,12 @@ export const schemas = {
   Costumes_InventoryCode,
   Costumes_Costume,
   Costumes_CostumeSearchResult,
+  Costumes_CostumeStatus,
   Costumes_AvailableCostume,
   Costumes_UpdateCostumeRequest,
-  Costumes_CostumeFullAvailability,
   Costumes_VisitCode,
+  Costumes_AvailabilityPeriod,
+  Costumes_CostumeFullAvailability,
   Orders_Order,
   Orders_NotWrittenOrdersResponse,
   Visits_TimeString,
@@ -578,6 +612,20 @@ const endpoints = makeApi([
     response: Costumes_Costume,
   },
   {
+    method: "delete",
+    path: "/costumes/:costumeId",
+    alias: "CostumeOperations_delete",
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "costumeId",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
     method: "get",
     path: "/costumes/:costumeId/availability",
     alias: "CostumeOperations_getDetailedAvailability",
@@ -593,7 +641,7 @@ const endpoints = makeApi([
   },
   {
     method: "get",
-    path: "/costumes/search-availability",
+    path: "/costumes/search",
     alias: "CostumeOperations_searchAvailability",
     requestFormat: "json",
     parameters: [

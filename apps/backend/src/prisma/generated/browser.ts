@@ -32,3 +32,8 @@ export type Client = Prisma.ClientModel
  * 
  */
 export type Child = Prisma.ChildModel
+/**
+ * Model Costume
+ * 
+ */
+export type Costume = Prisma.CostumeModel

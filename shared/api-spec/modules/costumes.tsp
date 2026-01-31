@@ -24,11 +24,13 @@ model Costume {
   inventoryCode: InventoryCode;
 }
 
-model AvailableCostume extends Costume {
+model AvailableCostume {
+  ...Costume;
   status: CostumeStatus;
 }
 
-model CostumeSearchResult extends Costume {
+model CostumeSearchResult {
+  ...Costume;
   display: string;
 }
 
@@ -40,7 +42,8 @@ model AvailabilityPeriod {
   endDateTime: plainDate;
 }
 
-model CostumeFullAvailability extends Costume {
+model CostumeFullAvailability {
+  ...Costume;
   periods: AvailabilityPeriod[];
   noPeriodsMessage: string | null;
 }
@@ -66,7 +69,7 @@ interface CostumeOperations {
   ): AvailableCostume[] | Common.Error;
 
   @get
-  @route("search-availability")
+  @route("search")
   searchAvailability(@query q: string): CostumeSearchResult[] | Common.Error;
 
   @get
@@ -87,5 +90,11 @@ interface CostumeOperations {
   ): {
     @statusCode statusCode: 200;
     @body body: Costume;
+  } | Common.Error;
+
+  @delete
+  @route("{costumeId}")
+  delete(@path costumeId: int32): {
+    @statusCode statusCode: 204;
   } | Common.Error;
 }

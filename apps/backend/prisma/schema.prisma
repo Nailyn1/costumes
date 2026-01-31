@@ -51,3 +51,21 @@ model Child {
   @@index([deleteAt])
   @@map("child")
 }
+
+model Costume {
+  id            Int           @id @default(autoincrement())
+  inventoryCode String        @unique @map("inventory_code") @default(dbgenerated("generate_costume_code()"))
+  name          String
+  status        CostumeStatus @default(available)
+  notes         String?       
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  deleteAt DateTime? @map("delete_at")
+
+  @@map("costumes")
+}
+
+enum CostumeStatus {
+  available
+  issued
+}

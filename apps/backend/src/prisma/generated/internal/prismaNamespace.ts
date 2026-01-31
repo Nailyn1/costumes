@@ -386,7 +386,8 @@ type FieldRefInputType<Model, FieldType> = Model extends never ? never : FieldRe
 export const ModelName = {
   User: 'User',
   Client: 'Client',
-  Child: 'Child'
+  Child: 'Child',
+  Costume: 'Costume'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -402,7 +403,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "client" | "child"
+    modelProps: "user" | "client" | "child" | "costume"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -628,6 +629,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    Costume: {
+      payload: Prisma.$CostumePayload<ExtArgs>
+      fields: Prisma.CostumeFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.CostumeFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CostumePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.CostumeFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CostumePayload>
+        }
+        findFirst: {
+          args: Prisma.CostumeFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CostumePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.CostumeFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CostumePayload>
+        }
+        findMany: {
+          args: Prisma.CostumeFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CostumePayload>[]
+        }
+        create: {
+          args: Prisma.CostumeCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CostumePayload>
+        }
+        createMany: {
+          args: Prisma.CostumeCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.CostumeCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CostumePayload>[]
+        }
+        delete: {
+          args: Prisma.CostumeDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CostumePayload>
+        }
+        update: {
+          args: Prisma.CostumeUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CostumePayload>
+        }
+        deleteMany: {
+          args: Prisma.CostumeDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.CostumeUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.CostumeUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CostumePayload>[]
+        }
+        upsert: {
+          args: Prisma.CostumeUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CostumePayload>
+        }
+        aggregate: {
+          args: Prisma.CostumeAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateCostume>
+        }
+        groupBy: {
+          args: Prisma.CostumeGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.CostumeGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.CostumeCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.CostumeCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -704,6 +779,20 @@ export const ChildScalarFieldEnum = {
 export type ChildScalarFieldEnum = (typeof ChildScalarFieldEnum)[keyof typeof ChildScalarFieldEnum]
 
 
+export const CostumeScalarFieldEnum = {
+  id: 'id',
+  inventoryCode: 'inventoryCode',
+  name: 'name',
+  status: 'status',
+  notes: 'notes',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  deleteAt: 'deleteAt'
+} as const
+
+export type CostumeScalarFieldEnum = (typeof CostumeScalarFieldEnum)[keyof typeof CostumeScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -773,6 +862,20 @@ export type DateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel
  * Reference to a field of type 'DateTime[]'
  */
 export type ListDateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DateTime[]'>
+    
+
+
+/**
+ * Reference to a field of type 'CostumeStatus'
+ */
+export type EnumCostumeStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'CostumeStatus'>
+    
+
+
+/**
+ * Reference to a field of type 'CostumeStatus[]'
+ */
+export type ListEnumCostumeStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'CostumeStatus[]'>
     
 
 
@@ -887,6 +990,7 @@ export type GlobalOmitConfig = {
   user?: Prisma.UserOmit
   client?: Prisma.ClientOmit
   child?: Prisma.ChildOmit
+  costume?: Prisma.CostumeOmit
 }
 
 /* Types for Logging */

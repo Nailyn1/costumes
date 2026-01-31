@@ -11,4 +11,5 @@
 export type * from './models/User.js'
 export type * from './models/Client.js'
 export type * from './models/Child.js'
+export type * from './models/Costume.js'
 export type * from './commonInputTypes.js'
