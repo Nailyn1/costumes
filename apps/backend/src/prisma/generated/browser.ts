@@ -37,3 +37,18 @@ export type Child = Prisma.ChildModel
  * 
  */
 export type Costume = Prisma.CostumeModel
+/**
+ * Model Visit
+ * 
+ */
+export type Visit = Prisma.VisitModel
+/**
+ * Model Order
+ * 
+ */
+export type Order = Prisma.OrderModel
+/**
+ * Model Deposit
+ * 
+ */
+export type Deposit = Prisma.DepositModel

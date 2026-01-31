@@ -23,49 +23,153 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  @@map("user")
+  @@map("users")
 }
 
 model Client {
-  id Int @default(autoincrement()) @id
-  name String
-  phone String @unique
-  notes String? 
-  children Child[]
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  deleteAt DateTime? @map("delete_at")
-  
+  id        Int       @id @default(autoincrement())
+  name      String
+  phone     String    @unique
+  notes     String?
+  children  Child[]
+  visits    Visit[]
+  orders    Order[]
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
   @@map("clients")
 }
 
 model Child {
-  id Int @default(autoincrement()) @id
-  name String
-  clientId Int @map("client_id")
-  client Client @relation(fields: [clientId], references: [id])
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  deleteAt DateTime? @map("delete_at")
+  id        Int       @id @default(autoincrement())
+  name      String
+  clientId  Int       @map("client_id")
+  client    Client    @relation(fields: [clientId], references: [id])
+  orders    Order[]
 
-  @@index([deleteAt])
-  @@map("child")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@index([deletedAt])
+  @@map("children")
 }
 
 model Costume {
   id            Int           @id @default(autoincrement())
-  inventoryCode String        @unique @map("inventory_code") @default(dbgenerated("generate_costume_code()"))
+  inventoryCode String        @unique @default(dbgenerated("generate_costume_code()")) @map("inventory_code")
   name          String
   status        CostumeStatus @default(available)
-  notes         String?       
+  notes         String?
+  
+  orders        Order[]
+
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
-  deleteAt DateTime? @map("delete_at")
+  deletedAt     DateTime?     @map("deleted_at")
 
   @@map("costumes")
+}
+
+model Visit {
+  id              Int         @id @default(autoincrement())
+  visitCode       String      @unique @map("visit_code")
+  
+  clientId        Int         @map("client_id")
+  client          Client      @relation(fields: [clientId], references: [id])
+  
+  startDateTime   DateTime    @map("start_date_time")
+  endDateTime     DateTime    @map("end_date_time")
+  issueTimeFrom   String      @map("issue_time_from")
+  issueTimeTo     String      @map("issue_time_to")
+  returnTimeUntil String      @map("return_time_until")
+  
+  status          VisitStatus @default(reserved)
+  notes           String?     @db.Text
+  
+  orders          Order[]
+  deposit         Deposit?
+
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+  deletedAt       DateTime?   @map("deleted_at")
+
+  @@map("visits")
+}
+
+model Order {
+  id               Int         @id @default(autoincrement())
+  
+  visitId          Int         @map("visit_id")
+  visit            Visit       @relation(fields: [visitId], references: [id])
+  
+  clientId         Int         @map("client_id")
+  client           Client      @relation(fields: [clientId], references: [id])
+  
+  childId          Int         @map("child_id")
+  child            Child       @relation(fields: [childId], references: [id])
+  
+  costumeId        Int         @map("costume_id")
+  costume          Costume     @relation(fields: [costumeId], references: [id])
+
+  startDateTime    DateTime    @map("start_date_time")
+  endDateTime      DateTime    @map("end_date_time")
+
+  rentPrice        Int         @map("rent_price")
+  prepaymentAmount Int         @default(0) @map("prepayment_amount")
+  
+  tagStatus        TagStatus   @default(not_written) @map("tag_status")
+  status           OrderStatus @default(reserved)
+  
+  notes            String?
+  createdAt        DateTime    @default(now()) @map("created_at")
+  updatedAt        DateTime    @updatedAt @map("updated_at")
+  deletedAt        DateTime?   @map("deleted_at")
+
+  @@map("orders")
+}
+model Deposit {
+  id        Int         @id @default(autoincrement())
+  visitId   Int         @unique @map("visit_id")
+  visit     Visit       @relation(fields: [visitId], references: [id])
+  type      DepositType @default(none)
+  returned  Boolean     @default(false)
+
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+  deletedAt DateTime?   @map("deleted_at")
+
+  @@map("deposits")
+}
+
+enum DepositType {
+  document
+  cash
+  none
+}
+
+
+enum VisitStatus {
+  reserved
+  issued
+  completed
+  cancelled
 }
 
 enum CostumeStatus {
   available
   issued
+}
+
+enum OrderStatus {
+  reserved
+  issued
+  returned
+}
+
+enum TagStatus {
+  written
+  not_written
 }

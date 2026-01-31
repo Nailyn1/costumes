@@ -41,7 +41,7 @@ export type ClientMinAggregateOutputType = {
   notes: string | null
   createdAt: Date | null
   updatedAt: Date | null
-  deleteAt: Date | null
+  deletedAt: Date | null
 }
 
 export type ClientMaxAggregateOutputType = {
@@ -51,7 +51,7 @@ export type ClientMaxAggregateOutputType = {
   notes: string | null
   createdAt: Date | null
   updatedAt: Date | null
-  deleteAt: Date | null
+  deletedAt: Date | null
 }
 
 export type ClientCountAggregateOutputType = {
@@ -61,7 +61,7 @@ export type ClientCountAggregateOutputType = {
   notes: number
   createdAt: number
   updatedAt: number
-  deleteAt: number
+  deletedAt: number
   _all: number
 }
 
@@ -81,7 +81,7 @@ export type ClientMinAggregateInputType = {
   notes?: true
   createdAt?: true
   updatedAt?: true
-  deleteAt?: true
+  deletedAt?: true
 }
 
 export type ClientMaxAggregateInputType = {
@@ -91,7 +91,7 @@ export type ClientMaxAggregateInputType = {
   notes?: true
   createdAt?: true
   updatedAt?: true
-  deleteAt?: true
+  deletedAt?: true
 }
 
 export type ClientCountAggregateInputType = {
@@ -101,7 +101,7 @@ export type ClientCountAggregateInputType = {
   notes?: true
   createdAt?: true
   updatedAt?: true
-  deleteAt?: true
+  deletedAt?: true
   _all?: true
 }
 
@@ -198,7 +198,7 @@ export type ClientGroupByOutputType = {
   notes: string | null
   createdAt: Date
   updatedAt: Date
-  deleteAt: Date | null
+  deletedAt: Date | null
   _count: ClientCountAggregateOutputType | null
   _avg: ClientAvgAggregateOutputType | null
   _sum: ClientSumAggregateOutputType | null
@@ -231,8 +231,10 @@ export type ClientWhereInput = {
   notes?: Prisma.StringNullableFilter<"Client"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Client"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Client"> | Date | string
-  deleteAt?: Prisma.DateTimeNullableFilter<"Client"> | Date | string | null
+  deletedAt?: Prisma.DateTimeNullableFilter<"Client"> | Date | string | null
   children?: Prisma.ChildListRelationFilter
+  visits?: Prisma.VisitListRelationFilter
+  orders?: Prisma.OrderListRelationFilter
 }
 
 export type ClientOrderByWithRelationInput = {
@@ -242,8 +244,10 @@ export type ClientOrderByWithRelationInput = {
   notes?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
-  deleteAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  deletedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   children?: Prisma.ChildOrderByRelationAggregateInput
+  visits?: Prisma.VisitOrderByRelationAggregateInput
+  orders?: Prisma.OrderOrderByRelationAggregateInput
 }
 
 export type ClientWhereUniqueInput = Prisma.AtLeast<{
@@ -256,8 +260,10 @@ export type ClientWhereUniqueInput = Prisma.AtLeast<{
   notes?: Prisma.StringNullableFilter<"Client"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Client"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Client"> | Date | string
-  deleteAt?: Prisma.DateTimeNullableFilter<"Client"> | Date | string | null
+  deletedAt?: Prisma.DateTimeNullableFilter<"Client"> | Date | string | null
   children?: Prisma.ChildListRelationFilter
+  visits?: Prisma.VisitListRelationFilter
+  orders?: Prisma.OrderListRelationFilter
 }, "id" | "phone">
 
 export type ClientOrderByWithAggregationInput = {
@@ -267,7 +273,7 @@ export type ClientOrderByWithAggregationInput = {
   notes?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
-  deleteAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  deletedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.ClientCountOrderByAggregateInput
   _avg?: Prisma.ClientAvgOrderByAggregateInput
   _max?: Prisma.ClientMaxOrderByAggregateInput
@@ -285,7 +291,7 @@ export type ClientScalarWhereWithAggregatesInput = {
   notes?: Prisma.StringNullableWithAggregatesFilter<"Client"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Client"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Client"> | Date | string
-  deleteAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Client"> | Date | string | null
+  deletedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Client"> | Date | string | null
 }
 
 export type ClientCreateInput = {
@@ -294,8 +300,10 @@ export type ClientCreateInput = {
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deleteAt?: Date | string | null
+  deletedAt?: Date | string | null
   children?: Prisma.ChildCreateNestedManyWithoutClientInput
+  visits?: Prisma.VisitCreateNestedManyWithoutClientInput
+  orders?: Prisma.OrderCreateNestedManyWithoutClientInput
 }
 
 export type ClientUncheckedCreateInput = {
@@ -305,8 +313,10 @@ export type ClientUncheckedCreateInput = {
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deleteAt?: Date | string | null
+  deletedAt?: Date | string | null
   children?: Prisma.ChildUncheckedCreateNestedManyWithoutClientInput
+  visits?: Prisma.VisitUncheckedCreateNestedManyWithoutClientInput
+  orders?: Prisma.OrderUncheckedCreateNestedManyWithoutClientInput
 }
 
 export type ClientUpdateInput = {
@@ -315,8 +325,10 @@ export type ClientUpdateInput = {
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deleteAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   children?: Prisma.ChildUpdateManyWithoutClientNestedInput
+  visits?: Prisma.VisitUpdateManyWithoutClientNestedInput
+  orders?: Prisma.OrderUpdateManyWithoutClientNestedInput
 }
 
 export type ClientUncheckedUpdateInput = {
@@ -326,8 +338,10 @@ export type ClientUncheckedUpdateInput = {
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deleteAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   children?: Prisma.ChildUncheckedUpdateManyWithoutClientNestedInput
+  visits?: Prisma.VisitUncheckedUpdateManyWithoutClientNestedInput
+  orders?: Prisma.OrderUncheckedUpdateManyWithoutClientNestedInput
 }
 
 export type ClientCreateManyInput = {
@@ -337,7 +351,7 @@ export type ClientCreateManyInput = {
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deleteAt?: Date | string | null
+  deletedAt?: Date | string | null
 }
 
 export type ClientUpdateManyMutationInput = {
@@ -346,7 +360,7 @@ export type ClientUpdateManyMutationInput = {
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deleteAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type ClientUncheckedUpdateManyInput = {
@@ -356,7 +370,7 @@ export type ClientUncheckedUpdateManyInput = {
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deleteAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type ClientCountOrderByAggregateInput = {
@@ -366,7 +380,7 @@ export type ClientCountOrderByAggregateInput = {
   notes?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
-  deleteAt?: Prisma.SortOrder
+  deletedAt?: Prisma.SortOrder
 }
 
 export type ClientAvgOrderByAggregateInput = {
@@ -380,7 +394,7 @@ export type ClientMaxOrderByAggregateInput = {
   notes?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
-  deleteAt?: Prisma.SortOrder
+  deletedAt?: Prisma.SortOrder
 }
 
 export type ClientMinOrderByAggregateInput = {
@@ -390,7 +404,7 @@ export type ClientMinOrderByAggregateInput = {
   notes?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
-  deleteAt?: Prisma.SortOrder
+  deletedAt?: Prisma.SortOrder
 }
 
 export type ClientSumOrderByAggregateInput = {
@@ -424,13 +438,43 @@ export type ClientUpdateOneRequiredWithoutChildrenNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.ClientUpdateToOneWithWhereWithoutChildrenInput, Prisma.ClientUpdateWithoutChildrenInput>, Prisma.ClientUncheckedUpdateWithoutChildrenInput>
 }
 
+export type ClientCreateNestedOneWithoutVisitsInput = {
+  create?: Prisma.XOR<Prisma.ClientCreateWithoutVisitsInput, Prisma.ClientUncheckedCreateWithoutVisitsInput>
+  connectOrCreate?: Prisma.ClientCreateOrConnectWithoutVisitsInput
+  connect?: Prisma.ClientWhereUniqueInput
+}
+
+export type ClientUpdateOneRequiredWithoutVisitsNestedInput = {
+  create?: Prisma.XOR<Prisma.ClientCreateWithoutVisitsInput, Prisma.ClientUncheckedCreateWithoutVisitsInput>
+  connectOrCreate?: Prisma.ClientCreateOrConnectWithoutVisitsInput
+  upsert?: Prisma.ClientUpsertWithoutVisitsInput
+  connect?: Prisma.ClientWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ClientUpdateToOneWithWhereWithoutVisitsInput, Prisma.ClientUpdateWithoutVisitsInput>, Prisma.ClientUncheckedUpdateWithoutVisitsInput>
+}
+
+export type ClientCreateNestedOneWithoutOrdersInput = {
+  create?: Prisma.XOR<Prisma.ClientCreateWithoutOrdersInput, Prisma.ClientUncheckedCreateWithoutOrdersInput>
+  connectOrCreate?: Prisma.ClientCreateOrConnectWithoutOrdersInput
+  connect?: Prisma.ClientWhereUniqueInput
+}
+
+export type ClientUpdateOneRequiredWithoutOrdersNestedInput = {
+  create?: Prisma.XOR<Prisma.ClientCreateWithoutOrdersInput, Prisma.ClientUncheckedCreateWithoutOrdersInput>
+  connectOrCreate?: Prisma.ClientCreateOrConnectWithoutOrdersInput
+  upsert?: Prisma.ClientUpsertWithoutOrdersInput
+  connect?: Prisma.ClientWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ClientUpdateToOneWithWhereWithoutOrdersInput, Prisma.ClientUpdateWithoutOrdersInput>, Prisma.ClientUncheckedUpdateWithoutOrdersInput>
+}
+
 export type ClientCreateWithoutChildrenInput = {
   name: string
   phone: string
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deleteAt?: Date | string | null
+  deletedAt?: Date | string | null
+  visits?: Prisma.VisitCreateNestedManyWithoutClientInput
+  orders?: Prisma.OrderCreateNestedManyWithoutClientInput
 }
 
 export type ClientUncheckedCreateWithoutChildrenInput = {
@@ -440,7 +484,9 @@ export type ClientUncheckedCreateWithoutChildrenInput = {
   notes?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
-  deleteAt?: Date | string | null
+  deletedAt?: Date | string | null
+  visits?: Prisma.VisitUncheckedCreateNestedManyWithoutClientInput
+  orders?: Prisma.OrderUncheckedCreateNestedManyWithoutClientInput
 }
 
 export type ClientCreateOrConnectWithoutChildrenInput = {
@@ -465,7 +511,9 @@ export type ClientUpdateWithoutChildrenInput = {
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deleteAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  visits?: Prisma.VisitUpdateManyWithoutClientNestedInput
+  orders?: Prisma.OrderUpdateManyWithoutClientNestedInput
 }
 
 export type ClientUncheckedUpdateWithoutChildrenInput = {
@@ -475,7 +523,133 @@ export type ClientUncheckedUpdateWithoutChildrenInput = {
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deleteAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  visits?: Prisma.VisitUncheckedUpdateManyWithoutClientNestedInput
+  orders?: Prisma.OrderUncheckedUpdateManyWithoutClientNestedInput
+}
+
+export type ClientCreateWithoutVisitsInput = {
+  name: string
+  phone: string
+  notes?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  deletedAt?: Date | string | null
+  children?: Prisma.ChildCreateNestedManyWithoutClientInput
+  orders?: Prisma.OrderCreateNestedManyWithoutClientInput
+}
+
+export type ClientUncheckedCreateWithoutVisitsInput = {
+  id?: number
+  name: string
+  phone: string
+  notes?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  deletedAt?: Date | string | null
+  children?: Prisma.ChildUncheckedCreateNestedManyWithoutClientInput
+  orders?: Prisma.OrderUncheckedCreateNestedManyWithoutClientInput
+}
+
+export type ClientCreateOrConnectWithoutVisitsInput = {
+  where: Prisma.ClientWhereUniqueInput
+  create: Prisma.XOR<Prisma.ClientCreateWithoutVisitsInput, Prisma.ClientUncheckedCreateWithoutVisitsInput>
+}
+
+export type ClientUpsertWithoutVisitsInput = {
+  update: Prisma.XOR<Prisma.ClientUpdateWithoutVisitsInput, Prisma.ClientUncheckedUpdateWithoutVisitsInput>
+  create: Prisma.XOR<Prisma.ClientCreateWithoutVisitsInput, Prisma.ClientUncheckedCreateWithoutVisitsInput>
+  where?: Prisma.ClientWhereInput
+}
+
+export type ClientUpdateToOneWithWhereWithoutVisitsInput = {
+  where?: Prisma.ClientWhereInput
+  data: Prisma.XOR<Prisma.ClientUpdateWithoutVisitsInput, Prisma.ClientUncheckedUpdateWithoutVisitsInput>
+}
+
+export type ClientUpdateWithoutVisitsInput = {
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  children?: Prisma.ChildUpdateManyWithoutClientNestedInput
+  orders?: Prisma.OrderUpdateManyWithoutClientNestedInput
+}
+
+export type ClientUncheckedUpdateWithoutVisitsInput = {
+  id?: Prisma.IntFieldUpdateOperationsInput | number
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  children?: Prisma.ChildUncheckedUpdateManyWithoutClientNestedInput
+  orders?: Prisma.OrderUncheckedUpdateManyWithoutClientNestedInput
+}
+
+export type ClientCreateWithoutOrdersInput = {
+  name: string
+  phone: string
+  notes?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  deletedAt?: Date | string | null
+  children?: Prisma.ChildCreateNestedManyWithoutClientInput
+  visits?: Prisma.VisitCreateNestedManyWithoutClientInput
+}
+
+export type ClientUncheckedCreateWithoutOrdersInput = {
+  id?: number
+  name: string
+  phone: string
+  notes?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  deletedAt?: Date | string | null
+  children?: Prisma.ChildUncheckedCreateNestedManyWithoutClientInput
+  visits?: Prisma.VisitUncheckedCreateNestedManyWithoutClientInput
+}
+
+export type ClientCreateOrConnectWithoutOrdersInput = {
+  where: Prisma.ClientWhereUniqueInput
+  create: Prisma.XOR<Prisma.ClientCreateWithoutOrdersInput, Prisma.ClientUncheckedCreateWithoutOrdersInput>
+}
+
+export type ClientUpsertWithoutOrdersInput = {
+  update: Prisma.XOR<Prisma.ClientUpdateWithoutOrdersInput, Prisma.ClientUncheckedUpdateWithoutOrdersInput>
+  create: Prisma.XOR<Prisma.ClientCreateWithoutOrdersInput, Prisma.ClientUncheckedCreateWithoutOrdersInput>
+  where?: Prisma.ClientWhereInput
+}
+
+export type ClientUpdateToOneWithWhereWithoutOrdersInput = {
+  where?: Prisma.ClientWhereInput
+  data: Prisma.XOR<Prisma.ClientUpdateWithoutOrdersInput, Prisma.ClientUncheckedUpdateWithoutOrdersInput>
+}
+
+export type ClientUpdateWithoutOrdersInput = {
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  children?: Prisma.ChildUpdateManyWithoutClientNestedInput
+  visits?: Prisma.VisitUpdateManyWithoutClientNestedInput
+}
+
+export type ClientUncheckedUpdateWithoutOrdersInput = {
+  id?: Prisma.IntFieldUpdateOperationsInput | number
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  phone?: Prisma.StringFieldUpdateOperationsInput | string
+  notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  children?: Prisma.ChildUncheckedUpdateManyWithoutClientNestedInput
+  visits?: Prisma.VisitUncheckedUpdateManyWithoutClientNestedInput
 }
 
 
@@ -485,10 +659,14 @@ export type ClientUncheckedUpdateWithoutChildrenInput = {
 
 export type ClientCountOutputType = {
   children: number
+  visits: number
+  orders: number
 }
 
 export type ClientCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   children?: boolean | ClientCountOutputTypeCountChildrenArgs
+  visits?: boolean | ClientCountOutputTypeCountVisitsArgs
+  orders?: boolean | ClientCountOutputTypeCountOrdersArgs
 }
 
 /**
@@ -508,6 +686,20 @@ export type ClientCountOutputTypeCountChildrenArgs<ExtArgs extends runtime.Types
   where?: Prisma.ChildWhereInput
 }
 
+/**
+ * ClientCountOutputType without action
+ */
+export type ClientCountOutputTypeCountVisitsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.VisitWhereInput
+}
+
+/**
+ * ClientCountOutputType without action
+ */
+export type ClientCountOutputTypeCountOrdersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.OrderWhereInput
+}
+
 
 export type ClientSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -516,8 +708,10 @@ export type ClientSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   notes?: boolean
   createdAt?: boolean
   updatedAt?: boolean
-  deleteAt?: boolean
+  deletedAt?: boolean
   children?: boolean | Prisma.Client$childrenArgs<ExtArgs>
+  visits?: boolean | Prisma.Client$visitsArgs<ExtArgs>
+  orders?: boolean | Prisma.Client$ordersArgs<ExtArgs>
   _count?: boolean | Prisma.ClientCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["client"]>
 
@@ -528,7 +722,7 @@ export type ClientSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extens
   notes?: boolean
   createdAt?: boolean
   updatedAt?: boolean
-  deleteAt?: boolean
+  deletedAt?: boolean
 }, ExtArgs["result"]["client"]>
 
 export type ClientSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -538,7 +732,7 @@ export type ClientSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extens
   notes?: boolean
   createdAt?: boolean
   updatedAt?: boolean
-  deleteAt?: boolean
+  deletedAt?: boolean
 }, ExtArgs["result"]["client"]>
 
 export type ClientSelectScalar = {
@@ -548,12 +742,14 @@ export type ClientSelectScalar = {
   notes?: boolean
   createdAt?: boolean
   updatedAt?: boolean
-  deleteAt?: boolean
+  deletedAt?: boolean
 }
 
-export type ClientOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "phone" | "notes" | "createdAt" | "updatedAt" | "deleteAt", ExtArgs["result"]["client"]>
+export type ClientOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "phone" | "notes" | "createdAt" | "updatedAt" | "deletedAt", ExtArgs["result"]["client"]>
 export type ClientInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   children?: boolean | Prisma.Client$childrenArgs<ExtArgs>
+  visits?: boolean | Prisma.Client$visitsArgs<ExtArgs>
+  orders?: boolean | Prisma.Client$ordersArgs<ExtArgs>
   _count?: boolean | Prisma.ClientCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type ClientIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -563,6 +759,8 @@ export type $ClientPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
   name: "Client"
   objects: {
     children: Prisma.$ChildPayload<ExtArgs>[]
+    visits: Prisma.$VisitPayload<ExtArgs>[]
+    orders: Prisma.$OrderPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: number
@@ -571,7 +769,7 @@ export type $ClientPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     notes: string | null
     createdAt: Date
     updatedAt: Date
-    deleteAt: Date | null
+    deletedAt: Date | null
   }, ExtArgs["result"]["client"]>
   composites: {}
 }
@@ -967,6 +1165,8 @@ readonly fields: ClientFieldRefs;
 export interface Prisma__ClientClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   children<T extends Prisma.Client$childrenArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Client$childrenArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$ChildPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  visits<T extends Prisma.Client$visitsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Client$visitsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$VisitPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  orders<T extends Prisma.Client$ordersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Client$ordersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$OrderPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1002,7 +1202,7 @@ export interface ClientFieldRefs {
   readonly notes: Prisma.FieldRef<"Client", 'String'>
   readonly createdAt: Prisma.FieldRef<"Client", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Client", 'DateTime'>
-  readonly deleteAt: Prisma.FieldRef<"Client", 'DateTime'>
+  readonly deletedAt: Prisma.FieldRef<"Client", 'DateTime'>
 }
     
 
@@ -1412,6 +1612,54 @@ export type Client$childrenArgs<ExtArgs extends runtime.Types.Extensions.Interna
   take?: number
   skip?: number
   distinct?: Prisma.ChildScalarFieldEnum | Prisma.ChildScalarFieldEnum[]
+}
+
+/**
+ * Client.visits
+ */
+export type Client$visitsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Visit
+   */
+  select?: Prisma.VisitSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Visit
+   */
+  omit?: Prisma.VisitOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.VisitInclude<ExtArgs> | null
+  where?: Prisma.VisitWhereInput
+  orderBy?: Prisma.VisitOrderByWithRelationInput | Prisma.VisitOrderByWithRelationInput[]
+  cursor?: Prisma.VisitWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.VisitScalarFieldEnum | Prisma.VisitScalarFieldEnum[]
+}
+
+/**
+ * Client.orders
+ */
+export type Client$ordersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Order
+   */
+  select?: Prisma.OrderSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Order
+   */
+  omit?: Prisma.OrderOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.OrderInclude<ExtArgs> | null
+  where?: Prisma.OrderWhereInput
+  orderBy?: Prisma.OrderOrderByWithRelationInput | Prisma.OrderOrderByWithRelationInput[]
+  cursor?: Prisma.OrderWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.OrderScalarFieldEnum | Prisma.OrderScalarFieldEnum[]
 }
 
 /**
