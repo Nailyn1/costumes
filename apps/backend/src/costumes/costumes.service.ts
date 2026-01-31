@@ -52,7 +52,7 @@ export class CostumesService {
     await this.prisma.costume
       .update({
         where: { id: costumeId },
-        data: { deleteAt: new Date() },
+        data: { deletedAt: new Date() },
       })
       .catch(() => {
         throw new NotFoundException(`Costume with ID ${costumeId} not found`);
