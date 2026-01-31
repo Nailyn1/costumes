@@ -5,6 +5,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
 import { ClientChildModule } from './client-child/client-child.module';
 import { CostumesModule } from './costumes/costumes.module';
+import { VisitOrderModule } from './visit-order/visit-order.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -16,6 +17,7 @@ import { CostumesModule } from './costumes/costumes.module';
     AuthModule,
     ClientChildModule,
     CostumesModule,
+    VisitOrderModule,
   ],
 })
 export class AppModule {}
