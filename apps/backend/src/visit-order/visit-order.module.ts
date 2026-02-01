@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { VisitOrderService } from './visit-order.service';
+import { VisitOrderService } from './visit-order.sevice';
 import { VisitController } from './visits.controller';
 
 @Module({
