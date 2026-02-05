@@ -5,7 +5,7 @@ import "./costumes.tsp";
 import "./clients.tsp";
 import "./children.tsp";
 using Http;
-
+using OpenAPI;
 namespace CostumeApp.Visits;
 
 alias VisitCode = CostumeApp.Costumes.VisitCode;
@@ -37,16 +37,8 @@ model VisitOrder {
   inventoryCode: CostumeApp.Costumes.InventoryCode;
   rentPrice: int32;
   prepayment: int32;
-  remaining: int32;
   tagStatus: TagStatus;
 }
-
-model VisitTotals {
-  totalRent: int32;
-  totalPrepayment: int32;
-  totalRemaining: int32;
-}
-
 model Visit {
   id: int32;
   visitCode: VisitCode;
@@ -59,23 +51,30 @@ model Visit {
   };
 
   visitDate: {
-    startDate: plainDate;
-    endDate: plainDate;
+    startDateTime: plainDate;
+    endDateTime: plainDate;
     issueTimeFrom: TimeString;
     issueTimeTo: TimeString;
     returnTimeUntil: TimeString;
   };
-
+  notifications: Notification[],
   orders: VisitOrder[];
-  totals: VisitTotals;
+}
+
+model Notification {
+  id: int32;
+  type: string;
+  status: "pending" | "sent" | "delivered" | "failed" | "read";
+  createdAt: utcDateTime; 
 }
 
 model CreateVisitRequest {
   clientId: int32;
-  startDate: plainDate;
+  visitCode: VisitCode;
+  startDateTime: plainDate;
   issueTimeFrom: TimeString;
   issueTimeTo: TimeString;
-  endDate: plainDate;
+  endDateTime: plainDate;
   returnTimeUntil: TimeString;
   notes?: string;
   orders: {
@@ -83,7 +82,6 @@ model CreateVisitRequest {
     costumeId: int32;
     rentPrice: int32;
     prepaymentAmount: int32;
-    remaining: int32;
     notes?: string;
   }[];
 }

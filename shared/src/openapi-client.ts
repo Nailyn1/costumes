@@ -154,12 +154,13 @@ const Visits_TimeString = z.string();
 const Visits_CreateVisitRequest = z
   .object({
     clientId: z.number().int(),
-    startDate: z.string(),
+    visitCode: Costumes_VisitCode.regex(/^\d{4}$/),
+    startDateTime: z.string(),
     issueTimeFrom: Visits_TimeString.regex(
       /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/
     ),
     issueTimeTo: Visits_TimeString.regex(/^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/),
-    endDate: z.string(),
+    endDateTime: z.string(),
     returnTimeUntil: Visits_TimeString.regex(
       /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/
     ),
@@ -171,7 +172,6 @@ const Visits_CreateVisitRequest = z
           costumeId: z.number().int(),
           rentPrice: z.number().int(),
           prepaymentAmount: z.number().int(),
-          remaining: z.number().int(),
           notes: z.string().optional(),
         })
         .passthrough()
@@ -184,6 +184,14 @@ const Visits_VisitStatus = z.enum([
   "completed",
   "cancelled",
 ]);
+const Visits_Notification = z
+  .object({
+    id: z.number().int(),
+    type: z.string(),
+    status: z.enum(["pending", "sent", "delivered", "failed", "read"]),
+    createdAt: z.string().datetime({ offset: true }),
+  })
+  .passthrough();
 const Visits_TagStatus = z.enum(["written", "not_written"]);
 const Visits_VisitOrder = z
   .object({
@@ -195,15 +203,7 @@ const Visits_VisitOrder = z
     inventoryCode: Costumes_InventoryCode.regex(/^C-\d{4}$/),
     rentPrice: z.number().int(),
     prepayment: z.number().int(),
-    remaining: z.number().int(),
     tagStatus: Visits_TagStatus,
-  })
-  .passthrough();
-const Visits_VisitTotals = z
-  .object({
-    totalRent: z.number().int(),
-    totalPrepayment: z.number().int(),
-    totalRemaining: z.number().int(),
   })
   .passthrough();
 const Visits_Visit = z
@@ -222,8 +222,8 @@ const Visits_Visit = z
       .passthrough(),
     visitDate: z
       .object({
-        startDate: z.string(),
-        endDate: z.string(),
+        startDateTime: z.string(),
+        endDateTime: z.string(),
         issueTimeFrom: Visits_TimeString.regex(
           /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/
         ),
@@ -235,8 +235,8 @@ const Visits_Visit = z
         ),
       })
       .passthrough(),
+    notifications: z.array(Visits_Notification),
     orders: z.array(Visits_VisitOrder),
-    totals: Visits_VisitTotals,
   })
   .passthrough();
 const Visits_IssuedForReturnResponse = z
@@ -412,9 +412,9 @@ export const schemas = {
   Visits_TimeString,
   Visits_CreateVisitRequest,
   Visits_VisitStatus,
+  Visits_Notification,
   Visits_TagStatus,
   Visits_VisitOrder,
-  Visits_VisitTotals,
   Visits_Visit,
   Visits_IssuedForReturnResponse,
   Visits_VisitReturnSearchResponse,
