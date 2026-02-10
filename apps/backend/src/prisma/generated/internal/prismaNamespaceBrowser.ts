@@ -57,7 +57,8 @@ export const ModelName = {
   Costume: 'Costume',
   Visit: 'Visit',
   Order: 'Order',
-  Deposit: 'Deposit'
+  Deposit: 'Deposit',
+  Notification: 'Notification'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -178,6 +179,20 @@ export const DepositScalarFieldEnum = {
 } as const
 
 export type DepositScalarFieldEnum = (typeof DepositScalarFieldEnum)[keyof typeof DepositScalarFieldEnum]
+
+
+export const NotificationScalarFieldEnum = {
+  id: 'id',
+  visitId: 'visitId',
+  externalId: 'externalId',
+  type: 'type',
+  status: 'status',
+  errorText: 'errorText',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type NotificationScalarFieldEnum = (typeof NotificationScalarFieldEnum)[keyof typeof NotificationScalarFieldEnum]
 
 
 export const SortOrder = {

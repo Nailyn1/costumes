@@ -9,6 +9,19 @@
 * 🟢 You can import this file directly.
 */
 
+export const NotificationStatus = {
+  pending: 'pending',
+  sent: 'sent',
+  delivered: 'delivered',
+  read: 'read',
+  failed: 'failed',
+  isConfirmed: 'isConfirmed',
+  noAccount: 'noAccount'
+} as const
+
+export type NotificationStatus = (typeof NotificationStatus)[keyof typeof NotificationStatus]
+
+
 export const DepositType = {
   document: 'document',
   cash: 'cash',

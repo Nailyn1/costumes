@@ -90,6 +90,7 @@ model Visit {
   notes           String?     @db.Text
   
   orders          Order[]
+  notifications Notification[]
   deposit         Deposit?
 
   createdAt       DateTime    @default(now()) @map("created_at")
@@ -142,6 +143,31 @@ model Deposit {
   deletedAt DateTime?   @map("deleted_at")
 
   @@map("deposits")
+}
+model Notification {
+  id          Int                @id @default(autoincrement())
+  visitId     Int                @map("visit_id")
+  visit       Visit              @relation(fields: [visitId], references: [id])
+  
+  externalId  String?            @unique @map("external_id")
+  type        String             
+  status      NotificationStatus @default(pending)
+  errorText   String?            @map("error_text")
+  
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+
+  @@map("notifications")
+}
+
+enum NotificationStatus {
+  pending   
+  sent      
+  delivered 
+  read      
+  failed    
+  isConfirmed
+  noAccount
 }
 
 enum DepositType {

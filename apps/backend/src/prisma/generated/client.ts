@@ -72,3 +72,8 @@ export type Order = Prisma.OrderModel
  * 
  */
 export type Deposit = Prisma.DepositModel
+/**
+ * Model Notification
+ * 
+ */
+export type Notification = Prisma.NotificationModel
