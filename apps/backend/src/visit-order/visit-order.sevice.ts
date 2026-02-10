@@ -15,6 +15,8 @@ import {
   CreateVisitRequestDto,
   CreateVisitResponseDto,
   CreateVisitResponseSchema,
+  OrdersNotWrittenResponseDto,
+  OrdersNotWrittenResponseSchema,
 } from '@costumes/shared';
 import { Prisma } from '../prisma/generated/client';
 
@@ -239,5 +241,58 @@ export class VisitOrderService {
     conflicts.forEach((c) => uniqueConflicts.set(c.costume.id, c.costume.name));
 
     return Array.from(uniqueConflicts).map(([id, name]) => ({ id, name }));
+  }
+
+  async findOrdersNotWritten(): Promise<OrdersNotWrittenResponseDto> {
+    const orders = await this.prisma.order.findMany({
+      where: {
+        tagStatus: 'not_written',
+      },
+      include: {
+        costume: true,
+        child: true,
+        visit: {
+          include: {
+            client: true,
+          },
+        },
+      },
+    });
+
+    const items = orders.map((order) => ({
+      orderId: order.id,
+      inventoryCode: order.costume.inventoryCode,
+      costumeName: order.costume.name,
+      visitCode: order.visit.visitCode,
+      childName: order.child.name,
+      clientPhone: order.visit.client.phone,
+      startDateTime: order.startDateTime.toISOString().split('T')[0],
+      endDateTime: order.endDateTime.toISOString().split('T')[0],
+      issueTimeFrom: order.visit.issueTimeFrom,
+      issueTimeTo: order.visit.issueTimeTo,
+      returnTimeUntil: order.visit.returnTimeUntil,
+      rentPrice: order.rentPrice,
+      prepaymentAmount: order.prepaymentAmount,
+      notes: order.notes || '',
+    }));
+
+    return OrdersNotWrittenResponseSchema.parse({
+      items,
+      message:
+        items.length > 0
+          ? 'Заказы успешно найдены'
+          : 'Нет заказов для обработки',
+    });
+  }
+
+  async orderMarkTagWritten(orderId: number): Promise<void> {
+    await this.prisma.order
+      .update({
+        where: { id: orderId },
+        data: { tagStatus: 'written' },
+      })
+      .catch(() => {
+        throw new NotFoundException(`Order with ID ${orderId} not found`);
+      });
   }
 }
