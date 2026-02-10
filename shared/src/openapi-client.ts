@@ -130,26 +130,6 @@ const Costumes_CostumeFullAvailability = z
     noPeriodsMessage: z.union([z.string(), z.null()]),
   })
   .passthrough();
-const Orders_Order = z
-  .object({
-    orderId: z.number().int(),
-    inventoryCode: Costumes_InventoryCode.regex(/^C-\d{4}$/),
-    costumeName: z.string(),
-    visitCode: Costumes_VisitCode.regex(/^\d{4}$/),
-    childName: Children_ChildName.min(2).regex(
-      /^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\s-]+$/
-    ),
-    clientPhone: Clients_PhoneString.regex(/^\+7\d{10}$/),
-    startDateTime: z.string(),
-    endDateTime: z.string(),
-    rentPrice: z.number().int(),
-    prepaymentAmount: z.number().int(),
-    notes: z.string(),
-  })
-  .passthrough();
-const Orders_NotWrittenOrdersResponse = z
-  .object({ items: z.array(Orders_Order), message: z.string().optional() })
-  .passthrough();
 const Visits_TimeString = z.string();
 const Visits_CreateVisitRequest = z
   .object({
@@ -249,6 +229,33 @@ const Visits_IssuedForReturnResponse = z
     clientPhone: Clients_PhoneString.regex(/^\+7\d{10}$/),
     notes: z.string(),
   })
+  .passthrough();
+const Visits_Order = z
+  .object({
+    orderId: z.number().int(),
+    inventoryCode: Costumes_InventoryCode.regex(/^C-\d{4}$/),
+    costumeName: z.string(),
+    visitCode: Costumes_VisitCode.regex(/^\d{4}$/),
+    childName: Children_ChildName.min(2).regex(
+      /^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\s-]+$/
+    ),
+    clientPhone: Clients_PhoneString.regex(/^\+7\d{10}$/),
+    startDateTime: z.string(),
+    endDateTime: z.string(),
+    issueTimeFrom: Visits_TimeString.regex(
+      /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/
+    ),
+    issueTimeTo: Visits_TimeString.regex(/^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/),
+    returnTimeUntil: Visits_TimeString.regex(
+      /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/
+    ),
+    rentPrice: z.number().int(),
+    prepaymentAmount: z.number().int(),
+    notes: z.string(),
+  })
+  .passthrough();
+const Visits_NotWrittenOrdersResponse = z
+  .object({ items: z.array(Visits_Order), message: z.string().optional() })
   .passthrough();
 const Visits_VisitReturnSearchResponse = z
   .object({
@@ -407,8 +414,6 @@ export const schemas = {
   Costumes_VisitCode,
   Costumes_AvailabilityPeriod,
   Costumes_CostumeFullAvailability,
-  Orders_Order,
-  Orders_NotWrittenOrdersResponse,
   Visits_TimeString,
   Visits_CreateVisitRequest,
   Visits_VisitStatus,
@@ -417,6 +422,8 @@ export const schemas = {
   Visits_VisitOrder,
   Visits_Visit,
   Visits_IssuedForReturnResponse,
+  Visits_Order,
+  Visits_NotWrittenOrdersResponse,
   Visits_VisitReturnSearchResponse,
   Visits_VisitsSearchResponse,
   Visits_GetTodayReservedResponse,
@@ -679,27 +686,6 @@ const endpoints = makeApi([
   },
   {
     method: "post",
-    path: "/orders/:orderId/mark-tag-written",
-    alias: "OrderOperations_markTagWritten",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "orderId",
-        type: "Path",
-        schema: z.number().int(),
-      },
-    ],
-    response: z.void(),
-  },
-  {
-    method: "get",
-    path: "/orders/not_written",
-    alias: "OrderOperations_getNotWritten",
-    requestFormat: "json",
-    response: Orders_NotWrittenOrdersResponse,
-  },
-  {
-    method: "post",
     path: "/visits",
     alias: "VisitOperation_create",
     requestFormat: "json",
@@ -711,6 +697,20 @@ const endpoints = makeApi([
       },
     ],
     response: Visits_Visit,
+  },
+  {
+    method: "post",
+    path: "/visits/:orderId/mark-tag-written",
+    alias: "VisitOperation_markTagWritten",
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "orderId",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: z.void(),
   },
   {
     method: "post",
@@ -803,6 +803,13 @@ const endpoints = makeApi([
     alias: "VisitOperation_getIssuedForReturn",
     requestFormat: "json",
     response: z.array(Visits_IssuedForReturnResponse),
+  },
+  {
+    method: "get",
+    path: "/visits/not_written",
+    alias: "VisitOperation_getNotWritten",
+    requestFormat: "json",
+    response: Visits_NotWrittenOrdersResponse,
   },
   {
     method: "post",

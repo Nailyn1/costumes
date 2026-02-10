@@ -68,6 +68,28 @@ model Notification {
   createdAt: utcDateTime; 
 }
 
+model Order {
+  orderId: int32;
+  inventoryCode: CostumeApp.Costumes.InventoryCode;
+  costumeName: string;
+  visitCode: CostumeApp.Costumes.VisitCode;
+  childName: CostumeApp.Children.ChildName;
+  clientPhone: CostumeApp.Clients.PhoneString;
+  startDateTime: plainDate;
+  endDateTime: plainDate;
+  issueTimeFrom: TimeString;
+  issueTimeTo: TimeString;
+  returnTimeUntil: TimeString;
+  rentPrice: int32;
+  prepaymentAmount: int32;
+  notes: string;
+}
+
+model NotWrittenOrdersResponse {
+  items: Order[];
+  message?: string;
+}
+
 model CreateVisitRequest {
   clientId: int32;
   visitCode: VisitCode;
@@ -194,7 +216,7 @@ model VisitReturnSearchResponse {
 
 @route("/visits")
 interface VisitOperation {
-    @post
+  @post
   @route("preview-code")
   previewCode(): {
     @statusCode statusCode: 201;
@@ -215,14 +237,14 @@ interface VisitOperation {
   }[] | Common.Error;
 
 
-@get
+  @get
   @route("search")
   search(@query @minLength(2) q: string): {
     @statusCode statusCode: 200;
     @body body: VisitsSearchResponse[];
   } | Common.Error;
 
-@get
+  @get
   @route("return-search")
   searchForReturn(@query @minLength(2) q: string): {
     @statusCode statusCode: 200;
@@ -274,6 +296,19 @@ interface VisitOperation {
   markDepositReturned(@path visitId: int32, @body body: { notes?: string }): {
     @statusCode statusCode: 200;
     @body body: MarkDepositReturnedResponse;
+  } | Common.Error;
+
+  @get
+  @route("not_written")
+  getNotWritten(): {
+    @statusCode statusCode: 200;
+    @body body: NotWrittenOrdersResponse;
+  } | Common.Error;
+
+  @post
+  @route("{orderId}/mark-tag-written")
+  markTagWritten(@path orderId: int32): {
+    @statusCode statusCode: 204;
   } | Common.Error;
 }
 
