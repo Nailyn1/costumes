@@ -6,6 +6,8 @@ import { RedisModule } from './redis/redis.module';
 import { ClientChildModule } from './client-child/client-child.module';
 import { CostumesModule } from './costumes/costumes.module';
 import { VisitOrderModule } from './visit-order/visit-order.module';
+import { QueueModule } from './redis/queue.module';
+import { NotificationModule } from './notification/notification.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -14,10 +16,12 @@ import { VisitOrderModule } from './visit-order/visit-order.module';
     }),
     RedisModule,
     PrismaModule,
+    QueueModule,
     AuthModule,
     ClientChildModule,
     CostumesModule,
     VisitOrderModule,
+    NotificationModule,
   ],
 })
 export class AppModule {}
