@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
+  CostumesSearchResponseDto,
   CreateCostumesRequestDto,
   CreateUpdateCostumesResponseDto,
   UpdateCostumesRequestDto,
@@ -57,5 +58,36 @@ export class CostumesService {
       .catch(() => {
         throw new NotFoundException(`Costume with ID ${costumeId} not found`);
       });
+  }
+
+  async searchCostume(q: string): Promise<CostumesSearchResponseDto[]> {
+    const costumes = await this.prisma.costume.findMany({
+      where: {
+        OR: [
+          { name: { contains: q, mode: 'insensitive' } },
+          { inventoryCode: { contains: q, mode: 'insensitive' } },
+          {
+            orders: {
+              some: {
+                OR: [
+                  { child: { name: { contains: q, mode: 'insensitive' } } },
+                  {
+                    visit: { visitCode: { contains: q, mode: 'insensitive' } },
+                  },
+                ],
+              },
+            },
+          },
+        ],
+      },
+      take: 20,
+    });
+
+    return costumes.map((c) => ({
+      costumeId: c.id,
+      name: c.name,
+      inventoryCode: c.inventoryCode,
+      display: `${c.name} (${c.inventoryCode})`,
+    }));
   }
 }
