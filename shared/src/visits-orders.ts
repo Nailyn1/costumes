@@ -14,3 +14,24 @@ export type OrdersNotWrittenResponseDto = z.infer<
 >;
 export const OrdersNotWrittenResponseSchema =
   schemas.Visits_NotWrittenOrdersResponse;
+
+export type IssuedForReturnDto = z.infer<
+  typeof schemas.Visits_IssuedForReturnResponse
+>;
+
+export type VisitIssueRequestDto = z.infer<
+  typeof schemas.Visits_IssueVisitRequest
+>;
+export const VisitIssueRequestSchema = schemas.Visits_IssueVisitRequest;
+
+export type GetVisitReservedDto = z.infer<
+  typeof schemas.Visits_GetReservedResponse
+>;
+
+export type GetVisitSearchDto = z.infer<
+  typeof schemas.Visits_VisitsSearchResponse
+>;
+
+export type GetVisitForIssueDto = z.infer<
+  typeof schemas.Visits_VisitForIssueResponse
+>;

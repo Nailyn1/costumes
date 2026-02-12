@@ -7,13 +7,18 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { VisitOrderService } from './visit-order.sevice';
 import { JwtAuthGuard } from '../auth/jwt/jwt-auth.guard';
-import { CreateVisitRequest } from './dto/visit-order.dto';
+import { CreateVisitRequest, VisitIssueRequest } from './dto/visit-order.dto';
 import {
   CreateVisitResponseDto,
+  GetVisitForIssueDto,
+  GetVisitReservedDto,
+  GetVisitSearchDto,
+  IssuedForReturnDto,
   OrdersNotWrittenResponseDto,
 } from '@costumes/shared';
 
@@ -39,6 +44,47 @@ export class VisitController {
   @UseGuards(JwtAuthGuard)
   async getOrders(): Promise<OrdersNotWrittenResponseDto> {
     return await this.visitOrderService.findOrdersNotWritten();
+  }
+
+  @Get('reserved')
+  @UseGuards(JwtAuthGuard)
+  async getReservedVisits(
+    @Query('date') date?: string,
+  ): Promise<GetVisitReservedDto[]> {
+    return await this.visitOrderService.visitReserved(date);
+  }
+
+  @Get('search')
+  @UseGuards(JwtAuthGuard)
+  async searchVisits(@Query('q') q: string): Promise<GetVisitSearchDto[]> {
+    if (!q || q.length < 2) {
+      return [];
+    }
+    return await this.visitOrderService.visitSearch(q);
+  }
+
+  @Post(':visitId/issue')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async visitIssue(
+    @Param('visitId', ParseIntPipe) visitId: number,
+    @Body() dto: VisitIssueRequest,
+  ) {
+    return await this.visitOrderService.visitIssue(dto, visitId);
+  }
+
+  @Get(':visitId/for-issue')
+  @UseGuards(JwtAuthGuard)
+  async getVisitForIssue(
+    @Param('visitId', ParseIntPipe) visitId: number,
+  ): Promise<GetVisitForIssueDto> {
+    return await this.visitOrderService.visitForIssue(visitId);
+  }
+
+  @Get('issued-for-return')
+  @UseGuards(JwtAuthGuard)
+  async getAllVisits(): Promise<IssuedForReturnDto[]> {
+    return await this.visitOrderService.visitsIssuedForReturn();
   }
 
   @Post(':orderId/mark-tag-written')

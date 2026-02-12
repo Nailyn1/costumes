@@ -120,7 +120,8 @@ model Order {
 
   rentPrice        Int         @map("rent_price")
   prepaymentAmount Int         @default(0) @map("prepayment_amount")
-  
+  finalPayment     Int?        @map("final_payment")
+
   tagStatus        TagStatus   @default(not_written) @map("tag_status")
   status           OrderStatus @default(reserved)
   
@@ -137,6 +138,7 @@ model Deposit {
   visit     Visit       @relation(fields: [visitId], references: [id])
   type      DepositType @default(none)
   returned  Boolean     @default(false)
+  amount Int? @map("amount")
 
   createdAt DateTime    @default(now()) @map("created_at")
   updatedAt DateTime    @updatedAt @map("updated_at")

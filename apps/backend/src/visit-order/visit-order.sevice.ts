@@ -15,8 +15,13 @@ import {
   CreateVisitRequestDto,
   CreateVisitResponseDto,
   CreateVisitResponseSchema,
+  GetVisitForIssueDto,
+  GetVisitReservedDto,
+  GetVisitSearchDto,
+  IssuedForReturnDto,
   OrdersNotWrittenResponseDto,
   OrdersNotWrittenResponseSchema,
+  VisitIssueRequestDto,
 } from '@costumes/shared';
 import { Prisma } from '../prisma/generated/client';
 
@@ -197,7 +202,7 @@ export class VisitOrderService {
           costumeName: o.costume.name,
           inventoryCode: o.costume.inventoryCode,
           rentPrice: o.rentPrice,
-          prepayment: o.prepaymentAmount,
+          prepaymentAmount: o.prepaymentAmount,
           tagStatus: o.tagStatus,
         })),
       };
@@ -294,5 +299,254 @@ export class VisitOrderService {
       .catch(() => {
         throw new NotFoundException(`Order with ID ${orderId} not found`);
       });
+  }
+
+  async visitIssue(data: VisitIssueRequestDto, visitId: number): Promise<void> {
+    const { deposit, additionalPayment } = data;
+
+    await this.prisma.$transaction(async (tx) => {
+      const visit = await tx.visit.findUnique({
+        where: { id: visitId },
+        include: { orders: true },
+      });
+
+      if (!visit) {
+        throw new NotFoundException(`Визит с ID ${visitId} не найден`);
+      }
+
+      if (visit.status === 'issued') {
+        throw new BadRequestException('Визит уже имеет статус "Выдан"');
+      }
+
+      let remainingPayment = additionalPayment;
+
+      for (const order of visit.orders) {
+        const totalCost = order.rentPrice;
+        const alreadyPaid = order.prepaymentAmount;
+        const debt = totalCost - alreadyPaid;
+
+        const paymentForThisOrder = Math.min(remainingPayment, debt);
+        await tx.order.update({
+          where: { id: order.id },
+          data: {
+            status: 'issued',
+            finalPayment: paymentForThisOrder,
+          },
+        });
+        remainingPayment -= paymentForThisOrder;
+      }
+
+      await tx.visit.update({
+        where: { id: visitId },
+        data: {
+          status: 'issued',
+          notes: data.notes ?? visit.notes,
+        },
+      });
+
+      try {
+        await tx.deposit.create({
+          data: {
+            visitId: visitId,
+            type: deposit.type,
+            amount: deposit.type === 'cash' ? (deposit.amount ?? 0) : 0,
+            returned: false,
+          },
+        });
+      } catch (error) {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002'
+        ) {
+          throw new ConflictException(
+            `Для визита №${visitId} депозит уже был оформлен ранее`,
+          );
+        }
+        throw error;
+      }
+    });
+  }
+
+  async visitReserved(date?: string): Promise<GetVisitReservedDto[]> {
+    const targetDate = date ? new Date(date) : new Date();
+
+    const startOfDay = new Date(targetDate);
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date(targetDate);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const visits = await this.prisma.visit.findMany({
+      where: {
+        startDateTime: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+        status: 'reserved',
+      },
+      include: {
+        client: true,
+        orders: {
+          include: {
+            child: true,
+            costume: true,
+          },
+        },
+      },
+      orderBy: {
+        startDateTime: 'asc',
+      },
+    });
+    return visits.map((visit) => {
+      const childrenNames = Array.from(
+        new Set(visit.orders.map((o) => o.child.name)),
+      ).join(', ');
+      const costumesNames = visit.orders.map((o) => o.costume.name).join(', ');
+      return {
+        visitId: visit.id,
+        visitCode: visit.visitCode,
+        clientName: visit.client.name,
+        childrenNames,
+        costumesNames,
+      };
+    });
+  }
+
+  async visitSearch(q: string): Promise<GetVisitSearchDto[]> {
+    const visits = await this.prisma.visit.findMany({
+      where: {
+        status: 'reserved',
+        OR: [
+          { visitCode: { contains: q, mode: 'insensitive' } },
+          {
+            orders: {
+              some: {
+                OR: [
+                  { child: { name: { contains: q, mode: 'insensitive' } } },
+                  { costume: { name: { contains: q, mode: 'insensitive' } } },
+                  {
+                    costume: {
+                      inventoryCode: { contains: q, mode: 'insensitive' },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        ],
+      },
+      include: {
+        client: true,
+        orders: {
+          include: {
+            child: true,
+            costume: true,
+          },
+        },
+      },
+      take: 50,
+    });
+
+    return visits.map((visit) => ({
+      visitId: visit.id,
+      visitCode: visit.visitCode,
+      clientName: visit.client.name,
+      clientPhone: visit.client.phone,
+      startDateTime: visit.startDateTime.toISOString().split('T')[0],
+      childrenNames: Array.from(
+        new Set(visit.orders.map((o) => o.child.name)),
+      ).join(', '),
+      costumesNames: visit.orders.map((o) => o.costume.name).join(', '),
+    }));
+  }
+
+  async visitForIssue(visitId: number): Promise<GetVisitForIssueDto> {
+    const visit = await this.prisma.visit.findUnique({
+      where: { id: visitId },
+      include: {
+        client: true,
+        orders: {
+          include: {
+            child: true,
+            costume: true,
+          },
+        },
+      },
+    });
+
+    if (!visit) {
+      throw new NotFoundException(`Визит с ID ${visitId} не найден`);
+    }
+
+    const totalRentPrice = visit.orders.reduce(
+      (sum, order) => sum + order.rentPrice,
+      0,
+    );
+    const totalPrepayment = visit.orders.reduce(
+      (sum, order) => sum + order.prepaymentAmount,
+      0,
+    );
+    const remainingToPay = totalRentPrice - totalPrepayment;
+
+    return {
+      visitId: visit.id,
+      visitCode: visit.visitCode,
+      client: {
+        name: visit.client.name,
+        phone: visit.client.phone,
+      },
+      startDateTime: visit.startDateTime.toISOString().split('T')[0],
+      endDateTime: visit.endDateTime.toISOString().split('T')[0],
+      issueTimeFrom: visit.issueTimeFrom,
+      issueTimeTo: visit.issueTimeTo,
+      totalRentPrice,
+      totalPrepayment,
+      remainingToPay,
+      notes: visit.notes || '',
+      orders: visit.orders.map((order) => ({
+        orderId: order.id,
+        childName: order.child.name,
+        costumeName: order.costume.name,
+        inventoryCode: order.costume.inventoryCode,
+        rentPrice: order.rentPrice,
+        prepaymentAmount: order.prepaymentAmount,
+        tagStatus: order.tagStatus as 'written' | 'not_written',
+      })),
+    };
+  }
+
+  async visitsIssuedForReturn(): Promise<IssuedForReturnDto[]> {
+    const visits = await this.prisma.visit.findMany({
+      where: {
+        status: 'issued',
+      },
+      include: {
+        client: true,
+        orders: {
+          include: {
+            child: true,
+            costume: true,
+          },
+        },
+      },
+    });
+
+    return visits.map((visit) => {
+      const childrenNames = Array.from(
+        new Set(visit.orders.map((o) => o.child.name)),
+      ).join(', ');
+
+      const costumeNames = visit.orders.map((o) => o.costume.name).join(', ');
+
+      return {
+        visitId: visit.id,
+        visitCode: visit.visitCode,
+        childrenNames,
+        costumeNames,
+        endDateTime: visit.endDateTime.toISOString().split('T')[0],
+        clientPhone: visit.client.phone,
+        notes: visit.notes || '',
+      };
+    });
   }
 }

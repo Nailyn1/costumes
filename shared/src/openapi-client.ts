@@ -182,7 +182,7 @@ const Visits_VisitOrder = z
     costumeName: z.string(),
     inventoryCode: Costumes_InventoryCode.regex(/^C-\d{4}$/),
     rentPrice: z.number().int(),
-    prepayment: z.number().int(),
+    prepaymentAmount: z.number().int(),
     tagStatus: Visits_TagStatus,
   })
   .passthrough();
@@ -257,6 +257,17 @@ const Visits_Order = z
 const Visits_NotWrittenOrdersResponse = z
   .object({ items: z.array(Visits_Order), message: z.string().optional() })
   .passthrough();
+const Visits_GetReservedResponse = z
+  .object({
+    visitId: z.number().int(),
+    visitCode: Costumes_VisitCode.regex(/^\d{4}$/),
+    clientName: Clients_ClientName.min(2).regex(
+      /^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\s-]+$/
+    ),
+    childrenNames: z.string(),
+    costumesNames: z.string(),
+  })
+  .passthrough();
 const Visits_VisitReturnSearchResponse = z
   .object({
     visitId: z.number().int(),
@@ -279,17 +290,6 @@ const Visits_VisitsSearchResponse = z
     ),
     clientPhone: Clients_PhoneString.regex(/^\+7\d{10}$/),
     startDateTime: z.string(),
-    childrenNames: z.string(),
-    costumesNames: z.string(),
-  })
-  .passthrough();
-const Visits_GetTodayReservedResponse = z
-  .object({
-    visitId: z.number().int(),
-    visitCode: Costumes_VisitCode.regex(/^\d{4}$/),
-    clientName: Clients_ClientName.min(2).regex(
-      /^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\s-]+$/
-    ),
     childrenNames: z.string(),
     costumesNames: z.string(),
   })
@@ -424,9 +424,9 @@ export const schemas = {
   Visits_IssuedForReturnResponse,
   Visits_Order,
   Visits_NotWrittenOrdersResponse,
+  Visits_GetReservedResponse,
   Visits_VisitReturnSearchResponse,
   Visits_VisitsSearchResponse,
-  Visits_GetTodayReservedResponse,
   Visits_CompleteReturnRequest,
   Visits_CompleteReturnResponse,
   Visits_VisitForIssueResponse,
@@ -822,6 +822,20 @@ const endpoints = makeApi([
   },
   {
     method: "get",
+    path: "/visits/reserved",
+    alias: "VisitOperation_getReserved",
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "data",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.array(Visits_GetReservedResponse),
+  },
+  {
+    method: "get",
     path: "/visits/return-search",
     alias: "VisitOperation_searchForReturn",
     requestFormat: "json",
@@ -847,20 +861,6 @@ const endpoints = makeApi([
       },
     ],
     response: z.array(Visits_VisitsSearchResponse),
-  },
-  {
-    method: "get",
-    path: "/visits/today-reserved",
-    alias: "VisitOperation_getTodayReserved",
-    requestFormat: "json",
-    response: z.array(
-      z
-        .object({
-          statusCode: z.literal(200),
-          body: z.array(Visits_GetTodayReservedResponse),
-        })
-        .passthrough()
-    ),
   },
 ]);
 

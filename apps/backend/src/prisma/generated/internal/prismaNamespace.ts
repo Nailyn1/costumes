@@ -1122,6 +1122,7 @@ export const OrderScalarFieldEnum = {
   endDateTime: 'endDateTime',
   rentPrice: 'rentPrice',
   prepaymentAmount: 'prepaymentAmount',
+  finalPayment: 'finalPayment',
   tagStatus: 'tagStatus',
   status: 'status',
   notes: 'notes',
@@ -1138,6 +1139,7 @@ export const DepositScalarFieldEnum = {
   visitId: 'visitId',
   type: 'type',
   returned: 'returned',
+  amount: 'amount',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   deletedAt: 'deletedAt'

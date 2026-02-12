@@ -36,7 +36,7 @@ model VisitOrder {
   costumeName: string;
   inventoryCode: CostumeApp.Costumes.InventoryCode;
   rentPrice: int32;
-  prepayment: int32;
+  prepaymentAmount: int32;
   tagStatus: TagStatus;
 }
 model Visit {
@@ -123,7 +123,7 @@ model CompleteReturnRequest {
   notes?: string;
 }
 
-model GetTodayReservedResponse {
+model GetReservedResponse {
     visitId: int32;
     visitCode: VisitCode;
     clientName: CostumeApp.Clients.ClientName;
@@ -230,11 +230,11 @@ interface VisitOperation {
   } | Common.Error;
 
   @get
-  @route("today-reserved")
-  getTodayReserved(): {
+  @route("reserved")
+  getReserved(@query data?:string): {
     @statusCode statusCode: 200;
-    @body body: GetTodayReservedResponse[];
-  }[] | Common.Error;
+    @body body: GetReservedResponse[];
+  } | Common.Error;
 
 
   @get
