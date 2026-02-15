@@ -1,6 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
+  CostumesSearchAvailableResponseDto,
   CostumesSearchResponseDto,
   CreateCostumesRequestDto,
   CreateUpdateCostumesResponseDto,
@@ -88,6 +93,62 @@ export class CostumesService {
       name: c.name,
       inventoryCode: c.inventoryCode,
       display: `${c.name} (${c.inventoryCode})`,
+    }));
+  }
+
+  async searchCostumeAvailable(
+    q: string,
+    startStr: string,
+    endStr: string,
+  ): Promise<CostumesSearchAvailableResponseDto[]> {
+    const requestedStart = new Date(startStr);
+    const requestedEnd = new Date(endStr);
+
+    if (isNaN(requestedStart.getTime()) || isNaN(requestedEnd.getTime())) {
+      throw new BadRequestException(
+        `Некорректный формат даты. Ожидался ISO 8601 (гггг-мм-ддTчч:мм). Получено: start=${startStr}, end=${endStr}`,
+      );
+    }
+
+    if (requestedEnd <= requestedStart) {
+      throw new BadRequestException(
+        'Дата возврата должна быть строго позже даты выдачи',
+      );
+    }
+
+    const costumes = await this.prisma.costume.findMany({
+      where: {
+        OR: [
+          { name: { contains: q, mode: 'insensitive' } },
+          { inventoryCode: { contains: q, mode: 'insensitive' } },
+        ],
+        deletedAt: null,
+      },
+      include: {
+        orders: {
+          where: {
+            status: { in: ['reserved', 'issued'] },
+            visit: {
+              status: { not: 'cancelled' },
+              AND: [
+                { startDateTime: { lt: requestedEnd } },
+                { endDateTime: { gt: requestedStart } },
+              ],
+            },
+          },
+          include: {
+            visit: true,
+          },
+        },
+      },
+      take: 30,
+    });
+
+    return costumes.map((c) => ({
+      costumeId: c.id,
+      name: c.name,
+      inventoryCode: c.inventoryCode,
+      status: c.orders.length > 0 ? 'issued' : 'available',
     }));
   }
 }

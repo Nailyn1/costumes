@@ -19,6 +19,7 @@ import {
   UpdateCostumesRequest,
 } from './dto/costumes.dto';
 import {
+  CostumesSearchAvailableResponseDto,
   CostumesSearchResponseDto,
   CreateUpdateCostumesResponseDto,
 } from '@costumes/shared';
@@ -51,6 +52,20 @@ export class CostumesController {
   ): Promise<CostumesSearchResponseDto[]> {
     if (!q || q.length < 2) return [];
     return await this.costumesService.searchCostume(q);
+  }
+
+  @Get('search-available')
+  @UseGuards(JwtAuthGuard)
+  async searchCostumeAvailable(
+    @Query('q') q: string,
+    @Query('startDate') startDate: string,
+    @Query('endDate') endDate: string,
+  ): Promise<CostumesSearchAvailableResponseDto[]> {
+    return await this.costumesService.searchCostumeAvailable(
+      q,
+      startDate,
+      endDate,
+    );
   }
 
   @Delete(':id')
