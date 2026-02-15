@@ -17,6 +17,7 @@ import {
   CreateVisitResponseDto,
   GetVisitForIssueDto,
   GetVisitReservedDto,
+  GetVisitReturnSearchDto,
   GetVisitSearchDto,
   IssuedForReturnDto,
   OrdersNotWrittenResponseDto,
@@ -92,5 +93,13 @@ export class VisitController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteClient(@Param('orderId', ParseIntPipe) orderId: number) {
     await this.visitOrderService.orderMarkTagWritten(orderId);
+  }
+
+  @Get('return-search')
+  @UseGuards(JwtAuthGuard)
+  async visitsReturnSearch(
+    @Query('q') q: string,
+  ): Promise<GetVisitReturnSearchDto[]> {
+    return await this.visitOrderService.visitsReturnSearch(q);
   }
 }

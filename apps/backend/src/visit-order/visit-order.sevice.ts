@@ -17,6 +17,7 @@ import {
   CreateVisitResponseSchema,
   GetVisitForIssueDto,
   GetVisitReservedDto,
+  GetVisitReturnSearchDto,
   GetVisitSearchDto,
   IssuedForReturnDto,
   OrdersNotWrittenResponseDto,
@@ -546,6 +547,64 @@ export class VisitOrderService {
         endDateTime: visit.endDateTime.toISOString().split('T')[0],
         clientPhone: visit.client.phone,
         notes: visit.notes || '',
+      };
+    });
+  }
+
+  async visitsReturnSearch(q: string): Promise<GetVisitReturnSearchDto[]> {
+    const visits = await this.prisma.visit.findMany({
+      where: {
+        status: 'issued', // Ищем только те, что сейчас на руках
+        deletedAt: null,
+        OR: [
+          { visitCode: { contains: q, mode: 'insensitive' } },
+          { client: { phone: { contains: q, mode: 'insensitive' } } },
+          { client: { name: { contains: q, mode: 'insensitive' } } },
+          {
+            orders: {
+              some: {
+                OR: [
+                  { child: { name: { contains: q, mode: 'insensitive' } } },
+                  { costume: { name: { contains: q, mode: 'insensitive' } } },
+                  {
+                    costume: {
+                      inventoryCode: { contains: q, mode: 'insensitive' },
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        ],
+      },
+      include: {
+        client: true,
+        orders: {
+          where: { deletedAt: null },
+          include: {
+            child: true,
+            costume: true,
+          },
+        },
+      },
+      take: 50, // Ограничим выборку для производительности
+    });
+
+    return visits.map((visit) => {
+      // Собираем уникальные имена детей
+      const childrenSet = new Set(visit.orders.map((o) => o.child.name));
+      // Собираем уникальные названия костюмов
+      const costumesSet = new Set(visit.orders.map((o) => o.costume.name));
+
+      return {
+        visitId: visit.id,
+        visitCode: visit.visitCode,
+        childrenNames: Array.from(childrenSet).join(', '),
+        costumeNames: Array.from(costumesSet).join(', '),
+        // Возвращаем дату в формате YYYY-MM-DD, как в примере
+        returnDate: visit.endDateTime.toISOString().split('T')[0],
+        clientPhone: visit.client.phone,
+        clientName: visit.client.name,
       };
     });
   }
