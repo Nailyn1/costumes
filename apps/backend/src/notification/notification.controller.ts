@@ -71,7 +71,7 @@ export class NotificationController {
   @Post()
   @HttpCode(HttpStatus.OK)
   async handleWebHook(@Body() body: GreenApiWebhook) {
-    this.logger.debug('Здесь выводится body', body);
+    this.logger.debug('Body from GREEN-API', body);
 
     if (
       body.typeWebhook === 'outgoingMessageStatus' ||

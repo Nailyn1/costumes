@@ -74,4 +74,12 @@ export class CostumesController {
   async deleteClient(@Param('id', ParseIntPipe) costumeId: number) {
     await this.costumesService.deleteCostume(costumeId);
   }
+
+  @Get(':costumeId/availability')
+  @UseGuards(JwtAuthGuard)
+  async costumesAvailability(
+    @Param('costumeId', ParseIntPipe) costumeId: number,
+  ) {
+    return await this.costumesService.costumesAvailability(costumeId);
+  }
 }

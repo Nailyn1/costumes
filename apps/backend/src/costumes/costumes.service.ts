@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
+  CostumesAvailabilityResponseDto,
   CostumesSearchAvailableResponseDto,
   CostumesSearchResponseDto,
   CreateCostumesRequestDto,
@@ -150,5 +151,66 @@ export class CostumesService {
       inventoryCode: c.inventoryCode,
       status: c.orders.length > 0 ? 'issued' : 'available',
     }));
+  }
+
+  async costumesAvailability(
+    costumeId: number,
+  ): Promise<CostumesAvailabilityResponseDto> {
+    const costume = await this.prisma.costume.findUnique({
+      where: {
+        id: costumeId,
+        deletedAt: null,
+      },
+      include: {
+        orders: {
+          where: {
+            status: { in: ['reserved', 'issued'] },
+            deletedAt: null,
+            visit: {
+              status: { not: 'cancelled' },
+            },
+          },
+          include: {
+            visit: true,
+            child: true,
+            client: true,
+          },
+          orderBy: {
+            startDateTime: 'asc',
+          },
+        },
+      },
+    });
+
+    if (!costume) {
+      throw new NotFoundException(`Костюм с ID ${costumeId} не найден`);
+    }
+
+    const periods = costume.orders.map((order) => {
+      if (!order.client || !order.child) {
+        console.warn(
+          `Данные повреждены для заказа ID: ${order.id}. Отсутствует клиент или ребенок.`,
+        );
+      }
+
+      return {
+        visitCode: order.visit.visitCode,
+        childName: order.child?.name || 'Имя не указано',
+        clientPhone: order.client?.phone || 'Телефон не указан',
+        startDateTime: order.startDateTime.toISOString(),
+        endDateTime: order.endDateTime.toISOString(),
+      };
+    });
+
+    return {
+      costumeId: costume.id,
+      name: costume.name,
+      inventoryCode: costume.inventoryCode,
+      periods: periods,
+      noPeriodsMessage:
+        periods.length === 0
+          ? 'На выбранный костюм активных броней не найдено'
+          : null,
+    };
   }
 }
