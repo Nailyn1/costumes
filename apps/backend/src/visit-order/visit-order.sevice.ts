@@ -34,7 +34,7 @@ export class VisitOrderService {
   ) {}
 
   private parseDateTime(dateStr: string, timeStr: string): Date {
-    return new Date(`${dateStr}T${timeStr}:00`);
+    return new Date(`${dateStr}T${timeStr}:00Z`);
   }
 
   async generatePreviewCode(): Promise<string> {
