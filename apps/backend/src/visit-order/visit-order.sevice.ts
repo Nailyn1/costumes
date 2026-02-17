@@ -19,12 +19,13 @@ import {
   GetVisitReservedDto,
   GetVisitReturnSearchDto,
   GetVisitSearchDto,
+  GetVisitsForReturnDto,
   IssuedForReturnDto,
   OrdersNotWrittenResponseDto,
   OrdersNotWrittenResponseSchema,
   VisitIssueRequestDto,
 } from '@costumes/shared';
-import { Prisma } from '../prisma/generated/client';
+import { OrderStatus, Prisma } from '../prisma/generated/client';
 
 @Injectable()
 export class VisitOrderService {
@@ -554,7 +555,7 @@ export class VisitOrderService {
   async visitsReturnSearch(q: string): Promise<GetVisitReturnSearchDto[]> {
     const visits = await this.prisma.visit.findMany({
       where: {
-        status: 'issued', // Ищем только те, что сейчас на руках
+        status: 'issued',
         deletedAt: null,
         OR: [
           { visitCode: { contains: q, mode: 'insensitive' } },
@@ -587,25 +588,74 @@ export class VisitOrderService {
           },
         },
       },
-      take: 50, // Ограничим выборку для производительности
+      take: 50,
     });
 
     return visits.map((visit) => {
-      // Собираем уникальные имена детей
       const childrenSet = new Set(visit.orders.map((o) => o.child.name));
-      // Собираем уникальные названия костюмов
       const costumesSet = new Set(visit.orders.map((o) => o.costume.name));
-
       return {
         visitId: visit.id,
         visitCode: visit.visitCode,
         childrenNames: Array.from(childrenSet).join(', '),
         costumeNames: Array.from(costumesSet).join(', '),
-        // Возвращаем дату в формате YYYY-MM-DD, как в примере
         returnDate: visit.endDateTime.toISOString().split('T')[0],
         clientPhone: visit.client.phone,
         clientName: visit.client.name,
       };
     });
+  }
+
+  async visitsForReturn(visitId: number): Promise<GetVisitsForReturnDto> {
+    const visit = await this.prisma.visit.findFirst({
+      where: {
+        id: visitId,
+        status: 'issued',
+        deletedAt: null,
+      },
+      include: {
+        client: true,
+        deposit: true,
+        orders: {
+          where: { deletedAt: null },
+          include: {
+            child: true,
+            costume: true,
+          },
+        },
+      },
+    });
+
+    if (!visit) {
+      throw new NotFoundException(
+        `Визит №${visitId} не найден или не находится в статусе "Выдан"`,
+      );
+    }
+
+    return {
+      visitId: visit.id,
+      visitCode: visit.visitCode,
+      client: {
+        name: visit.client.name,
+        phone: visit.client.phone,
+      },
+      startDateTime: visit.startDateTime.toISOString(),
+      endDateTime: visit.endDateTime.toISOString(),
+      notes: visit.notes || '',
+      orders: visit.orders.map((order) => ({
+        orderId: order.id,
+        childName: order.child.name,
+        costumeName: order.costume.name,
+        inventoryCode: order.costume.inventoryCode,
+        rentPrice: order.rentPrice,
+        prepaymentAmount: order.prepaymentAmount,
+        finalPayment: order.finalPayment ?? 0,
+        returned: order.status === OrderStatus.returned,
+      })),
+      deposit: {
+        type: visit.deposit?.type || 'none',
+        amount: visit.deposit?.amount || 0,
+      },
+    };
   }
 }

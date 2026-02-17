@@ -169,7 +169,7 @@ model IssuedForReturnResponse {
 model VisitForReturnResponse {
   visitId: int32;
   visitCode: VisitCode;
-client: { name: CostumeApp.Clients.ClientName; phone: CostumeApp.Clients.PhoneString };
+  client: { name: CostumeApp.Clients.ClientName; phone: CostumeApp.Clients.PhoneString };
   startDateTime: plainDate;
   endDateTime: plainDate;
   notes: string;
@@ -182,13 +182,15 @@ model VisitReturnOrder {
   childName: CostumeApp.Children.ChildName;
   costumeName: string;
   inventoryCode: CostumeApp.Costumes.InventoryCode;
+  rentPrice: int32;
+  prepaymentAmount: int32;
+  finalPayment: int32;
   returned: boolean;
 }
 
 model VisitDepositInfo {
   type: DepositType;
-  amount: int32;
-  returned: boolean;
+  amount?: int32;
 }
 
 model CompleteReturnResponse {

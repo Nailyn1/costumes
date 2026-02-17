@@ -39,3 +39,7 @@ export type GetVisitForIssueDto = z.infer<
 export type GetVisitReturnSearchDto = z.infer<
   typeof schemas.Visits_VisitReturnSearchResponse
 >;
+
+export type GetVisitsForReturnDto = z.infer<
+  typeof schemas.Visits_VisitForReturnResponse
+>;

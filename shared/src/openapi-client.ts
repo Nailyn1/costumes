@@ -342,16 +342,15 @@ const Visits_VisitReturnOrder = z
     ),
     costumeName: z.string(),
     inventoryCode: Costumes_InventoryCode.regex(/^C-\d{4}$/),
+    rentPrice: z.number().int(),
+    prepaymentAmount: z.number().int(),
+    finalPayment: z.number().int(),
     returned: z.boolean(),
   })
   .passthrough();
 const Visits_DepositType = z.enum(["cash", "document", "none"]);
 const Visits_VisitDepositInfo = z
-  .object({
-    type: Visits_DepositType,
-    amount: z.number().int(),
-    returned: z.boolean(),
-  })
+  .object({ type: Visits_DepositType, amount: z.number().int().optional() })
   .passthrough();
 const Visits_VisitForReturnResponse = z
   .object({

@@ -19,6 +19,7 @@ import {
   GetVisitReservedDto,
   GetVisitReturnSearchDto,
   GetVisitSearchDto,
+  GetVisitsForReturnDto,
   IssuedForReturnDto,
   OrdersNotWrittenResponseDto,
 } from '@costumes/shared';
@@ -101,5 +102,13 @@ export class VisitController {
     @Query('q') q: string,
   ): Promise<GetVisitReturnSearchDto[]> {
     return await this.visitOrderService.visitsReturnSearch(q);
+  }
+
+  @Get(':visitId/for-return')
+  @UseGuards(JwtAuthGuard)
+  async visitForReturn(
+    @Param('visitId', ParseIntPipe) visitId: number,
+  ): Promise<GetVisitsForReturnDto> {
+    return await this.visitOrderService.visitsForReturn(visitId);
   }
 }
