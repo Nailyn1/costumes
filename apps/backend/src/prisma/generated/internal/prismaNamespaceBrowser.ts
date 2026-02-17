@@ -54,7 +54,11 @@ export const ModelName = {
   User: 'User',
   Client: 'Client',
   Child: 'Child',
-  Costume: 'Costume'
+  Costume: 'Costume',
+  Visit: 'Visit',
+  Order: 'Order',
+  Deposit: 'Deposit',
+  Notification: 'Notification'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -92,7 +96,7 @@ export const ClientScalarFieldEnum = {
   notes: 'notes',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
-  deleteAt: 'deleteAt'
+  deletedAt: 'deletedAt'
 } as const
 
 export type ClientScalarFieldEnum = (typeof ClientScalarFieldEnum)[keyof typeof ClientScalarFieldEnum]
@@ -104,7 +108,7 @@ export const ChildScalarFieldEnum = {
   clientId: 'clientId',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
-  deleteAt: 'deleteAt'
+  deletedAt: 'deletedAt'
 } as const
 
 export type ChildScalarFieldEnum = (typeof ChildScalarFieldEnum)[keyof typeof ChildScalarFieldEnum]
@@ -118,10 +122,79 @@ export const CostumeScalarFieldEnum = {
   notes: 'notes',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
-  deleteAt: 'deleteAt'
+  deletedAt: 'deletedAt'
 } as const
 
 export type CostumeScalarFieldEnum = (typeof CostumeScalarFieldEnum)[keyof typeof CostumeScalarFieldEnum]
+
+
+export const VisitScalarFieldEnum = {
+  id: 'id',
+  visitCode: 'visitCode',
+  clientId: 'clientId',
+  startDateTime: 'startDateTime',
+  endDateTime: 'endDateTime',
+  issueTimeFrom: 'issueTimeFrom',
+  issueTimeTo: 'issueTimeTo',
+  returnTimeUntil: 'returnTimeUntil',
+  status: 'status',
+  notes: 'notes',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  deletedAt: 'deletedAt'
+} as const
+
+export type VisitScalarFieldEnum = (typeof VisitScalarFieldEnum)[keyof typeof VisitScalarFieldEnum]
+
+
+export const OrderScalarFieldEnum = {
+  id: 'id',
+  visitId: 'visitId',
+  clientId: 'clientId',
+  childId: 'childId',
+  costumeId: 'costumeId',
+  startDateTime: 'startDateTime',
+  endDateTime: 'endDateTime',
+  rentPrice: 'rentPrice',
+  prepaymentAmount: 'prepaymentAmount',
+  finalPayment: 'finalPayment',
+  tagStatus: 'tagStatus',
+  status: 'status',
+  notes: 'notes',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  deletedAt: 'deletedAt'
+} as const
+
+export type OrderScalarFieldEnum = (typeof OrderScalarFieldEnum)[keyof typeof OrderScalarFieldEnum]
+
+
+export const DepositScalarFieldEnum = {
+  id: 'id',
+  visitId: 'visitId',
+  type: 'type',
+  returned: 'returned',
+  amount: 'amount',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  deletedAt: 'deletedAt'
+} as const
+
+export type DepositScalarFieldEnum = (typeof DepositScalarFieldEnum)[keyof typeof DepositScalarFieldEnum]
+
+
+export const NotificationScalarFieldEnum = {
+  id: 'id',
+  visitId: 'visitId',
+  externalId: 'externalId',
+  type: 'type',
+  status: 'status',
+  errorText: 'errorText',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type NotificationScalarFieldEnum = (typeof NotificationScalarFieldEnum)[keyof typeof NotificationScalarFieldEnum]
 
 
 export const SortOrder = {

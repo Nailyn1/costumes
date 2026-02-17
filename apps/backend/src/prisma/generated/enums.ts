@@ -9,9 +9,59 @@
 * 🟢 You can import this file directly.
 */
 
+export const NotificationStatus = {
+  pending: 'pending',
+  sent: 'sent',
+  delivered: 'delivered',
+  read: 'read',
+  failed: 'failed',
+  isConfirmed: 'isConfirmed',
+  noAccount: 'noAccount'
+} as const
+
+export type NotificationStatus = (typeof NotificationStatus)[keyof typeof NotificationStatus]
+
+
+export const DepositType = {
+  document: 'document',
+  cash: 'cash',
+  none: 'none'
+} as const
+
+export type DepositType = (typeof DepositType)[keyof typeof DepositType]
+
+
+export const VisitStatus = {
+  reserved: 'reserved',
+  issued: 'issued',
+  completed: 'completed',
+  cancelled: 'cancelled'
+} as const
+
+export type VisitStatus = (typeof VisitStatus)[keyof typeof VisitStatus]
+
+
 export const CostumeStatus = {
   available: 'available',
   issued: 'issued'
 } as const
 
 export type CostumeStatus = (typeof CostumeStatus)[keyof typeof CostumeStatus]
+
+
+export const OrderStatus = {
+  reserved: 'reserved',
+  issued: 'issued',
+  returned: 'returned',
+  cancelled: 'cancelled'
+} as const
+
+export type OrderStatus = (typeof OrderStatus)[keyof typeof OrderStatus]
+
+
+export const TagStatus = {
+  written: 'written',
+  not_written: 'not_written'
+} as const
+
+export type TagStatus = (typeof TagStatus)[keyof typeof TagStatus]

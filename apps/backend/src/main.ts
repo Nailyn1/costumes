@@ -1,3 +1,4 @@
+process.env.TZ = 'UTC';
 import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 
@@ -19,7 +20,6 @@ async function bootstrap() {
 
   app.useGlobalFilters(new PrismaClientExceptionFilter(httpAdapter));
   app.useGlobalPipes(new ZodValidationPipe());
-
   await app.listen(process.env.PORT ?? 5000);
 }
 bootstrap();

@@ -5,7 +5,7 @@ import "./costumes.tsp";
 import "./clients.tsp";
 import "./children.tsp";
 using Http;
-
+using OpenAPI;
 namespace CostumeApp.Visits;
 
 alias VisitCode = CostumeApp.Costumes.VisitCode;
@@ -36,17 +36,9 @@ model VisitOrder {
   costumeName: string;
   inventoryCode: CostumeApp.Costumes.InventoryCode;
   rentPrice: int32;
-  prepayment: int32;
-  remaining: int32;
+  prepaymentAmount: int32;
   tagStatus: TagStatus;
 }
-
-model VisitTotals {
-  totalRent: int32;
-  totalPrepayment: int32;
-  totalRemaining: int32;
-}
-
 model Visit {
   id: int32;
   visitCode: VisitCode;
@@ -59,23 +51,52 @@ model Visit {
   };
 
   visitDate: {
-    startDate: plainDate;
-    endDate: plainDate;
+    startDateTime: plainDate;
+    endDateTime: plainDate;
     issueTimeFrom: TimeString;
     issueTimeTo: TimeString;
     returnTimeUntil: TimeString;
   };
-
+  notifications: Notification[],
   orders: VisitOrder[];
-  totals: VisitTotals;
+}
+
+model Notification {
+  id: int32;
+  type: string;
+  status: "pending" | "sent" | "delivered" | "failed" | "read";
+  createdAt: utcDateTime; 
+}
+
+model Order {
+  orderId: int32;
+  inventoryCode: CostumeApp.Costumes.InventoryCode;
+  costumeName: string;
+  visitCode: CostumeApp.Costumes.VisitCode;
+  childName: CostumeApp.Children.ChildName;
+  clientPhone: CostumeApp.Clients.PhoneString;
+  startDateTime: plainDate;
+  endDateTime: plainDate;
+  issueTimeFrom: TimeString;
+  issueTimeTo: TimeString;
+  returnTimeUntil: TimeString;
+  rentPrice: int32;
+  prepaymentAmount: int32;
+  notes: string;
+}
+
+model NotWrittenOrdersResponse {
+  items: Order[];
+  message?: string;
 }
 
 model CreateVisitRequest {
   clientId: int32;
-  startDate: plainDate;
+  visitCode: VisitCode;
+  startDateTime: plainDate;
   issueTimeFrom: TimeString;
   issueTimeTo: TimeString;
-  endDate: plainDate;
+  endDateTime: plainDate;
   returnTimeUntil: TimeString;
   notes?: string;
   orders: {
@@ -83,7 +104,6 @@ model CreateVisitRequest {
     costumeId: int32;
     rentPrice: int32;
     prepaymentAmount: int32;
-    remaining: int32;
     notes?: string;
   }[];
 }
@@ -92,18 +112,17 @@ model IssueVisitRequest {
   additionalPayment: int32;
   deposit: {
     type: DepositType;
-    amount?: int32; //обязательно, если deposit cash
+    amount?: int32;
   };
   notes?: string;
 }
 
 model CompleteReturnRequest {
-  returnedOrderIds: int32[];
   depositReturned: boolean;
   notes?: string;
 }
 
-model GetTodayReservedResponse {
+model GetReservedResponse {
     visitId: int32;
     visitCode: VisitCode;
     clientName: CostumeApp.Clients.ClientName;
@@ -149,7 +168,7 @@ model IssuedForReturnResponse {
 model VisitForReturnResponse {
   visitId: int32;
   visitCode: VisitCode;
-client: { name: CostumeApp.Clients.ClientName; phone: CostumeApp.Clients.PhoneString };
+  client: { name: CostumeApp.Clients.ClientName; phone: CostumeApp.Clients.PhoneString };
   startDateTime: plainDate;
   endDateTime: plainDate;
   notes: string;
@@ -162,13 +181,15 @@ model VisitReturnOrder {
   childName: CostumeApp.Children.ChildName;
   costumeName: string;
   inventoryCode: CostumeApp.Costumes.InventoryCode;
+  rentPrice: int32;
+  prepaymentAmount: int32;
+  finalPayment: int32;
   returned: boolean;
 }
 
 model VisitDepositInfo {
   type: DepositType;
-  amount: int32;
-  returned: boolean;
+  amount?: int32;
 }
 
 model CompleteReturnResponse {
@@ -194,9 +215,15 @@ model VisitReturnSearchResponse {
   clientName: CostumeApp.Clients.ClientName;
 }
 
+@doc("Запрос на отмену визита")
+model VisitCancelRequest {
+  @doc("Причина отмены визита")
+  reason?: string;
+}
+
 @route("/visits")
 interface VisitOperation {
-    @post
+  @post
   @route("preview-code")
   previewCode(): {
     @statusCode statusCode: 201;
@@ -210,21 +237,21 @@ interface VisitOperation {
   } | Common.Error;
 
   @get
-  @route("today-reserved")
-  getTodayReserved(): {
+  @route("reserved")
+  getReserved(@query data?:string): {
     @statusCode statusCode: 200;
-    @body body: GetTodayReservedResponse[];
-  }[] | Common.Error;
+    @body body: GetReservedResponse[];
+  } | Common.Error;
 
 
-@get
+  @get
   @route("search")
   search(@query @minLength(2) q: string): {
     @statusCode statusCode: 200;
     @body body: VisitsSearchResponse[];
   } | Common.Error;
 
-@get
+  @get
   @route("return-search")
   searchForReturn(@query @minLength(2) q: string): {
     @statusCode statusCode: 200;
@@ -277,5 +304,36 @@ interface VisitOperation {
     @statusCode statusCode: 200;
     @body body: MarkDepositReturnedResponse;
   } | Common.Error;
+
+  @get
+  @route("not_written")
+  getNotWritten(): {
+    @statusCode statusCode: 200;
+    @body body: NotWrittenOrdersResponse;
+  } | Common.Error;
+
+  @post
+  @route("{orderId}/mark-tag-written")
+  markTagWritten(@path orderId: int32): {
+    @statusCode statusCode: 204;
+  } | Common.Error;
+
+  @doc("Отмена визита и всех связанных заказов")
+  @post
+  @route("{visitId}/cancel")
+  cancel(
+    @path visitId: int32,
+    @body @doc("Данные об отмене") body: VisitCancelRequest
+  ): {
+    @statusCode statusCode: 204;
+  } | {
+    @statusCode statusCode: 404;
+    @doc("Визит не найден")
+    body: string;
+  } | {
+    @statusCode statusCode: 400;
+    @doc("Невозможно отменить визит в текущем статусе")
+    body: string;
+  };
 }
 

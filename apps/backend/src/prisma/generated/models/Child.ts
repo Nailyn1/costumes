@@ -42,7 +42,7 @@ export type ChildMinAggregateOutputType = {
   clientId: number | null
   createdAt: Date | null
   updatedAt: Date | null
-  deleteAt: Date | null
+  deletedAt: Date | null
 }
 
 export type ChildMaxAggregateOutputType = {
@@ -51,7 +51,7 @@ export type ChildMaxAggregateOutputType = {
   clientId: number | null
   createdAt: Date | null
   updatedAt: Date | null
-  deleteAt: Date | null
+  deletedAt: Date | null
 }
 
 export type ChildCountAggregateOutputType = {
@@ -60,7 +60,7 @@ export type ChildCountAggregateOutputType = {
   clientId: number
   createdAt: number
   updatedAt: number
-  deleteAt: number
+  deletedAt: number
   _all: number
 }
 
@@ -81,7 +81,7 @@ export type ChildMinAggregateInputType = {
   clientId?: true
   createdAt?: true
   updatedAt?: true
-  deleteAt?: true
+  deletedAt?: true
 }
 
 export type ChildMaxAggregateInputType = {
@@ -90,7 +90,7 @@ export type ChildMaxAggregateInputType = {
   clientId?: true
   createdAt?: true
   updatedAt?: true
-  deleteAt?: true
+  deletedAt?: true
 }
 
 export type ChildCountAggregateInputType = {
@@ -99,7 +99,7 @@ export type ChildCountAggregateInputType = {
   clientId?: true
   createdAt?: true
   updatedAt?: true
-  deleteAt?: true
+  deletedAt?: true
   _all?: true
 }
 
@@ -195,7 +195,7 @@ export type ChildGroupByOutputType = {
   clientId: number
   createdAt: Date
   updatedAt: Date
-  deleteAt: Date | null
+  deletedAt: Date | null
   _count: ChildCountAggregateOutputType | null
   _avg: ChildAvgAggregateOutputType | null
   _sum: ChildSumAggregateOutputType | null
@@ -227,8 +227,9 @@ export type ChildWhereInput = {
   clientId?: Prisma.IntFilter<"Child"> | number
   createdAt?: Prisma.DateTimeFilter<"Child"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Child"> | Date | string
-  deleteAt?: Prisma.DateTimeNullableFilter<"Child"> | Date | string | null
+  deletedAt?: Prisma.DateTimeNullableFilter<"Child"> | Date | string | null
   client?: Prisma.XOR<Prisma.ClientScalarRelationFilter, Prisma.ClientWhereInput>
+  orders?: Prisma.OrderListRelationFilter
 }
 
 export type ChildOrderByWithRelationInput = {
@@ -237,8 +238,9 @@ export type ChildOrderByWithRelationInput = {
   clientId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
-  deleteAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  deletedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   client?: Prisma.ClientOrderByWithRelationInput
+  orders?: Prisma.OrderOrderByRelationAggregateInput
 }
 
 export type ChildWhereUniqueInput = Prisma.AtLeast<{
@@ -250,8 +252,9 @@ export type ChildWhereUniqueInput = Prisma.AtLeast<{
   clientId?: Prisma.IntFilter<"Child"> | number
   createdAt?: Prisma.DateTimeFilter<"Child"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Child"> | Date | string
-  deleteAt?: Prisma.DateTimeNullableFilter<"Child"> | Date | string | null
+  deletedAt?: Prisma.DateTimeNullableFilter<"Child"> | Date | string | null
   client?: Prisma.XOR<Prisma.ClientScalarRelationFilter, Prisma.ClientWhereInput>
+  orders?: Prisma.OrderListRelationFilter
 }, "id">
 
 export type ChildOrderByWithAggregationInput = {
@@ -260,7 +263,7 @@ export type ChildOrderByWithAggregationInput = {
   clientId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
-  deleteAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  deletedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.ChildCountOrderByAggregateInput
   _avg?: Prisma.ChildAvgOrderByAggregateInput
   _max?: Prisma.ChildMaxOrderByAggregateInput
@@ -277,15 +280,16 @@ export type ChildScalarWhereWithAggregatesInput = {
   clientId?: Prisma.IntWithAggregatesFilter<"Child"> | number
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Child"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Child"> | Date | string
-  deleteAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Child"> | Date | string | null
+  deletedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Child"> | Date | string | null
 }
 
 export type ChildCreateInput = {
   name: string
   createdAt?: Date | string
   updatedAt?: Date | string
-  deleteAt?: Date | string | null
+  deletedAt?: Date | string | null
   client: Prisma.ClientCreateNestedOneWithoutChildrenInput
+  orders?: Prisma.OrderCreateNestedManyWithoutChildInput
 }
 
 export type ChildUncheckedCreateInput = {
@@ -294,15 +298,17 @@ export type ChildUncheckedCreateInput = {
   clientId: number
   createdAt?: Date | string
   updatedAt?: Date | string
-  deleteAt?: Date | string | null
+  deletedAt?: Date | string | null
+  orders?: Prisma.OrderUncheckedCreateNestedManyWithoutChildInput
 }
 
 export type ChildUpdateInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deleteAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   client?: Prisma.ClientUpdateOneRequiredWithoutChildrenNestedInput
+  orders?: Prisma.OrderUpdateManyWithoutChildNestedInput
 }
 
 export type ChildUncheckedUpdateInput = {
@@ -311,7 +317,8 @@ export type ChildUncheckedUpdateInput = {
   clientId?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deleteAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  orders?: Prisma.OrderUncheckedUpdateManyWithoutChildNestedInput
 }
 
 export type ChildCreateManyInput = {
@@ -320,14 +327,14 @@ export type ChildCreateManyInput = {
   clientId: number
   createdAt?: Date | string
   updatedAt?: Date | string
-  deleteAt?: Date | string | null
+  deletedAt?: Date | string | null
 }
 
 export type ChildUpdateManyMutationInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deleteAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type ChildUncheckedUpdateManyInput = {
@@ -336,7 +343,7 @@ export type ChildUncheckedUpdateManyInput = {
   clientId?: Prisma.IntFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deleteAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type ChildListRelationFilter = {
@@ -355,7 +362,7 @@ export type ChildCountOrderByAggregateInput = {
   clientId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
-  deleteAt?: Prisma.SortOrder
+  deletedAt?: Prisma.SortOrder
 }
 
 export type ChildAvgOrderByAggregateInput = {
@@ -369,7 +376,7 @@ export type ChildMaxOrderByAggregateInput = {
   clientId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
-  deleteAt?: Prisma.SortOrder
+  deletedAt?: Prisma.SortOrder
 }
 
 export type ChildMinOrderByAggregateInput = {
@@ -378,12 +385,17 @@ export type ChildMinOrderByAggregateInput = {
   clientId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
-  deleteAt?: Prisma.SortOrder
+  deletedAt?: Prisma.SortOrder
 }
 
 export type ChildSumOrderByAggregateInput = {
   id?: Prisma.SortOrder
   clientId?: Prisma.SortOrder
+}
+
+export type ChildScalarRelationFilter = {
+  is?: Prisma.ChildWhereInput
+  isNot?: Prisma.ChildWhereInput
 }
 
 export type ChildCreateNestedManyWithoutClientInput = {
@@ -428,11 +440,26 @@ export type ChildUncheckedUpdateManyWithoutClientNestedInput = {
   deleteMany?: Prisma.ChildScalarWhereInput | Prisma.ChildScalarWhereInput[]
 }
 
+export type ChildCreateNestedOneWithoutOrdersInput = {
+  create?: Prisma.XOR<Prisma.ChildCreateWithoutOrdersInput, Prisma.ChildUncheckedCreateWithoutOrdersInput>
+  connectOrCreate?: Prisma.ChildCreateOrConnectWithoutOrdersInput
+  connect?: Prisma.ChildWhereUniqueInput
+}
+
+export type ChildUpdateOneRequiredWithoutOrdersNestedInput = {
+  create?: Prisma.XOR<Prisma.ChildCreateWithoutOrdersInput, Prisma.ChildUncheckedCreateWithoutOrdersInput>
+  connectOrCreate?: Prisma.ChildCreateOrConnectWithoutOrdersInput
+  upsert?: Prisma.ChildUpsertWithoutOrdersInput
+  connect?: Prisma.ChildWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.ChildUpdateToOneWithWhereWithoutOrdersInput, Prisma.ChildUpdateWithoutOrdersInput>, Prisma.ChildUncheckedUpdateWithoutOrdersInput>
+}
+
 export type ChildCreateWithoutClientInput = {
   name: string
   createdAt?: Date | string
   updatedAt?: Date | string
-  deleteAt?: Date | string | null
+  deletedAt?: Date | string | null
+  orders?: Prisma.OrderCreateNestedManyWithoutChildInput
 }
 
 export type ChildUncheckedCreateWithoutClientInput = {
@@ -440,7 +467,8 @@ export type ChildUncheckedCreateWithoutClientInput = {
   name: string
   createdAt?: Date | string
   updatedAt?: Date | string
-  deleteAt?: Date | string | null
+  deletedAt?: Date | string | null
+  orders?: Prisma.OrderUncheckedCreateNestedManyWithoutChildInput
 }
 
 export type ChildCreateOrConnectWithoutClientInput = {
@@ -478,7 +506,57 @@ export type ChildScalarWhereInput = {
   clientId?: Prisma.IntFilter<"Child"> | number
   createdAt?: Prisma.DateTimeFilter<"Child"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Child"> | Date | string
-  deleteAt?: Prisma.DateTimeNullableFilter<"Child"> | Date | string | null
+  deletedAt?: Prisma.DateTimeNullableFilter<"Child"> | Date | string | null
+}
+
+export type ChildCreateWithoutOrdersInput = {
+  name: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  deletedAt?: Date | string | null
+  client: Prisma.ClientCreateNestedOneWithoutChildrenInput
+}
+
+export type ChildUncheckedCreateWithoutOrdersInput = {
+  id?: number
+  name: string
+  clientId: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  deletedAt?: Date | string | null
+}
+
+export type ChildCreateOrConnectWithoutOrdersInput = {
+  where: Prisma.ChildWhereUniqueInput
+  create: Prisma.XOR<Prisma.ChildCreateWithoutOrdersInput, Prisma.ChildUncheckedCreateWithoutOrdersInput>
+}
+
+export type ChildUpsertWithoutOrdersInput = {
+  update: Prisma.XOR<Prisma.ChildUpdateWithoutOrdersInput, Prisma.ChildUncheckedUpdateWithoutOrdersInput>
+  create: Prisma.XOR<Prisma.ChildCreateWithoutOrdersInput, Prisma.ChildUncheckedCreateWithoutOrdersInput>
+  where?: Prisma.ChildWhereInput
+}
+
+export type ChildUpdateToOneWithWhereWithoutOrdersInput = {
+  where?: Prisma.ChildWhereInput
+  data: Prisma.XOR<Prisma.ChildUpdateWithoutOrdersInput, Prisma.ChildUncheckedUpdateWithoutOrdersInput>
+}
+
+export type ChildUpdateWithoutOrdersInput = {
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  client?: Prisma.ClientUpdateOneRequiredWithoutChildrenNestedInput
+}
+
+export type ChildUncheckedUpdateWithoutOrdersInput = {
+  id?: Prisma.IntFieldUpdateOperationsInput | number
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  clientId?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
 export type ChildCreateManyClientInput = {
@@ -486,14 +564,15 @@ export type ChildCreateManyClientInput = {
   name: string
   createdAt?: Date | string
   updatedAt?: Date | string
-  deleteAt?: Date | string | null
+  deletedAt?: Date | string | null
 }
 
 export type ChildUpdateWithoutClientInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deleteAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  orders?: Prisma.OrderUpdateManyWithoutChildNestedInput
 }
 
 export type ChildUncheckedUpdateWithoutClientInput = {
@@ -501,7 +580,8 @@ export type ChildUncheckedUpdateWithoutClientInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deleteAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  orders?: Prisma.OrderUncheckedUpdateManyWithoutChildNestedInput
 }
 
 export type ChildUncheckedUpdateManyWithoutClientInput = {
@@ -509,9 +589,38 @@ export type ChildUncheckedUpdateManyWithoutClientInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  deleteAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
 
+
+/**
+ * Count Type ChildCountOutputType
+ */
+
+export type ChildCountOutputType = {
+  orders: number
+}
+
+export type ChildCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  orders?: boolean | ChildCountOutputTypeCountOrdersArgs
+}
+
+/**
+ * ChildCountOutputType without action
+ */
+export type ChildCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the ChildCountOutputType
+   */
+  select?: Prisma.ChildCountOutputTypeSelect<ExtArgs> | null
+}
+
+/**
+ * ChildCountOutputType without action
+ */
+export type ChildCountOutputTypeCountOrdersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.OrderWhereInput
+}
 
 
 export type ChildSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -520,8 +629,10 @@ export type ChildSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   clientId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
-  deleteAt?: boolean
+  deletedAt?: boolean
   client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>
+  orders?: boolean | Prisma.Child$ordersArgs<ExtArgs>
+  _count?: boolean | Prisma.ChildCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["child"]>
 
 export type ChildSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -530,7 +641,7 @@ export type ChildSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   clientId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
-  deleteAt?: boolean
+  deletedAt?: boolean
   client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["child"]>
 
@@ -540,7 +651,7 @@ export type ChildSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   clientId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
-  deleteAt?: boolean
+  deletedAt?: boolean
   client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["child"]>
 
@@ -550,12 +661,14 @@ export type ChildSelectScalar = {
   clientId?: boolean
   createdAt?: boolean
   updatedAt?: boolean
-  deleteAt?: boolean
+  deletedAt?: boolean
 }
 
-export type ChildOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "clientId" | "createdAt" | "updatedAt" | "deleteAt", ExtArgs["result"]["child"]>
+export type ChildOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "clientId" | "createdAt" | "updatedAt" | "deletedAt", ExtArgs["result"]["child"]>
 export type ChildInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>
+  orders?: boolean | Prisma.Child$ordersArgs<ExtArgs>
+  _count?: boolean | Prisma.ChildCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type ChildIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   client?: boolean | Prisma.ClientDefaultArgs<ExtArgs>
@@ -568,6 +681,7 @@ export type $ChildPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   name: "Child"
   objects: {
     client: Prisma.$ClientPayload<ExtArgs>
+    orders: Prisma.$OrderPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: number
@@ -575,7 +689,7 @@ export type $ChildPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
     clientId: number
     createdAt: Date
     updatedAt: Date
-    deleteAt: Date | null
+    deletedAt: Date | null
   }, ExtArgs["result"]["child"]>
   composites: {}
 }
@@ -971,6 +1085,7 @@ readonly fields: ChildFieldRefs;
 export interface Prisma__ChildClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   client<T extends Prisma.ClientDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.ClientDefaultArgs<ExtArgs>>): Prisma.Prisma__ClientClient<runtime.Types.Result.GetResult<Prisma.$ClientPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+  orders<T extends Prisma.Child$ordersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Child$ordersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$OrderPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1005,7 +1120,7 @@ export interface ChildFieldRefs {
   readonly clientId: Prisma.FieldRef<"Child", 'Int'>
   readonly createdAt: Prisma.FieldRef<"Child", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Child", 'DateTime'>
-  readonly deleteAt: Prisma.FieldRef<"Child", 'DateTime'>
+  readonly deletedAt: Prisma.FieldRef<"Child", 'DateTime'>
 }
     
 
@@ -1399,6 +1514,30 @@ export type ChildDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.Interna
    * Limit how many Children to delete.
    */
   limit?: number
+}
+
+/**
+ * Child.orders
+ */
+export type Child$ordersArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Order
+   */
+  select?: Prisma.OrderSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Order
+   */
+  omit?: Prisma.OrderOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.OrderInclude<ExtArgs> | null
+  where?: Prisma.OrderWhereInput
+  orderBy?: Prisma.OrderOrderByWithRelationInput | Prisma.OrderOrderByWithRelationInput[]
+  cursor?: Prisma.OrderWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.OrderScalarFieldEnum | Prisma.OrderScalarFieldEnum[]
 }
 
 /**

@@ -130,36 +130,17 @@ const Costumes_CostumeFullAvailability = z
     noPeriodsMessage: z.union([z.string(), z.null()]),
   })
   .passthrough();
-const Orders_Order = z
-  .object({
-    orderId: z.number().int(),
-    inventoryCode: Costumes_InventoryCode.regex(/^C-\d{4}$/),
-    costumeName: z.string(),
-    visitCode: Costumes_VisitCode.regex(/^\d{4}$/),
-    childName: Children_ChildName.min(2).regex(
-      /^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\s-]+$/
-    ),
-    clientPhone: Clients_PhoneString.regex(/^\+7\d{10}$/),
-    startDateTime: z.string(),
-    endDateTime: z.string(),
-    rentPrice: z.number().int(),
-    prepaymentAmount: z.number().int(),
-    notes: z.string(),
-  })
-  .passthrough();
-const Orders_NotWrittenOrdersResponse = z
-  .object({ items: z.array(Orders_Order), message: z.string().optional() })
-  .passthrough();
 const Visits_TimeString = z.string();
 const Visits_CreateVisitRequest = z
   .object({
     clientId: z.number().int(),
-    startDate: z.string(),
+    visitCode: Costumes_VisitCode.regex(/^\d{4}$/),
+    startDateTime: z.string(),
     issueTimeFrom: Visits_TimeString.regex(
       /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/
     ),
     issueTimeTo: Visits_TimeString.regex(/^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/),
-    endDate: z.string(),
+    endDateTime: z.string(),
     returnTimeUntil: Visits_TimeString.regex(
       /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/
     ),
@@ -171,7 +152,6 @@ const Visits_CreateVisitRequest = z
           costumeId: z.number().int(),
           rentPrice: z.number().int(),
           prepaymentAmount: z.number().int(),
-          remaining: z.number().int(),
           notes: z.string().optional(),
         })
         .passthrough()
@@ -184,6 +164,14 @@ const Visits_VisitStatus = z.enum([
   "completed",
   "cancelled",
 ]);
+const Visits_Notification = z
+  .object({
+    id: z.number().int(),
+    type: z.string(),
+    status: z.enum(["pending", "sent", "delivered", "failed", "read"]),
+    createdAt: z.string().datetime({ offset: true }),
+  })
+  .passthrough();
 const Visits_TagStatus = z.enum(["written", "not_written"]);
 const Visits_VisitOrder = z
   .object({
@@ -194,16 +182,8 @@ const Visits_VisitOrder = z
     costumeName: z.string(),
     inventoryCode: Costumes_InventoryCode.regex(/^C-\d{4}$/),
     rentPrice: z.number().int(),
-    prepayment: z.number().int(),
-    remaining: z.number().int(),
+    prepaymentAmount: z.number().int(),
     tagStatus: Visits_TagStatus,
-  })
-  .passthrough();
-const Visits_VisitTotals = z
-  .object({
-    totalRent: z.number().int(),
-    totalPrepayment: z.number().int(),
-    totalRemaining: z.number().int(),
   })
   .passthrough();
 const Visits_Visit = z
@@ -222,8 +202,8 @@ const Visits_Visit = z
       .passthrough(),
     visitDate: z
       .object({
-        startDate: z.string(),
-        endDate: z.string(),
+        startDateTime: z.string(),
+        endDateTime: z.string(),
         issueTimeFrom: Visits_TimeString.regex(
           /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/
         ),
@@ -235,8 +215,8 @@ const Visits_Visit = z
         ),
       })
       .passthrough(),
+    notifications: z.array(Visits_Notification),
     orders: z.array(Visits_VisitOrder),
-    totals: Visits_VisitTotals,
   })
   .passthrough();
 const Visits_IssuedForReturnResponse = z
@@ -248,6 +228,44 @@ const Visits_IssuedForReturnResponse = z
     endDateTime: z.string(),
     clientPhone: Clients_PhoneString.regex(/^\+7\d{10}$/),
     notes: z.string(),
+  })
+  .passthrough();
+const Visits_Order = z
+  .object({
+    orderId: z.number().int(),
+    inventoryCode: Costumes_InventoryCode.regex(/^C-\d{4}$/),
+    costumeName: z.string(),
+    visitCode: Costumes_VisitCode.regex(/^\d{4}$/),
+    childName: Children_ChildName.min(2).regex(
+      /^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\s-]+$/
+    ),
+    clientPhone: Clients_PhoneString.regex(/^\+7\d{10}$/),
+    startDateTime: z.string(),
+    endDateTime: z.string(),
+    issueTimeFrom: Visits_TimeString.regex(
+      /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/
+    ),
+    issueTimeTo: Visits_TimeString.regex(/^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/),
+    returnTimeUntil: Visits_TimeString.regex(
+      /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/
+    ),
+    rentPrice: z.number().int(),
+    prepaymentAmount: z.number().int(),
+    notes: z.string(),
+  })
+  .passthrough();
+const Visits_NotWrittenOrdersResponse = z
+  .object({ items: z.array(Visits_Order), message: z.string().optional() })
+  .passthrough();
+const Visits_GetReservedResponse = z
+  .object({
+    visitId: z.number().int(),
+    visitCode: Costumes_VisitCode.regex(/^\d{4}$/),
+    clientName: Clients_ClientName.min(2).regex(
+      /^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\s-]+$/
+    ),
+    childrenNames: z.string(),
+    costumesNames: z.string(),
   })
   .passthrough();
 const Visits_VisitReturnSearchResponse = z
@@ -276,23 +294,12 @@ const Visits_VisitsSearchResponse = z
     costumesNames: z.string(),
   })
   .passthrough();
-const Visits_GetTodayReservedResponse = z
-  .object({
-    visitId: z.number().int(),
-    visitCode: Costumes_VisitCode.regex(/^\d{4}$/),
-    clientName: Clients_ClientName.min(2).regex(
-      /^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\s-]+$/
-    ),
-    childrenNames: z.string(),
-    costumesNames: z.string(),
-  })
+const Visits_VisitCancelRequest = z
+  .object({ reason: z.string() })
+  .partial()
   .passthrough();
 const Visits_CompleteReturnRequest = z
-  .object({
-    returnedOrderIds: z.array(z.number().int()),
-    depositReturned: z.boolean(),
-    notes: z.string().optional(),
-  })
+  .object({ depositReturned: z.boolean(), notes: z.string().optional() })
   .passthrough();
 const Visits_CompleteReturnResponse = z
   .object({
@@ -335,16 +342,15 @@ const Visits_VisitReturnOrder = z
     ),
     costumeName: z.string(),
     inventoryCode: Costumes_InventoryCode.regex(/^C-\d{4}$/),
+    rentPrice: z.number().int(),
+    prepaymentAmount: z.number().int(),
+    finalPayment: z.number().int(),
     returned: z.boolean(),
   })
   .passthrough();
 const Visits_DepositType = z.enum(["cash", "document", "none"]);
 const Visits_VisitDepositInfo = z
-  .object({
-    type: Visits_DepositType,
-    amount: z.number().int(),
-    returned: z.boolean(),
-  })
+  .object({ type: Visits_DepositType, amount: z.number().int().optional() })
   .passthrough();
 const Visits_VisitForReturnResponse = z
   .object({
@@ -407,19 +413,20 @@ export const schemas = {
   Costumes_VisitCode,
   Costumes_AvailabilityPeriod,
   Costumes_CostumeFullAvailability,
-  Orders_Order,
-  Orders_NotWrittenOrdersResponse,
   Visits_TimeString,
   Visits_CreateVisitRequest,
   Visits_VisitStatus,
+  Visits_Notification,
   Visits_TagStatus,
   Visits_VisitOrder,
-  Visits_VisitTotals,
   Visits_Visit,
   Visits_IssuedForReturnResponse,
+  Visits_Order,
+  Visits_NotWrittenOrdersResponse,
+  Visits_GetReservedResponse,
   Visits_VisitReturnSearchResponse,
   Visits_VisitsSearchResponse,
-  Visits_GetTodayReservedResponse,
+  Visits_VisitCancelRequest,
   Visits_CompleteReturnRequest,
   Visits_CompleteReturnResponse,
   Visits_VisitForIssueResponse,
@@ -679,27 +686,6 @@ const endpoints = makeApi([
   },
   {
     method: "post",
-    path: "/orders/:orderId/mark-tag-written",
-    alias: "OrderOperations_markTagWritten",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "orderId",
-        type: "Path",
-        schema: z.number().int(),
-      },
-    ],
-    response: z.void(),
-  },
-  {
-    method: "get",
-    path: "/orders/not_written",
-    alias: "OrderOperations_getNotWritten",
-    requestFormat: "json",
-    response: Orders_NotWrittenOrdersResponse,
-  },
-  {
-    method: "post",
     path: "/visits",
     alias: "VisitOperation_create",
     requestFormat: "json",
@@ -711,6 +697,53 @@ const endpoints = makeApi([
       },
     ],
     response: Visits_Visit,
+  },
+  {
+    method: "post",
+    path: "/visits/:orderId/mark-tag-written",
+    alias: "VisitOperation_markTagWritten",
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "orderId",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "post",
+    path: "/visits/:visitId/cancel",
+    alias: "VisitOperation_cancel",
+    description: `Отмена визита и всех связанных заказов`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        description: `Данные об отмене`,
+        type: "Body",
+        schema: z.object({ reason: z.string() }).partial().passthrough(),
+      },
+      {
+        name: "visitId",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: z.void(),
+    errors: [
+      {
+        status: 400,
+        description: `The server could not understand the request due to invalid syntax.`,
+        schema: z.object({ body: z.string() }).passthrough(),
+      },
+      {
+        status: 404,
+        description: `The server cannot find the requested resource.`,
+        schema: z.object({ body: z.string() }).passthrough(),
+      },
+    ],
   },
   {
     method: "post",
@@ -805,6 +838,13 @@ const endpoints = makeApi([
     response: z.array(Visits_IssuedForReturnResponse),
   },
   {
+    method: "get",
+    path: "/visits/not_written",
+    alias: "VisitOperation_getNotWritten",
+    requestFormat: "json",
+    response: Visits_NotWrittenOrdersResponse,
+  },
+  {
     method: "post",
     path: "/visits/preview-code",
     alias: "VisitOperation_previewCode",
@@ -812,6 +852,20 @@ const endpoints = makeApi([
     response: z
       .object({ visitCode: Costumes_VisitCode.regex(/^\d{4}$/) })
       .passthrough(),
+  },
+  {
+    method: "get",
+    path: "/visits/reserved",
+    alias: "VisitOperation_getReserved",
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "data",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+    ],
+    response: z.array(Visits_GetReservedResponse),
   },
   {
     method: "get",
@@ -840,20 +894,6 @@ const endpoints = makeApi([
       },
     ],
     response: z.array(Visits_VisitsSearchResponse),
-  },
-  {
-    method: "get",
-    path: "/visits/today-reserved",
-    alias: "VisitOperation_getTodayReserved",
-    requestFormat: "json",
-    response: z.array(
-      z
-        .object({
-          statusCode: z.literal(200),
-          body: z.array(Visits_GetTodayReservedResponse),
-        })
-        .passthrough()
-    ),
   },
 ]);
 

@@ -1,6 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Child } from '../prisma/generated/client';
 import {
   CreateChildRequestDto,
   UpdateChildRequestDto,
@@ -27,9 +26,9 @@ export class ClientChildService {
       throw new NotFoundException(`Клиент с ID ${data.clientId} не найден`);
     }
 
-    const child = (await this.prisma.child.create({
+    const child = await this.prisma.child.create({
       data: { name: data.name, clientId: data.clientId },
-    })) as Child;
+    });
 
     const response = {
       childId: child.id,
@@ -68,7 +67,7 @@ export class ClientChildService {
     await this.prisma.child
       .update({
         where: { id: childId },
-        data: { deleteAt: new Date() },
+        data: { deletedAt: new Date() },
       })
       .catch(() => {
         throw new NotFoundException(`Ребенок с этим ID ${childId} не найден`);
@@ -123,7 +122,7 @@ export class ClientChildService {
     await this.prisma.client
       .update({
         where: { id: clientId },
-        data: { deleteAt: new Date() },
+        data: { deletedAt: new Date() },
       })
       .catch(() => {
         throw new NotFoundException(`Client with ID ${clientId} not found`);
@@ -144,7 +143,7 @@ export class ClientChildService {
 
     const clients = await this.prisma.client.findMany({
       where: {
-        deleteAt: null,
+        deletedAt: null,
         OR: [
           { name: { contains: normalizedQuery, mode: 'insensitive' } },
 
