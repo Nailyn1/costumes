@@ -21,6 +21,7 @@ import {
   GetVisitSearchDto,
   GetVisitsForReturnDto,
   IssuedForReturnDto,
+  MarkDepositReturnedDto,
   OrdersNotWrittenResponseDto,
   OrdersNotWrittenResponseSchema,
   VisitIssueRequestDto,
@@ -656,6 +657,49 @@ export class VisitOrderService {
         type: visit.deposit?.type || 'none',
         amount: visit.deposit?.amount || 0,
       },
+    };
+  }
+
+  async MarkDepositReturned(
+    visitId: number,
+    notes?: string,
+  ): Promise<MarkDepositReturnedDto> {
+    const visit = await this.prisma.visit.findUnique({
+      where: { id: visitId },
+      include: { deposit: true },
+    });
+
+    if (!visit) {
+      throw new NotFoundException(`Визит с ID ${visitId} не найден`);
+    }
+
+    if (!visit.deposit) {
+      throw new BadRequestException(
+        `Для визита №${visitId} залог не зафиксирован`,
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.deposit.update({
+        where: { visitId: visitId },
+        data: { returned: true },
+      });
+
+      if (notes) {
+        const currentNotes = visit.notes ? `${visit.notes}\n` : '';
+        await tx.visit.update({
+          where: { id: visitId },
+          data: {
+            notes: `${currentNotes}[Возврат залога]: ${notes}`,
+          },
+        });
+      }
+    });
+
+    return {
+      visitId: visitId,
+      depositReturned: true,
+      message: 'Статус депозита успешно обновлен',
     };
   }
 }

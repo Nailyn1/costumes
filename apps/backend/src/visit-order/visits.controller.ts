@@ -12,7 +12,11 @@ import {
 } from '@nestjs/common';
 import { VisitOrderService } from './visit-order.sevice';
 import { JwtAuthGuard } from '../auth/jwt/jwt-auth.guard';
-import { CreateVisitRequest, VisitIssueRequest } from './dto/visit-order.dto';
+import {
+  CreateVisitRequest,
+  MarkDepositReturnedRequest,
+  VisitIssueRequest,
+} from './dto/visit-order.dto';
 import {
   CreateVisitResponseDto,
   GetVisitForIssueDto,
@@ -21,6 +25,7 @@ import {
   GetVisitSearchDto,
   GetVisitsForReturnDto,
   IssuedForReturnDto,
+  MarkDepositReturnedDto,
   OrdersNotWrittenResponseDto,
 } from '@costumes/shared';
 
@@ -110,5 +115,13 @@ export class VisitController {
     @Param('visitId', ParseIntPipe) visitId: number,
   ): Promise<GetVisitsForReturnDto> {
     return await this.visitOrderService.visitsForReturn(visitId);
+  }
+
+  @Post(':visitId/mark-deposit-returned')
+  async markDepositReturned(
+    @Param('visitId', ParseIntPipe) visitId: number,
+    @Body() dto: MarkDepositReturnedRequest,
+  ): Promise<MarkDepositReturnedDto> {
+    return await this.visitOrderService.MarkDepositReturned(visitId, dto.notes);
   }
 }

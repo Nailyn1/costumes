@@ -5,7 +5,13 @@ import {
   VisitIssueRequestSchema,
 } from '@costumes/shared';
 import { createZodDto } from '../../common/zod-dto';
+import { z } from 'zod';
 
+export const MarkDepositReturnedSchema = z
+  .object({
+    notes: z.string().optional(),
+  })
+  .strict();
 export class CreateVisitRequest extends createZodDto(
   CreateVisitRequestSchema,
 ) {}
@@ -18,3 +24,6 @@ export class OrdersNotWrittenResponse extends createZodDto(
 ) {}
 
 export class VisitIssueRequest extends createZodDto(VisitIssueRequestSchema) {}
+export class MarkDepositReturnedRequest extends createZodDto(
+  MarkDepositReturnedSchema,
+) {}
