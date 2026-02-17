@@ -13,6 +13,7 @@ import {
 import { VisitOrderService } from './visit-order.sevice';
 import { JwtAuthGuard } from '../auth/jwt/jwt-auth.guard';
 import {
+  CompleteReturnRequest,
   CreateVisitRequest,
   MarkDepositReturnedRequest,
   VisitIssueRequest,
@@ -27,6 +28,7 @@ import {
   IssuedForReturnDto,
   MarkDepositReturnedDto,
   OrdersNotWrittenResponseDto,
+  visitCompleteReturnResponseDto,
 } from '@costumes/shared';
 
 @Controller('visits')
@@ -123,5 +125,13 @@ export class VisitController {
     @Body() dto: MarkDepositReturnedRequest,
   ): Promise<MarkDepositReturnedDto> {
     return await this.visitOrderService.MarkDepositReturned(visitId, dto.notes);
+  }
+
+  @Post(':visitId/complete-return')
+  async completeReturn(
+    @Param('visitId', ParseIntPipe) visitId: number,
+    @Body() dto: CompleteReturnRequest,
+  ): Promise<visitCompleteReturnResponseDto> {
+    return await this.visitOrderService.visitCompleteReturn(visitId, dto);
   }
 }

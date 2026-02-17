@@ -2,6 +2,7 @@ import {
   CreateVisitRequestSchema,
   CreateVisitResponseSchema,
   OrdersNotWrittenResponseSchema,
+  VisitCompleteReturnRequestSchema,
   VisitIssueRequestSchema,
 } from '@costumes/shared';
 import { createZodDto } from '../../common/zod-dto';
@@ -26,4 +27,7 @@ export class OrdersNotWrittenResponse extends createZodDto(
 export class VisitIssueRequest extends createZodDto(VisitIssueRequestSchema) {}
 export class MarkDepositReturnedRequest extends createZodDto(
   MarkDepositReturnedSchema,
+) {}
+export class CompleteReturnRequest extends createZodDto(
+  VisitCompleteReturnRequestSchema,
 ) {}

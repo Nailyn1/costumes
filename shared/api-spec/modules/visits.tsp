@@ -118,7 +118,6 @@ model IssueVisitRequest {
 }
 
 model CompleteReturnRequest {
-  returnedOrderIds: int32[];
   depositReturned: boolean;
   notes?: string;
 }

@@ -24,6 +24,8 @@ import {
   MarkDepositReturnedDto,
   OrdersNotWrittenResponseDto,
   OrdersNotWrittenResponseSchema,
+  visitCompleteReturnRequestDto,
+  visitCompleteReturnResponseDto,
   VisitIssueRequestDto,
 } from '@costumes/shared';
 import { OrderStatus, Prisma } from '../prisma/generated/client';
@@ -700,6 +702,72 @@ export class VisitOrderService {
       visitId: visitId,
       depositReturned: true,
       message: 'Статус депозита успешно обновлен',
+    };
+  }
+
+  async visitCompleteReturn(
+    visitId: number,
+    data: visitCompleteReturnRequestDto,
+  ): Promise<visitCompleteReturnResponseDto> {
+    const { depositReturned, notes } = data as unknown as {
+      depositReturned: boolean;
+      notes?: string;
+    };
+
+    const visit = await this.prisma.visit.findUnique({
+      where: { id: visitId },
+      include: { orders: true, deposit: true },
+    });
+
+    if (!visit) {
+      throw new NotFoundException(`Визит №${visitId} не найден`);
+    }
+
+    if (visit.status !== 'issued') {
+      throw new BadRequestException('Завершить можно только выданный визит');
+    }
+
+    const hasInvalidOrders = visit.orders.some(
+      (order) => order.status !== OrderStatus.issued,
+    );
+
+    if (hasInvalidOrders) {
+      throw new BadRequestException(
+        'Нельзя завершить визит: не все заказы в этом визите имеют статус "Выдан"',
+      );
+    }
+
+    const updatedVisit = await this.prisma.$transaction(async (tx) => {
+      await tx.order.updateMany({
+        where: { visitId: visitId },
+        data: { status: OrderStatus.returned },
+      });
+
+      if (depositReturned && visit.deposit) {
+        await tx.deposit.update({
+          where: { visitId: visitId },
+          data: { returned: true },
+        });
+      }
+
+      const newNotes = notes
+        ? `${visit.notes || ''}\n[Завершение]: ${notes}`.trim()
+        : visit.notes;
+
+      return await tx.visit.update({
+        where: { id: visitId },
+        data: {
+          status: 'completed',
+          notes: newNotes,
+        },
+      });
+    });
+
+    return {
+      visitId: updatedVisit.id,
+      visitCode: updatedVisit.visitCode,
+      status: updatedVisit.status as 'completed',
+      message: 'Визит успешно завершен, все костюмы возвращены',
     };
   }
 }

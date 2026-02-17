@@ -295,11 +295,7 @@ const Visits_VisitsSearchResponse = z
   })
   .passthrough();
 const Visits_CompleteReturnRequest = z
-  .object({
-    returnedOrderIds: z.array(z.number().int()),
-    depositReturned: z.boolean(),
-    notes: z.string().optional(),
-  })
+  .object({ depositReturned: z.boolean(), notes: z.string().optional() })
   .passthrough();
 const Visits_CompleteReturnResponse = z
   .object({
