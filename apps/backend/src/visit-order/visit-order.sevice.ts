@@ -24,6 +24,7 @@ import {
   MarkDepositReturnedDto,
   OrdersNotWrittenResponseDto,
   OrdersNotWrittenResponseSchema,
+  visitCancelRequestDto,
   visitCompleteReturnRequestDto,
   visitCompleteReturnResponseDto,
   VisitIssueRequestDto,
@@ -233,6 +234,9 @@ export class VisitOrderService {
     const conflicts = await this.prisma.order.findMany({
       where: {
         costumeId: { in: costumeIds },
+        status: {
+          not: 'cancelled',
+        },
         AND: [
           { startDateTime: { lt: endDateTime } },
           { endDateTime: { gt: startDateTime } },
@@ -769,5 +773,44 @@ export class VisitOrderService {
       status: updatedVisit.status as 'completed',
       message: 'Визит успешно завершен, все костюмы возвращены',
     };
+  }
+
+  async visitCancel(visitId: number, data: visitCancelRequestDto) {
+    const { reason } = data as unknown as {
+      reason?: string;
+    };
+
+    const visit = await this.prisma.visit.findUnique({
+      where: { id: visitId },
+    });
+
+    if (!visit) {
+      throw new NotFoundException(`Визит с ID ${visitId} не найден`);
+    }
+
+    if (visit.status !== 'reserved') {
+      throw new BadRequestException(
+        `Невозможно отменить визит в статусе "${visit.status}". Отмена доступна только для статуса "reserved".`,
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.order.updateMany({
+        where: { visitId: visitId },
+        data: { status: 'cancelled' },
+      });
+
+      const updatedNotes = reason
+        ? `${visit.notes || ''}\n[Причина отмены]: ${reason}`.trim()
+        : visit.notes;
+
+      await tx.visit.update({
+        where: { id: visitId },
+        data: {
+          status: 'cancelled',
+          notes: updatedNotes,
+        },
+      });
+    });
   }
 }

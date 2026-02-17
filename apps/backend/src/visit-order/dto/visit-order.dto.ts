@@ -2,6 +2,7 @@ import {
   CreateVisitRequestSchema,
   CreateVisitResponseSchema,
   OrdersNotWrittenResponseSchema,
+  VisitCancelRequestSchema,
   VisitCompleteReturnRequestSchema,
   VisitIssueRequestSchema,
 } from '@costumes/shared';
@@ -30,4 +31,8 @@ export class MarkDepositReturnedRequest extends createZodDto(
 ) {}
 export class CompleteReturnRequest extends createZodDto(
   VisitCompleteReturnRequestSchema,
+) {}
+
+export class VisitCancelRequest extends createZodDto(
+  VisitCancelRequestSchema,
 ) {}

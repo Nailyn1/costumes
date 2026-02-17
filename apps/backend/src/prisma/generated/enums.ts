@@ -52,7 +52,8 @@ export type CostumeStatus = (typeof CostumeStatus)[keyof typeof CostumeStatus]
 export const OrderStatus = {
   reserved: 'reserved',
   issued: 'issued',
-  returned: 'returned'
+  returned: 'returned',
+  cancelled: 'cancelled'
 } as const
 
 export type OrderStatus = (typeof OrderStatus)[keyof typeof OrderStatus]

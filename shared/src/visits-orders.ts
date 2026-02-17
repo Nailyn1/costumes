@@ -10,6 +10,7 @@ export const CreateVisitRequestSchema = schemas.Visits_CreateVisitRequest;
 export const CreateVisitResponseSchema = schemas.Visits_Visit;
 export const VisitCompleteReturnRequestSchema =
   schemas.Visits_CompleteReturnRequest;
+export const VisitCancelRequestSchema = schemas.Visits_VisitCancelRequest;
 
 export type OrdersNotWrittenResponseDto = z.infer<
   typeof schemas.Visits_NotWrittenOrdersResponse
@@ -56,4 +57,8 @@ export type visitCompleteReturnResponseDto = z.infer<
 
 export type visitCompleteReturnRequestDto = z.infer<
   typeof schemas.Visits_CompleteReturnRequest
+>;
+
+export type visitCancelRequestDto = z.infer<
+  typeof schemas.Visits_VisitCancelRequest
 >;

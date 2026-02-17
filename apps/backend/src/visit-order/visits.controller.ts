@@ -16,6 +16,7 @@ import {
   CompleteReturnRequest,
   CreateVisitRequest,
   MarkDepositReturnedRequest,
+  VisitCancelRequest,
   VisitIssueRequest,
 } from './dto/visit-order.dto';
 import {
@@ -120,6 +121,7 @@ export class VisitController {
   }
 
   @Post(':visitId/mark-deposit-returned')
+  @UseGuards(JwtAuthGuard)
   async markDepositReturned(
     @Param('visitId', ParseIntPipe) visitId: number,
     @Body() dto: MarkDepositReturnedRequest,
@@ -128,10 +130,21 @@ export class VisitController {
   }
 
   @Post(':visitId/complete-return')
+  @UseGuards(JwtAuthGuard)
   async completeReturn(
     @Param('visitId', ParseIntPipe) visitId: number,
     @Body() dto: CompleteReturnRequest,
   ): Promise<visitCompleteReturnResponseDto> {
     return await this.visitOrderService.visitCompleteReturn(visitId, dto);
+  }
+
+  @Post(':visitId/cancel')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async visitCancel(
+    @Param('visitId', ParseIntPipe) visitId: number,
+    @Body() dto: VisitCancelRequest,
+  ) {
+    return await this.visitOrderService.visitCancel(visitId, dto);
   }
 }

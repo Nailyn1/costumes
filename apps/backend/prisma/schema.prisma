@@ -195,6 +195,7 @@ enum OrderStatus {
   reserved
   issued
   returned
+  cancelled
 }
 
 enum TagStatus {

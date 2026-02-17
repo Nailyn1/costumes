@@ -112,7 +112,7 @@ model IssueVisitRequest {
   additionalPayment: int32;
   deposit: {
     type: DepositType;
-    amount?: int32; //обязательно, если deposit cash
+    amount?: int32;
   };
   notes?: string;
 }
@@ -215,6 +215,12 @@ model VisitReturnSearchResponse {
   clientName: CostumeApp.Clients.ClientName;
 }
 
+@doc("Запрос на отмену визита")
+model VisitCancelRequest {
+  @doc("Причина отмены визита")
+  reason?: string;
+}
+
 @route("/visits")
 interface VisitOperation {
   @post
@@ -311,5 +317,23 @@ interface VisitOperation {
   markTagWritten(@path orderId: int32): {
     @statusCode statusCode: 204;
   } | Common.Error;
+
+  @doc("Отмена визита и всех связанных заказов")
+  @post
+  @route("{visitId}/cancel")
+  cancel(
+    @path visitId: int32,
+    @body @doc("Данные об отмене") body: VisitCancelRequest
+  ): {
+    @statusCode statusCode: 204;
+  } | {
+    @statusCode statusCode: 404;
+    @doc("Визит не найден")
+    body: string;
+  } | {
+    @statusCode statusCode: 400;
+    @doc("Невозможно отменить визит в текущем статусе")
+    body: string;
+  };
 }
 

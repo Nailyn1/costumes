@@ -294,6 +294,10 @@ const Visits_VisitsSearchResponse = z
     costumesNames: z.string(),
   })
   .passthrough();
+const Visits_VisitCancelRequest = z
+  .object({ reason: z.string() })
+  .partial()
+  .passthrough();
 const Visits_CompleteReturnRequest = z
   .object({ depositReturned: z.boolean(), notes: z.string().optional() })
   .passthrough();
@@ -422,6 +426,7 @@ export const schemas = {
   Visits_GetReservedResponse,
   Visits_VisitReturnSearchResponse,
   Visits_VisitsSearchResponse,
+  Visits_VisitCancelRequest,
   Visits_CompleteReturnRequest,
   Visits_CompleteReturnResponse,
   Visits_VisitForIssueResponse,
@@ -706,6 +711,39 @@ const endpoints = makeApi([
       },
     ],
     response: z.void(),
+  },
+  {
+    method: "post",
+    path: "/visits/:visitId/cancel",
+    alias: "VisitOperation_cancel",
+    description: `Отмена визита и всех связанных заказов`,
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        description: `Данные об отмене`,
+        type: "Body",
+        schema: z.object({ reason: z.string() }).partial().passthrough(),
+      },
+      {
+        name: "visitId",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: z.void(),
+    errors: [
+      {
+        status: 400,
+        description: `The server could not understand the request due to invalid syntax.`,
+        schema: z.object({ body: z.string() }).passthrough(),
+      },
+      {
+        status: 404,
+        description: `The server cannot find the requested resource.`,
+        schema: z.object({ body: z.string() }).passthrough(),
+      },
+    ],
   },
   {
     method: "post",
