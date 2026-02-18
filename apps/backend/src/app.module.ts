@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
@@ -10,12 +10,19 @@ import { QueueModule } from './redis/queue.module';
 import { NotificationModule } from './notification/notification.module';
 import { IdempotencyInterceptor } from './redis/redis.idempotency';
 import { APP_INTERCEPTOR } from '@nestjs/core';
+import { LoggerModule } from 'nestjs-pino';
+import { loggerConfigFactory } from './config/logger.config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ['.env', 'apps/backend/.env'],
+    }),
+    LoggerModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: loggerConfigFactory,
     }),
     RedisModule,
     PrismaModule,
