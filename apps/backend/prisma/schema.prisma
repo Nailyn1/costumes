@@ -151,6 +151,7 @@ model Notification {
   visitId     Int                @map("visit_id")
   visit       Visit              @relation(fields: [visitId], references: [id])
   
+  traceId     String?
   externalId  String?            @unique @map("external_id")
   type        String             
   status      NotificationStatus @default(pending)

@@ -22,7 +22,7 @@ export const loggerConfigFactory = (configService: ConfigService): Params => {
         return `${login} | ${req.method} ${req.url} | ERROR: ${err.message}`;
       },
       redact: {
-        paths: ['req.headers.authorization'],
+        paths: ['req.headers.authorization', 'phone'],
         censor: '***',
       },
       customProps: (req) => {
@@ -41,7 +41,7 @@ export const loggerConfigFactory = (configService: ConfigService): Params => {
               levelFirst: true,
               translateTime: 'HH:MM:ss',
               ignore: 'req,res,context,login,responseTime',
-              messageFormat: '{msg}',
+              messageFormat: '{context} | {msg}',
             },
           }
         : undefined,

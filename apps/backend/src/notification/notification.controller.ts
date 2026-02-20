@@ -1,14 +1,8 @@
-import {
-  Body,
-  Controller,
-  HttpCode,
-  HttpStatus,
-  Logger,
-  Post,
-} from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { NotificationService } from './notification.service';
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 
-interface GreenApiStatusWebhook {
+export interface GreenApiStatusWebhook {
   typeWebhook: 'outgoingMessageStatus' | 'outgoingAPIMessageStatus';
   chatId: string;
   instanceData: {
@@ -22,7 +16,7 @@ interface GreenApiStatusWebhook {
   sendByApi: boolean;
 }
 
-interface GreenApiIncomingWebhook {
+export interface GreenApiIncomingWebhook {
   typeWebhook: 'incomingMessageReceived';
   chatId?: string;
   instanceData: {
@@ -47,7 +41,7 @@ interface GreenApiIncomingWebhook {
   };
 }
 
-interface GreenApiStateWebhook {
+export interface GreenApiStateWebhook {
   typeWebhook: 'stateInstanceChanged';
   instanceData: {
     idInstance: number;
@@ -58,38 +52,60 @@ interface GreenApiStateWebhook {
   stateInstance: 'authorized' | 'notAuthorized' | 'starting' | 'blocked';
 }
 
-type GreenApiWebhook =
+export type GreenApiWebhook =
   | GreenApiStatusWebhook
   | GreenApiIncomingWebhook
   | GreenApiStateWebhook;
 
 @Controller('webhooks/whatsapp')
 export class NotificationController {
-  private readonly logger = new Logger(NotificationService.name);
-  constructor(private readonly notificationService: NotificationService) {}
+  constructor(
+    private readonly notificationService: NotificationService,
+    @InjectPinoLogger(NotificationController.name)
+    private readonly logger: PinoLogger,
+  ) {}
 
   @Post()
   @HttpCode(HttpStatus.OK)
   async handleWebHook(@Body() body: GreenApiWebhook) {
-    this.logger.debug('Body from GREEN-API', body);
+    const l = await this.notificationService.getContextualLogger(body);
 
-    if (
-      body.typeWebhook === 'outgoingMessageStatus' ||
-      body.typeWebhook === 'outgoingAPIMessageStatus'
-    ) {
-      await this.notificationService.changeOutgoingStatus(
-        body.idMessage,
-        body.status,
+    l.info(
+      { webhookType: body.typeWebhook, payload: body },
+      'Received Green-API webhook',
+    );
+    try {
+      if (
+        body.typeWebhook === 'outgoingMessageStatus' ||
+        body.typeWebhook === 'outgoingAPIMessageStatus'
+      ) {
+        await this.notificationService.changeOutgoingStatus(
+          body.idMessage,
+          body.status,
+          l,
+        );
+      } else if (body.typeWebhook === 'incomingMessageReceived') {
+        const { chatId } = body.senderData;
+        await this.notificationService.changeIncomingStatus(chatId, l);
+      } else if (body.typeWebhook === 'stateInstanceChanged') {
+        await this.notificationService.handleInstanceStateChange(
+          body.instanceData.idInstance,
+          body.stateInstance,
+          body.timestamp,
+          l,
+        );
+      }
+    } catch (error) {
+      const idMessage = 'idMessage' in body ? body.idMessage : undefined;
+      l.error(
+        {
+          err: error,
+          webhookType: body.typeWebhook,
+          idMessage,
+        },
+        'Error processing Green-API webhook',
       );
-    } else if (body.typeWebhook === 'incomingMessageReceived') {
-      const { chatId } = body.senderData;
-      await this.notificationService.changeIncomingStatus(chatId);
-    } else if (body.typeWebhook === 'stateInstanceChanged') {
-      await this.notificationService.handleInstanceStateChange(
-        body.instanceData.idInstance,
-        body.stateInstance,
-        body.timestamp,
-      );
+      throw error;
     }
 
     return { ok: true };
