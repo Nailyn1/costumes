@@ -1,6 +1,7 @@
 import { Params } from 'nestjs-pino';
 import { ConfigService } from '@nestjs/config';
 import { IncomingMessage } from 'http';
+import { join } from 'path';
 
 interface RequestWithUser extends IncomingMessage {
   user?: {
@@ -10,7 +11,7 @@ interface RequestWithUser extends IncomingMessage {
 
 export const loggerConfigFactory = (configService: ConfigService): Params => {
   const isProduction = configService.get('NODE_ENV') === 'production';
-
+  const logPath = join(process.cwd(), 'logs');
   return {
     pinoHttp: {
       customSuccessMessage: (req, res, responseTime) => {
@@ -32,19 +33,35 @@ export const loggerConfigFactory = (configService: ConfigService): Params => {
           login: userRequest.user?.login,
         };
       },
-      transport: !isProduction
-        ? {
-            target: 'pino-pretty',
+      transport: {
+        targets: [
+          {
+            target: isProduction ? 'pino/lib/worker' : 'pino-pretty',
+            level: isProduction ? 'info' : 'debug',
+            options: isProduction
+              ? {}
+              : {
+                  colorize: true,
+                  singleLine: false,
+                  levelFirst: true,
+                  translateTime: 'HH:MM:ss',
+                  ignore: 'req,res,context,login,responseTime',
+                  messageFormat: '{context} | {msg}',
+                },
+          },
+          {
+            target: 'pino-roll',
+            level: 'info',
             options: {
-              colorize: true,
-              singleLine: false,
-              levelFirst: true,
-              translateTime: 'HH:MM:ss',
-              ignore: 'req,res,context,login,responseTime',
-              messageFormat: '{context} | {msg}',
+              file: join(logPath, 'app'),
+              frequency: 'daily',
+              limit: { count: 7 },
+              mkdir: true,
+              extension: '.log',
             },
-          }
-        : undefined,
+          },
+        ],
+      },
       level: isProduction ? 'info' : 'debug',
       genReqId: (req) => req.headers['x-request-id'] || crypto.randomUUID(),
 
