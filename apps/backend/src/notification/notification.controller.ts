@@ -1,4 +1,12 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Req,
+} from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 
@@ -67,8 +75,8 @@ export class NotificationController {
 
   @Post()
   @HttpCode(HttpStatus.OK)
-  async handleWebHook(@Body() body: GreenApiWebhook) {
-    const l = await this.notificationService.getContextualLogger(body);
+  async handleWebHook(@Body() body: GreenApiWebhook, @Req() req: any) {
+    const l = await this.notificationService.getContextualLogger(body, req);
 
     l.info(
       { webhookType: body.typeWebhook, payload: body },
@@ -109,5 +117,10 @@ export class NotificationController {
     }
 
     return { ok: true };
+  }
+
+  @Get('/debug-sentry')
+  getError() {
+    throw new Error('My first Sentry error!');
   }
 }

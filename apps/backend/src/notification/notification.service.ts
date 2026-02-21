@@ -305,7 +305,7 @@ export class NotificationService {
     return status === 'authorized';
   }
 
-  async getContextualLogger(body: GreenApiWebhook): Promise<Logger> {
+  async getContextualLogger(body: GreenApiWebhook, req?: any): Promise<Logger> {
     let traceId: string | null = null;
 
     if (
@@ -335,6 +335,9 @@ export class NotificationService {
       traceId = lastNotification?.traceId ?? null;
     }
 
+    if (traceId && req) {
+      req['traceId'] = traceId;
+    }
     return traceId
       ? this.logger.logger.child({ traceId, webhookType: body.typeWebhook })
       : (this.logger.logger as unknown as Logger);

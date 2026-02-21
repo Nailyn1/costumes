@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { SentryModule } from '@sentry/nestjs/setup';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -15,6 +16,7 @@ import { loggerConfigFactory } from './config/logger.config';
 
 @Module({
   imports: [
+    SentryModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ['.env', 'apps/backend/.env'],
