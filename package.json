@@ -11,6 +11,7 @@
   "scripts": {
     "dev:shared": "tsc -b shared --watch",
     "dev:backend": "nest start backend --watch",
+    "dev:frontend": "npm run dev -w crm-frontend",
     "start:dev": "concurrently \"npm run dev:shared\" \"npm run dev:backend\"",
     "build": "nest build backend"
   },

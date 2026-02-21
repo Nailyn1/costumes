@@ -3,7 +3,7 @@ import type {
   LoginRequestDto,
   LoginSuccessResponseDto,
   RefreshSuccessResponseDto,
-} from "@project/shared";
+} from "@costumes/shared";
 
 export const authService = {
   login(data: LoginRequestDto): Promise<LoginSuccessResponseDto> {

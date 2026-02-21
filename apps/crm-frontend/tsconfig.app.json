@@ -10,8 +10,8 @@
 
     "baseUrl": ".",
     "paths": {
-      "@project/shared": ["../../shared/src/index.ts"],
-      "@project/shared/*": ["../../shared/src/*"]
+      "@costumes/shared": ["../../shared/src/index.ts"],
+      "@costumes/shared/*": ["../../shared/src/*"]
     },
 
     /* Bundler mode */
