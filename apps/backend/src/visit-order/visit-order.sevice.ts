@@ -30,13 +30,19 @@ import {
   VisitIssueRequestDto,
 } from '@costumes/shared';
 import { OrderStatus, Prisma } from '../prisma/generated/client';
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 
+interface PinoLoggerWithId {
+  id?: string;
+}
 @Injectable()
 export class VisitOrderService {
   constructor(
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
     @InjectQueue('notifications') private readonly notificationQueue: Queue,
     private readonly prisma: PrismaService,
+    @InjectPinoLogger(VisitOrderService.name)
+    private readonly logger: PinoLogger,
   ) {}
 
   private parseDateTime(dateStr: string, timeStr: string): Date {
@@ -134,6 +140,9 @@ export class VisitOrderService {
         });
         if (!client)
           throw new NotFoundException(`Клиент с ID ${data.clientId} не найден`);
+        const traceId =
+          (this.logger.logger as unknown as PinoLoggerWithId).id ??
+          crypto.randomUUID();
 
         const visit = await tx.visit.create({
           data: {
@@ -156,6 +165,7 @@ export class VisitOrderService {
               create: {
                 type: 'booking_confirmation',
                 status: 'pending',
+                traceId: traceId,
               },
             },
           },
@@ -178,6 +188,7 @@ export class VisitOrderService {
       const pendingNotification = result.notifications[0];
       await this.notificationQueue.add('send-whatsapp', {
         notificationId: pendingNotification.id,
+        traceId: pendingNotification.traceId,
       });
 
       const preparedData = {

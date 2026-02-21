@@ -186,6 +186,7 @@ export type DepositScalarFieldEnum = (typeof DepositScalarFieldEnum)[keyof typeo
 export const NotificationScalarFieldEnum = {
   id: 'id',
   visitId: 'visitId',
+  traceId: 'traceId',
   externalId: 'externalId',
   type: 'type',
   status: 'status',

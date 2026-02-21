@@ -1,38 +1,58 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { NotificationService } from './notification.service';
-import { Logger } from '@nestjs/common';
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 
 @Processor('notifications')
 export class NotificationProcessor extends WorkerHost {
-  private readonly logger = new Logger(NotificationProcessor.name);
-
-  constructor(private readonly notificationService: NotificationService) {
+  constructor(
+    private readonly notificationService: NotificationService,
+    @InjectPinoLogger(NotificationProcessor.name)
+    private readonly logger: PinoLogger,
+  ) {
     super();
   }
 
   async process(
-    job: Job<{ notificationId: number }, any, string>,
+    job: Job<{ notificationId: number; traceId: string }, any, string>,
   ): Promise<any> {
-    const isReady = await this.notificationService.isInstanceAuthorized();
+    const { traceId, notificationId } = job.data;
 
-    this.logger.log(`Processing job ${job.id} of type ${job.name}...`);
+    const childLogger = this.logger.logger.child({
+      traceId,
+      jobId: job.id,
+      context: NotificationProcessor.name,
+    });
+
+    const isReady = await this.notificationService.isInstanceAuthorized();
+    childLogger.info(
+      { jobId: job.id, jobName: job.name, notificationId },
+      'Processing job',
+    );
+
     if (!isReady) {
-      this.logger.warn(
-        `Job ${job.id} postponed: WhatsApp instance is not authorized.`,
+      childLogger.warn(
+        { jobId: job.id },
+        'Job postponed: WhatsApp instance is not authorized',
       );
       throw new Error('WhatsApp API not authorized');
     }
 
-    switch (job.name) {
-      case 'send-whatsapp':
-        return await this.notificationService.processWhatsAppSending(
-          job.data.notificationId,
-        );
+    try {
+      switch (job.name) {
+        case 'send-whatsapp':
+          return await this.notificationService.processWhatsAppSending(
+            notificationId,
+            childLogger,
+          );
 
-      default:
-        this.logger.warn(`Unknown job name: ${job.name}`);
-        break;
+        default:
+          childLogger.warn({ jobName: job.name }, 'Unknown job name');
+          break;
+      }
+    } catch (error) {
+      childLogger.error(error, 'Failed to process notification job');
+      throw error;
     }
   }
 }
