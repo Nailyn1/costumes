@@ -1,4 +1,4 @@
-import { authApiClient } from "src/services/apiClient";
+import { apiClient } from "src/services/apiClient";
 import type {
   LoginRequestDto,
   LoginSuccessResponseDto,
@@ -7,15 +7,15 @@ import type {
 
 export const authService = {
   login(data: LoginRequestDto): Promise<LoginSuccessResponseDto> {
-    return authApiClient.AuthOperations_login(data);
+    return apiClient.AuthOperations_login(data);
   },
 
   logout() {
-    return authApiClient.AuthOperations_logout(undefined);
+    return apiClient.AuthOperations_logout(undefined);
   },
 
   refresh(): Promise<RefreshSuccessResponseDto> {
-    return authApiClient.AuthOperations_refresh(undefined, {
+    return apiClient.AuthOperations_refresh(undefined, {
       headers: {
         Cookie: "",
       },

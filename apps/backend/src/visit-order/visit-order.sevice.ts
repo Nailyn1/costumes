@@ -29,7 +29,7 @@ import {
   visitCompleteReturnResponseDto,
   VisitIssueRequestDto,
 } from '@costumes/shared';
-import { OrderStatus, Prisma } from '../prisma/generated/client';
+import { DepositType, OrderStatus, Prisma } from '../prisma/generated/client';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 
 interface PinoLoggerWithId {
@@ -368,7 +368,7 @@ export class VisitOrderService {
         await tx.deposit.create({
           data: {
             visitId: visitId,
-            type: deposit.type,
+            type: deposit.type as DepositType,
             amount: deposit.type === 'cash' ? (deposit.amount ?? 0) : 0,
             returned: false,
           },

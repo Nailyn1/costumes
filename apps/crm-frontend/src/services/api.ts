@@ -13,6 +13,4 @@ const commonConfig = {
 
 export const api = axios.create(commonConfig);
 
-export const authApi = axios.create(commonConfig);
-
 setupInterceptors(api);

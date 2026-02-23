@@ -1,6 +1,7 @@
 import type { AxiosInstance, InternalAxiosRequestConfig } from "axios";
 import { useAuthStore } from "src/stores/auth.store";
 import { authService } from "src/features/auth/services/auth.service";
+import { notifications } from "@mantine/notifications";
 
 export const setupInterceptors = (instance: AxiosInstance) => {
   instance.interceptors.request.use(
@@ -11,18 +12,38 @@ export const setupInterceptors = (instance: AxiosInstance) => {
         config.headers.Authorization = `Bearer ${token}`;
       }
 
+      const method = config.method?.toLowerCase();
+      if (
+        ["post", "put", "patch"].includes(method || "") &&
+        !config.headers["X-Idempotency-Key"]
+      ) {
+        config.headers["X-Idempotency-Key"] = crypto.randomUUID();
+      }
+
       return config;
     },
-    (error) => Promise.reject(error)
+    (error) => Promise.reject(error),
   );
 
   instance.interceptors.response.use(
     (response) => response,
     async (error) => {
       const originalRequest = error.config;
+      const status = error.response?.status;
+      const isAuthPath = originalRequest?.url?.includes("/auth/");
+
+      console.log(
+        "Status:",
+        status,
+        "URL:",
+        originalRequest?.url,
+        "Is Login:",
+        isAuthPath,
+      );
 
       if (
-        error.response?.status === 401 &&
+        status === 401 &&
+        !isAuthPath &&
         originalRequest &&
         !originalRequest._retry
       ) {
@@ -44,7 +65,21 @@ export const setupInterceptors = (instance: AxiosInstance) => {
         }
       }
 
+      if (error.response?.status !== 401 || isAuthPath) {
+        const serverMessage = error.response?.data?.message;
+        const errorMessage = Array.isArray(serverMessage)
+          ? serverMessage[0]
+          : serverMessage || "Что-то пошло не так";
+
+        notifications.show({
+          title: "Ошибка",
+          message: errorMessage,
+          color: "red",
+          autoClose: 5000,
+        });
+      }
+
       return Promise.reject(error);
-    }
+    },
   );
 };
