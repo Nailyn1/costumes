@@ -7,37 +7,32 @@ import {
   Stack,
   Paper,
   Divider,
-  ActionIcon,
   NumberInput,
   Select,
   SimpleGrid,
   Box,
 } from "@mantine/core";
 import { DateInput, TimeInput } from "@mantine/dates";
-import { IconPlus, IconUserPlus, IconTrash } from "@tabler/icons-react";
+import { useForm } from "@mantine/form";
+import { IconPlus, IconTrash } from "@tabler/icons-react";
+import { ClientSelector } from "src/features/clients/components/clientSelector";
 
 export function CreateBookingPage() {
+  const form = useForm({
+    initialValues: {
+      clientId: null,
+      // ... другие поля
+    },
+    validate: {
+      clientId: (value) => (!value ? "Выберите клиента" : null),
+    },
+  });
   return (
     <Stack gap="xl" pb={100}>
       <Title order={2}>Создание брони</Title>
 
       {/* 1. Блок клиента */}
-      <Paper withBorder p="md" radius="md">
-        <Group justify="space-between" mb="xs">
-          <Text fw={600}>1. Клиент</Text>
-        </Group>
-        <Group grow align="flex-end">
-          <Select
-            label="Поиск клиента"
-            placeholder="Имя или телефон"
-            data={["Иван Иванов", "Мария Петрова"]}
-            searchable
-          />
-          <ActionIcon variant="light" size="36px" color="blue">
-            <IconUserPlus size="1.2rem" />
-          </ActionIcon>
-        </Group>
-      </Paper>
+      <ClientSelector {...form.getInputProps("clientId")} />
 
       {/* 2. Дата и время визита */}
       <Paper withBorder p="md" radius="md">

@@ -32,15 +32,6 @@ export const setupInterceptors = (instance: AxiosInstance) => {
       const status = error.response?.status;
       const isAuthPath = originalRequest?.url?.includes("/auth/");
 
-      console.log(
-        "Status:",
-        status,
-        "URL:",
-        originalRequest?.url,
-        "Is Login:",
-        isAuthPath,
-      );
-
       if (
         status === 401 &&
         !isAuthPath &&
