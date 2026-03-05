@@ -10,7 +10,7 @@ import {
   UpdateClientRequestDto,
   UpdateClientResponseDto,
 } from '@costumes/shared';
-import { CreateClientResponse } from './dto/client-child.dto';
+
 @Injectable()
 export class ClientChildService {
   constructor(private readonly prisma: PrismaService) {}
@@ -129,7 +129,7 @@ export class ClientChildService {
       });
   }
 
-  async searchClients(query: string): Promise<CreateClientResponse[]> {
+  async searchClients(query: string): Promise<CreateClientResponseDto[]> {
     if (!query || query.length < 2) return [];
 
     let normalizedQuery = query;
@@ -159,7 +159,7 @@ export class ClientChildService {
         name: true,
         phone: true,
         children: {
-          select: { name: true },
+          select: { name: true, id: true },
         },
       },
       take: 10,
@@ -169,7 +169,10 @@ export class ClientChildService {
       clientId: client.id,
       name: client.name,
       phone: client.phone,
-      children: client.children.map((child) => child.name),
+      children: client.children?.map((child) => ({
+        childId: child.id,
+        name: child.name,
+      })),
     }));
   }
 }
