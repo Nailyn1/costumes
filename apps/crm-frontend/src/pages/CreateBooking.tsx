@@ -12,43 +12,50 @@ import {
   SimpleGrid,
   Box,
 } from "@mantine/core";
-import { DateInput, TimeInput } from "@mantine/dates";
 import { useForm } from "@mantine/form";
 import { IconPlus, IconTrash } from "@tabler/icons-react";
+import { useEffect, useRef } from "react";
 import { ClientSelector } from "src/features/clients/components/clientSelector";
+import { VisitSelector } from "src/features/visits/components/VisitSelector";
+import type { VisitData } from "src/features/visits/types/visitDateTypes";
+
+interface BookingFormValues extends VisitData {
+  clientId: string | null;
+}
 
 export function CreateBookingPage() {
-  const form = useForm({
+  const renderCount = useRef(0);
+
+  useEffect(() => {
+    renderCount.current += 1;
+    console.log(`Рендер #${renderCount.current}`);
+  });
+  const form = useForm<BookingFormValues>({
     initialValues: {
       clientId: null,
-      // ... другие поля
+      startDateTime: null,
+      endDateTime: null,
+      issueTimeFrom: "18:30",
+      issueTimeTo: "19:30",
+      returnTimeUntil: "18:00",
     },
     validate: {
       clientId: (value) => (!value ? "Выберите клиента" : null),
+      startDateTime: (value) => (!value ? "Укажите дату выдачи" : null),
+      endDateTime: (value) => (!value ? "Укажите дату возврата" : null),
     },
   });
   return (
     <Stack gap="xl" pb={100}>
       <Title order={2}>Создание брони</Title>
 
-      {/* 1. Блок клиента */}
       <ClientSelector {...form.getInputProps("clientId")} />
 
-      {/* 2. Дата и время визита */}
-      <Paper withBorder p="md" radius="md">
-        <Text fw={600} mb="xs">
-          2. Дата и время визита
-        </Text>
-        <SimpleGrid cols={{ base: 1, sm: 3 }}>
-          <DateInput label="Дата выдачи" placeholder="11.12.2025" locale="ru" />
-          <TimeInput label="Забрать с" />
-          <TimeInput label="Вернуть до" />
-        </SimpleGrid>
-        <Text size="xs" c="dimmed" mt="sm">
-          Автоматически: Будний день (18:30 – 19:30)
-        </Text>
-      </Paper>
-
+      <VisitSelector
+        values={form.values}
+        errors={form.errors}
+        onChange={(newValues) => form.setValues(newValues)}
+      />
       {/* 3. Дети и костюмы (Повторяющийся блок) */}
       <Box>
         <Text fw={600} mb="xs">
