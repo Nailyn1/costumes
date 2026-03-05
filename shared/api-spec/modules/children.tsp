@@ -10,6 +10,10 @@ namespace CostumeApp.Children;
 @pattern("^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\\s-]+$")
 scalar ChildName extends string;
 
+model Child {
+  childId: int32;
+  name: string;
+}
 model ChildResponse {
   childId: int32;
   name: ChildName;

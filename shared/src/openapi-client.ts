@@ -60,6 +60,9 @@ const Clients_CreateClientRequest = z
     phone: Clients_PhoneString.regex(/^\+7\d{10}$/),
   })
   .passthrough();
+const Children_Child = z
+  .object({ childId: z.number().int(), name: z.string() })
+  .passthrough();
 const Clients_Client = z
   .object({
     clientId: z.number().int(),
@@ -67,7 +70,7 @@ const Clients_Client = z
       /^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\s-]+$/
     ),
     phone: Clients_PhoneString.regex(/^\+7\d{10}$/),
-    children: z.array(z.string()).optional(),
+    children: z.array(Children_Child).optional(),
   })
   .passthrough();
 const Clients_UpdateClientRequest = z
@@ -401,6 +404,7 @@ export const schemas = {
   Clients_ClientName,
   Clients_PhoneString,
   Clients_CreateClientRequest,
+  Children_Child,
   Clients_Client,
   Clients_UpdateClientRequest,
   Costumes_CreateCostumeRequest,
