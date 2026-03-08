@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CreateChildRequestDto,
@@ -77,6 +81,15 @@ export class ClientChildService {
   async createClient(
     data: CreateClientRequestDto,
   ): Promise<CreateClientResponseDto> {
+    const existingClient = await this.prisma.client.findFirst({
+      where: {
+        phone: data.phone,
+        deletedAt: null,
+      },
+    });
+    if (existingClient) {
+      throw new BadRequestException('Client with this phone already exists');
+    }
     const client = await this.prisma.client.create({
       data: { name: data.name, phone: data.phone },
     });

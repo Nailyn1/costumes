@@ -252,11 +252,11 @@ export type ClientOrderByWithRelationInput = {
 
 export type ClientWhereUniqueInput = Prisma.AtLeast<{
   id?: number
-  phone?: string
   AND?: Prisma.ClientWhereInput | Prisma.ClientWhereInput[]
   OR?: Prisma.ClientWhereInput[]
   NOT?: Prisma.ClientWhereInput | Prisma.ClientWhereInput[]
   name?: Prisma.StringFilter<"Client"> | string
+  phone?: Prisma.StringFilter<"Client"> | string
   notes?: Prisma.StringNullableFilter<"Client"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Client"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Client"> | Date | string
@@ -264,7 +264,7 @@ export type ClientWhereUniqueInput = Prisma.AtLeast<{
   children?: Prisma.ChildListRelationFilter
   visits?: Prisma.VisitListRelationFilter
   orders?: Prisma.OrderListRelationFilter
-}, "id" | "phone">
+}, "id">
 
 export type ClientOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
