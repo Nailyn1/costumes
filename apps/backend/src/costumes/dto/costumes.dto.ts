@@ -4,7 +4,7 @@ import {
   CostumesSearchResponseSchema,
   CreateCostumesRequestSchema,
   CreateUpdateCostumesResponseSchema,
-  UpdateChildRequestSchema,
+  UpdateCostumesRequestSchema,
 } from '@costumes/shared';
 import { createZodDto } from '../../common/zod-dto';
 
@@ -15,7 +15,7 @@ export class CreateCostumesResponse extends createZodDto(
   CreateUpdateCostumesResponseSchema,
 ) {}
 export class UpdateCostumesRequest extends createZodDto(
-  UpdateChildRequestSchema,
+  UpdateCostumesRequestSchema,
 ) {}
 export class CostumesSearchResponse extends createZodDto(
   CostumesSearchResponseSchema,
