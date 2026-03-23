@@ -44,10 +44,8 @@ export function CreateBookingPage() {
     <Stack gap="xl" pb={100}>
       <Title order={2}>Создание брони</Title>
 
-      {/* 1. Выбор клиента */}
       <ClientSelector {...form.getInputProps("clientId")} />
 
-      {/* 2. Параметры визита (даты/время) */}
       <VisitSelector
         values={form.values}
         errors={form.errors}
@@ -56,7 +54,6 @@ export function CreateBookingPage() {
 
       <OrderList form={form} clientId={Number(form.values.clientId) || null} />
 
-      {/* 4. Итоговая панель */}
       <VisitSummaryPanel form={form} />
     </Stack>
   );

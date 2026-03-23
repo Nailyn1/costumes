@@ -26,25 +26,54 @@ export const VisitSelector = memo(function VisitSelector({
 
   const combinedErrors = { ...externalErrors, ...validationErrors };
 
+  const toISODateString = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
   const handleFieldChange = useCallback(
     <K extends keyof VisitData>(key: K, value: VisitData[K]) => {
-      const newValues: VisitData = { ...values, [key]: value };
-      if (key === "startDateTime" && value instanceof Date) {
-        if (newValues.endDateTime && value > newValues.endDateTime) {
+      let stringValue: string | null = null;
+
+      if (value instanceof Date) {
+        stringValue = toISODateString(value);
+      } else {
+        stringValue = value as string | null;
+      }
+
+      const newValues: VisitData = { ...values, [key]: stringValue };
+
+      if (key === "startDateTime" && stringValue) {
+        const dateObj = new Date(stringValue);
+
+        if (!isNaN(dateObj.getTime())) {
+          const nextDay = new Date(dateObj);
+          nextDay.setDate(nextDay.getDate() + 1);
+          newValues.endDateTime = toISODateString(nextDay);
+        }
+      }
+
+      if (key === "endDateTime" && stringValue) {
+        const currentEnd = new Date(stringValue);
+        const currentStart = values.startDateTime
+          ? new Date(values.startDateTime)
+          : null;
+
+        if (
+          currentStart &&
+          !isNaN(currentEnd.getTime()) &&
+          currentEnd < currentStart
+        ) {
           newValues.endDateTime = null;
         }
       }
 
-      if (key === "endDateTime" && value instanceof Date) {
-        if (newValues.startDateTime && value < newValues.startDateTime) {
-          newValues.endDateTime = null;
-        }
-      }
       onChange(newValues);
     },
     [values, onChange],
   );
-
   return (
     <Paper withBorder p="md" radius="md">
       <Stack gap="xl">
