@@ -2,18 +2,23 @@
 import { Paper, Stack, Button } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { useMemo } from "react";
-import { useVisitPreviewCode } from "../hooks/useVisits";
+import { useCreateVisit, useVisitPreviewCode } from "../hooks/useVisits";
 import { VisitPreviewModal } from "./VisitPreviewModal";
 import type { UseFormReturnType } from "@mantine/form";
 import type { BookingFormValues } from "../types/visitTypes";
 
 interface VisitSummaryPanelProps {
   form: UseFormReturnType<BookingFormValues>;
+  onSuccessfullyCreated?: () => void;
 }
 
-export function VisitSummaryPanel({ form }: VisitSummaryPanelProps) {
+export function VisitSummaryPanel({
+  form,
+  onSuccessfullyCreated,
+}: VisitSummaryPanelProps) {
   const [opened, { open, close }] = useDisclosure(false);
   const { mutate: getCode, isPending } = useVisitPreviewCode();
+  const { mutate: createVisit, isPending: isCreating } = useCreateVisit();
 
   const totals = useMemo(() => {
     return form.values.orders.reduce(
@@ -39,6 +44,38 @@ export function VisitSummaryPanel({ form }: VisitSummaryPanelProps) {
     });
   };
 
+  const handleFinalSubmit = () => {
+    const { values } = form;
+    const payload = {
+      visitCode: values.visitCode || "",
+      startDateTime: values.startDateTime || "",
+      endDateTime: values.endDateTime || "",
+      issueTimeFrom: values.issueTimeFrom || "",
+      issueTimeTo: values.issueTimeTo || "",
+      returnTimeUntil: values.returnTimeUntil || "",
+      clientId: Number(values.clientId),
+      notes: values.notes || "",
+      orders: values.orders.map((order) => ({
+        childId: Number(order.childId),
+        costumeId: Number(order.costumeId),
+        rentPrice: Number(order.rentPrice) || 0,
+        prepaymentAmount: Number(order.prepaymentAmount) || 0,
+        notes: order.notes || "",
+      })),
+    };
+
+    createVisit(payload, {
+      onSuccess: () => {
+        if (onSuccessfullyCreated) {
+          onSuccessfullyCreated();
+        } else {
+          form.reset();
+        }
+        close();
+      },
+    });
+  };
+
   return (
     <>
       <Paper withBorder p="xl" radius="md" shadow="sm" mt="xl" bg="white">
@@ -55,6 +92,8 @@ export function VisitSummaryPanel({ form }: VisitSummaryPanelProps) {
         form={form}
         totalRent={totals.rent}
         totalPrepayment={totals.prepayment}
+        onSubmit={handleFinalSubmit}
+        isSubmitting={isCreating}
       />
     </>
   );

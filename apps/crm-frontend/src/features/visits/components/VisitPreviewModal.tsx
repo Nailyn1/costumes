@@ -24,6 +24,8 @@ interface VisitPreviewModalProps {
   form: UseFormReturnType<BookingFormValues>;
   totalRent: number;
   totalPrepayment: number;
+  onSubmit: () => void;
+  isSubmitting: boolean;
 }
 
 export function VisitPreviewModal({
@@ -32,6 +34,8 @@ export function VisitPreviewModal({
   form,
   totalRent,
   totalPrepayment,
+  onSubmit,
+  isSubmitting,
 }: VisitPreviewModalProps) {
   const queryClient = useQueryClient();
   const { values } = form;
@@ -184,7 +188,8 @@ export function VisitPreviewModal({
           fullWidth
           color="blue"
           mt="md"
-          onClick={() => console.log("Final Submit")}
+          onClick={onSubmit}
+          loading={isSubmitting}
         >
           Подтвердить и создать
         </Button>

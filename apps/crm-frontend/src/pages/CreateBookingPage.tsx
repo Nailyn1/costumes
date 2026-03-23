@@ -1,5 +1,6 @@
 import { Title, Stack } from "@mantine/core";
 import { useForm } from "@mantine/form";
+import { useState } from "react";
 import { ClientSelector } from "src/features/clients-children/components/clients/clientSelector";
 import { OrderList } from "src/features/visits/components/OrderList";
 import { VisitSelector } from "src/features/visits/components/VisitSelector";
@@ -7,6 +8,7 @@ import { VisitSummaryPanel } from "src/features/visits/components/VisitSummaryPa
 import type { BookingFormValues } from "src/features/visits/types/visitTypes";
 
 export function CreateBookingPage() {
+  const [formKey, setFormKey] = useState(0);
   const form = useForm<BookingFormValues>({
     initialValues: {
       clientId: null,
@@ -40,8 +42,14 @@ export function CreateBookingPage() {
       },
     },
   });
+
+  const handleReset = () => {
+    form.reset();
+    setFormKey((prev) => prev + 1); // Меняем ключ -> все селекторы перерисуются с нуля
+  };
+
   return (
-    <Stack gap="xl" pb={100}>
+    <Stack key={formKey} gap="xl" pb={100}>
       <Title order={2}>Создание брони</Title>
 
       <ClientSelector {...form.getInputProps("clientId")} />
@@ -54,7 +62,7 @@ export function CreateBookingPage() {
 
       <OrderList form={form} clientId={Number(form.values.clientId) || null} />
 
-      <VisitSummaryPanel form={form} />
+      <VisitSummaryPanel form={form} onSuccessfullyCreated={handleReset} />
     </Stack>
   );
 }
