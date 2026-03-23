@@ -11,6 +11,7 @@ import {
 import type { UseFormReturnType } from "@mantine/form";
 import { IconTrash } from "@tabler/icons-react";
 import { ChildSelector } from "src/features/clients-children/components/children/ChildSelector";
+import { CostumeSelector } from "src/features/costumes/components/costumeSelector";
 import type { BookingFormValues } from "src/pages/CreateBookingPage";
 
 interface OrderBlockProps {
@@ -40,17 +41,17 @@ export function OrderBlock({
       <Divider variant="dashed" mb="md" />
 
       <Stack gap="sm">
-        {/* Наш умный селектор ребенка */}
         <ChildSelector
           clientId={clientId}
           {...form.getInputProps(`orders.${index}.childId`)}
         />
 
-        {/* Селектор костюма (пока заглушка) */}
-        <TextInput
-          label="Костюм"
-          placeholder="Название костюма"
+        <CostumeSelector
           {...form.getInputProps(`orders.${index}.costumeId`)}
+          startDateTime={form.values.startDateTime}
+          endDateTime={form.values.endDateTime}
+          issueTimeFrom={form.values.issueTimeFrom || ""}
+          returnTimeUntil={form.values.returnTimeUntil || ""}
         />
 
         <Group grow>

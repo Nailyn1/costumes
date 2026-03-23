@@ -60,6 +60,7 @@ export function CreateBookingPage() {
     0,
   );
 
+  console.log("Data", form.values.startDateTime, form.values.issueTimeFrom);
   return (
     <Stack gap="xl" pb={100}>
       <Title order={2}>Создание брони</Title>
