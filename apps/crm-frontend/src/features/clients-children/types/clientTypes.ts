@@ -1,7 +1,12 @@
+export interface SelectedChild {
+  childId: number;
+  name: string;
+}
 export interface SelectedClientData {
   id: string;
   name: string;
   phone: string;
+  children?: SelectedChild[];
 }
 
 export interface ClientSearchFieldProps {

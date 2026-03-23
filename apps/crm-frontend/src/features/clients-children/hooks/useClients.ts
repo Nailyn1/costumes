@@ -4,10 +4,14 @@ import type {
   CreateClientRequestDto,
   UpdateClientRequestDto,
 } from "@costumes/shared";
+import type { SelectedClientData } from "../types/clientTypes";
 
 export const clientKeys = {
   all: ["clients"] as const,
-  search: (query: string) => [...clientKeys.all, "search", query] as const,
+  lists: () => [...clientKeys.all, "list"] as const,
+  search: (query: string) => [...clientKeys.lists(), "search", query] as const,
+  detail: (id: number | string) =>
+    [...clientKeys.all, "detail", id.toString()] as const,
 };
 
 export function useSearchClients(searchQuery: string) {
@@ -26,8 +30,12 @@ export function useCreateClient() {
   return useMutation({
     mutationFn: (data: CreateClientRequestDto) =>
       clientsService.createClient(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: clientKeys.all });
+    onSuccess: (newClient) => {
+      queryClient.invalidateQueries({ queryKey: clientKeys.lists() });
+      queryClient.setQueryData(
+        clientKeys.detail(newClient.clientId),
+        newClient,
+      );
     },
   });
 }
@@ -43,8 +51,12 @@ export function useUpdateClient() {
       clientId: number;
       data: UpdateClientRequestDto;
     }) => clientsService.updateClient(data, clientId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: clientKeys.all });
+    onSuccess: (updatedClient) => {
+      queryClient.invalidateQueries({ queryKey: clientKeys.lists() });
+      queryClient.setQueryData(
+        clientKeys.detail(updatedClient.clientId),
+        updatedClient,
+      );
     },
   });
 }
@@ -55,8 +67,19 @@ export function useDeleteClient() {
   return useMutation({
     mutationFn: (clientId: number) => clientsService.deleteClient(clientId),
 
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: clientKeys.all });
+    onSuccess: (_, clientId) => {
+      queryClient.invalidateQueries({ queryKey: clientKeys.lists() });
+
+      queryClient.removeQueries({ queryKey: clientKeys.detail(clientId) });
     },
+  });
+}
+
+export function useClient(clientId: number | string | null) {
+  return useQuery<SelectedClientData | null>({
+    queryKey: clientKeys.detail(clientId?.toString() || ""),
+    enabled: !!clientId,
+    staleTime: Infinity,
+    queryFn: () => null,
   });
 }
