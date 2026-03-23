@@ -1,6 +1,6 @@
 import { SimpleGrid, Text, Stack } from "@mantine/core";
 import { TimeInput } from "@mantine/dates";
-import type { VisitBlockProps } from "../types/visitDateTypes";
+import type { VisitBlockProps } from "../types/visitTypes";
 import { SmartDateInput } from "./SmartDateInput";
 
 export function VisitEndBlock({ values, onChange, errors }: VisitBlockProps) {

@@ -1,8 +1,8 @@
-import { Stack, Button, Divider } from "@mantine/core";
+import { Stack, Button, Divider, Text } from "@mantine/core";
 import { IconPlus } from "@tabler/icons-react";
 import { OrderBlock } from "./OrderBlock";
-import type { BookingFormValues } from "src/pages/CreateBookingPage"; // Путь к твоим типам
 import type { UseFormReturnType } from "@mantine/form";
+import type { BookingFormValues } from "../types/visitTypes";
 
 interface OrderListProps {
   form: UseFormReturnType<BookingFormValues>;
@@ -37,7 +37,15 @@ export function OrderList({ form, clientId }: OrderListProps) {
 
   return (
     <Stack gap="md">
-      <Divider label="Заказы" labelPosition="center" />
+      <Divider
+        label={
+          <Text size="md" fw={700}>
+            Заказы
+          </Text>
+        }
+        labelPosition="center"
+        size="md"
+      />
 
       {form.values.orders.map((_, index) => (
         <OrderBlock

@@ -2,7 +2,7 @@ import { useCallback, memo } from "react";
 import { Paper, Stack, Text, Divider } from "@mantine/core";
 import { VisitStartBlock } from "./VisitStartBlock";
 import { VisitEndBlock } from "./VisitEndBlock";
-import type { VisitData, VisitSelectorProps } from "../types/visitDateTypes";
+import type { VisitData, VisitSelectorProps } from "../types/visitTypes";
 
 export const VisitSelector = memo(function VisitSelector({
   values,

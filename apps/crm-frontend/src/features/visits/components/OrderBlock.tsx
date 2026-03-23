@@ -12,7 +12,7 @@ import type { UseFormReturnType } from "@mantine/form";
 import { IconTrash } from "@tabler/icons-react";
 import { ChildSelector } from "src/features/clients-children/components/children/ChildSelector";
 import { CostumeSelector } from "src/features/costumes/components/costumeSelector";
-import type { BookingFormValues } from "src/pages/CreateBookingPage";
+import type { BookingFormValues } from "../types/visitTypes";
 
 interface OrderBlockProps {
   index: number;

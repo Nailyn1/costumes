@@ -8,6 +8,13 @@ export interface VisitData {
   returnTimeUntil: string | undefined;
 }
 
+export interface BookingFormValues extends VisitData {
+  clientId: string | null;
+  visitCode: string;
+  notes: string;
+  orders: VisitOrder[];
+}
+
 export interface VisitBlockProps {
   values: VisitData;
   onChange: <K extends keyof VisitData>(key: K, value: VisitData[K]) => void;

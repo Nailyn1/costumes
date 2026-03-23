@@ -7,6 +7,7 @@ import { ChildSearchField } from "./ChildSearchField";
 import { SelectedChildCard } from "./SelectedChildCard";
 import type { SelectedChild } from "../../types/clientTypes";
 import { ChildCreateForm } from "./ChildCreateForm";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface ChildSelectorProps {
   clientId: number | null;
@@ -22,6 +23,7 @@ export const ChildSelector = memo(function ChildSelector({
   error,
 }: ChildSelectorProps) {
   const { data: client } = useClient(clientId);
+  const queryClient = useQueryClient();
 
   const selectedChild = useMemo(() => {
     if (!client || !client.children || !value) {
@@ -33,9 +35,15 @@ export const ChildSelector = memo(function ChildSelector({
 
   const handleSelect = useCallback(
     (child: SelectedChild | null) => {
+      if (child) {
+        queryClient.setQueryData(
+          ["children", "detail", child.childId.toString()],
+          child,
+        );
+      }
       onChange(child?.childId || null);
     },
-    [onChange],
+    [onChange, queryClient],
   );
 
   const handleClear = useCallback(() => {

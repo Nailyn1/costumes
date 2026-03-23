@@ -1,35 +1,22 @@
-import {
-  Title,
-  Text,
-  Button,
-  Group,
-  Stack,
-  Paper,
-  SimpleGrid,
-} from "@mantine/core";
+import { Title, Stack } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { ClientSelector } from "src/features/clients-children/components/clients/clientSelector";
 import { OrderList } from "src/features/visits/components/OrderList";
 import { VisitSelector } from "src/features/visits/components/VisitSelector";
-import type {
-  VisitData,
-  VisitOrder,
-} from "src/features/visits/types/visitDateTypes";
-
-export interface BookingFormValues extends VisitData {
-  clientId: string | null;
-  orders: VisitOrder[];
-}
+import { VisitSummaryPanel } from "src/features/visits/components/VisitSummaryPanel";
+import type { BookingFormValues } from "src/features/visits/types/visitTypes";
 
 export function CreateBookingPage() {
   const form = useForm<BookingFormValues>({
     initialValues: {
       clientId: null,
+      visitCode: "",
       startDateTime: null,
       endDateTime: null,
       issueTimeFrom: "18:30",
       issueTimeTo: "19:30",
       returnTimeUntil: "18:00",
+      notes: "",
       orders: [
         {
           childId: null,
@@ -46,21 +33,13 @@ export function CreateBookingPage() {
       endDateTime: (value) => (!value ? "Укажите дату возврата" : null),
       orders: {
         childId: (value) => (!value ? "Выберите ребенка" : null),
+        costumeId: (value) => (!value ? "Выберите костюм" : null),
+        rentPrice: (value) => (!value ? "Введите сумму аренды" : null),
+        prepaymentAmount: (value) =>
+          !value ? "Введите сумму предоплаты" : null,
       },
     },
   });
-
-  const totalRent = form.values.orders.reduce(
-    (sum, order) => sum + (Number(order.rentPrice) || 0),
-    0,
-  );
-
-  const totalPrepayment = form.values.orders.reduce(
-    (sum, order) => sum + (Number(order.prepaymentAmount) || 0),
-    0,
-  );
-
-  console.log("Data", form.values);
   return (
     <Stack gap="xl" pb={100}>
       <Title order={2}>Создание брони</Title>
@@ -78,37 +57,7 @@ export function CreateBookingPage() {
       <OrderList form={form} clientId={Number(form.values.clientId) || null} />
 
       {/* 4. Итоговая панель */}
-      <Paper withBorder p="xl" radius="md" shadow="md" pos="sticky" bottom={20}>
-        <Stack gap="xs">
-          <Group justify="space-between">
-            <Text fw={700} size="lg">
-              Итого по визиту:
-            </Text>
-            <Stack gap={0} align="flex-end">
-              <Text size="xl" fw={800} c="blue">
-                {totalRent.toLocaleString()} ₸
-              </Text>
-              <Text size="xs" c="dimmed">
-                Всего предоплаты: {totalPrepayment.toLocaleString()} ₸
-              </Text>
-            </Stack>
-          </Group>
-
-          <SimpleGrid cols={2} mt="md">
-            <Button
-              size="lg"
-              variant="light"
-              color="gray"
-              onClick={() => console.log(form.errors)}
-            >
-              Проверить
-            </Button>
-            <Button size="lg" color="blue" type="submit">
-              Подтвердить и создать
-            </Button>
-          </SimpleGrid>
-        </Stack>
-      </Paper>
+      <VisitSummaryPanel form={form} />
     </Stack>
   );
 }
