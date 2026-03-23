@@ -40,7 +40,7 @@ export interface VisitSelectorProps {
 export interface VisitOrder {
   childId: number | null;
   costumeId: number | null;
-  rentPrice: number;
-  prepaymentAmount: number;
+  rentPrice: number | undefined;
+  prepaymentAmount: number | undefined;
   notes: string;
 }

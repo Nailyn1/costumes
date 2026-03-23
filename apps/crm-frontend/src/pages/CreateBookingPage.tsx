@@ -34,8 +34,8 @@ export function CreateBookingPage() {
         {
           childId: null,
           costumeId: null,
-          rentPrice: 0,
-          prepaymentAmount: 0,
+          rentPrice: undefined,
+          prepaymentAmount: undefined,
           notes: "",
         },
       ],
@@ -60,7 +60,7 @@ export function CreateBookingPage() {
     0,
   );
 
-  console.log("Data", form.values.startDateTime, form.values.issueTimeFrom);
+  console.log("Data", form.values);
   return (
     <Stack gap="xl" pb={100}>
       <Title order={2}>Создание брони</Title>

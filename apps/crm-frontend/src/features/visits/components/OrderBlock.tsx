@@ -27,6 +27,9 @@ export function OrderBlock({
   clientId,
   onRemove,
 }: OrderBlockProps) {
+  const rentValue = form.values.orders[index].rentPrice || 0;
+  const prepaymentValue = form.values.orders[index].prepaymentAmount || 0;
+
   return (
     <Paper withBorder p="md" radius="md">
       <Group justify="space-between" mb="xs">
@@ -58,12 +61,44 @@ export function OrderBlock({
           <NumberInput
             label="Аренда"
             placeholder="0 ₸"
+            hideControls
+            suffix=" ₸"
+            thousandSeparator=" "
+            allowNegative={false}
+            decimalScale={0}
             {...form.getInputProps(`orders.${index}.rentPrice`)}
+            onFocus={(event) => {
+              const input = event.currentTarget;
+              setTimeout(() => {
+                input.select();
+              }, 0);
+            }}
+            onChange={(val) => {
+              const numericValue = typeof val === "number" ? val : undefined;
+              form.setFieldValue(`orders.${index}.rentPrice`, numericValue);
+              // Если новая аренда меньше текущей предоплаты — подрезаем предоплату
+              if (typeof val === "number" && prepaymentValue > val) {
+                form.setFieldValue(`orders.${index}.prepaymentAmount`, val);
+              }
+            }}
           />
+
           <NumberInput
             label="Предоплата"
             placeholder="0 ₸"
+            hideControls
+            suffix=" ₸"
+            thousandSeparator=" "
+            allowNegative={false}
+            decimalScale={0}
+            max={rentValue}
             {...form.getInputProps(`orders.${index}.prepaymentAmount`)}
+            onFocus={(event) => {
+              const input = event.currentTarget;
+              setTimeout(() => {
+                input.select();
+              }, 0);
+            }}
           />
         </Group>
 

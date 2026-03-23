@@ -14,8 +14,8 @@ export function OrderList({ form, clientId }: OrderListProps) {
     form.insertListItem("orders", {
       childId: null,
       costumeId: null,
-      rentPrice: 0,
-      prepaymentAmount: 0,
+      rentPrice: undefined,
+      prepaymentAmount: undefined,
       notes: "",
     });
   };
@@ -28,8 +28,8 @@ export function OrderList({ form, clientId }: OrderListProps) {
       form.setFieldValue("orders.0", {
         childId: null,
         costumeId: null,
-        rentPrice: 0,
-        prepaymentAmount: 0,
+        rentPrice: undefined,
+        prepaymentAmount: undefined,
         notes: "",
       });
     }
