@@ -1,6 +1,6 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import { LoginPage } from "src/pages/LoginPage";
-import { CreateBookingPage } from "src/pages/CreateBooking";
+import { CreateBookingPage } from "src/pages/CreateBookingPage";
 import { IssuePage } from "src/pages/IssuePage";
 import { ReturnPage } from "src/pages/ReturnPage";
 import { SchedulePage } from "src/pages/SchedulePage";

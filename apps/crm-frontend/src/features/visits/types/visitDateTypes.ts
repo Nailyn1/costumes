@@ -36,3 +36,11 @@ export interface VisitSelectorProps {
   onChange: (values: VisitData) => void;
   errors?: Partial<Record<keyof VisitData, ReactNode>>;
 }
+
+export interface VisitOrder {
+  childId: number | null;
+  costumeId: number | null;
+  rentPrice: number;
+  prepaymentAmount: number;
+  notes: string;
+}
