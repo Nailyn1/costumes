@@ -1,14 +1,12 @@
 import { memo, useCallback, useMemo } from "react";
 import { IconBabyCarriage } from "@tabler/icons-react";
-import { Stack, TextInput, Button, Text, Paper, Group } from "@mantine/core";
-import { useForm } from "@mantine/form";
-
+import { Stack, Text, Paper, Group } from "@mantine/core";
 import { SelectionManager } from "src/components/selection/SelectionManager";
 import { useClient } from "../../hooks/useClients";
-import { useCreateChild } from "../../hooks/useChild";
 import { ChildSearchField } from "./ChildSearchField";
 import { SelectedChildCard } from "./SelectedChildCard";
 import type { SelectedChild } from "../../types/clientTypes";
+import { ChildCreateForm } from "./ChildCreateForm";
 
 interface ChildSelectorProps {
   clientId: number | null;
@@ -73,6 +71,7 @@ export const ChildSelector = memo(function ChildSelector({
 
   return (
     <SelectionManager
+      variant="embedded"
       label="Ребенок"
       isSelected={!!selectedChild}
       createTitle="Добавить ребенка"
@@ -105,50 +104,3 @@ export const ChildSelector = memo(function ChildSelector({
     />
   );
 });
-
-function ChildCreateForm({
-  clientId,
-  onCreated,
-}: {
-  clientId: number;
-  onCreated: (child: SelectedChild) => void;
-}) {
-  const createMutation = useCreateChild();
-  const form = useForm({
-    initialValues: { name: "" },
-    validate: { name: (v) => (v.length < 2 ? "Слишком короткое имя" : null) },
-  });
-
-  const handleSubmit = (values: typeof form.values) => {
-    createMutation.mutate(
-      { clientId, name: values.name },
-      {
-        onSuccess: (data) => {
-          onCreated({ childId: data.childId, name: data.name });
-          form.reset();
-        },
-      },
-    );
-  };
-
-  return (
-    <form onSubmit={form.onSubmit(handleSubmit)}>
-      <Stack gap="xs">
-        <TextInput
-          label="Имя нового ребенка"
-          placeholder="Введите имя"
-          {...form.getInputProps("name")}
-          autoFocus
-        />
-        <Button
-          type="submit"
-          size="xs"
-          loading={createMutation.isPending}
-          fullWidth
-        >
-          Создать и выбрать
-        </Button>
-      </Stack>
-    </form>
-  );
-}
