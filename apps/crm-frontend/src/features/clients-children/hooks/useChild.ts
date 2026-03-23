@@ -106,6 +106,9 @@ export function useDeleteChild() {
 export function useClient(clientId: number | string | null) {
   return useQuery<SelectedClientData | null, Error>({
     queryKey: clientKeys.detail(clientId?.toString() || ""),
+    queryFn: () => {
+      return null;
+    },
     enabled: !!clientId,
     staleTime: Infinity,
     gcTime: 1000 * 60 * 60,

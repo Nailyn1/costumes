@@ -40,6 +40,7 @@ export const ClientSelector = memo(function ClientSelector({
 
   return (
     <SelectionManager
+      key={value ?? "empty"}
       label="1. Клиент"
       isSelected={!!selectedClient}
       createTitle="Создать нового клиента"

@@ -71,6 +71,7 @@ export const ChildSelector = memo(function ChildSelector({
 
   return (
     <SelectionManager
+      key={value ?? "empty"}
       variant="embedded"
       label="Ребенок"
       isSelected={!!selectedChild}
