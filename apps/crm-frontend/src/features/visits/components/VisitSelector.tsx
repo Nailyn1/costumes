@@ -3,12 +3,14 @@ import { Paper, Stack, Text, Divider } from "@mantine/core";
 import { VisitStartBlock } from "./VisitStartBlock";
 import { VisitEndBlock } from "./VisitEndBlock";
 import type { VisitData, VisitSelectorProps } from "../types/visitTypes";
+import { useQueryClient } from "@tanstack/react-query";
 
 export const VisitSelector = memo(function VisitSelector({
   values,
   onChange,
   errors: externalErrors,
 }: VisitSelectorProps) {
+  const queryClient = useQueryClient();
   const validationErrors: Partial<Record<keyof VisitData, string>> = {};
 
   if (values.startDateTime && values.endDateTime) {
@@ -70,9 +72,14 @@ export const VisitSelector = memo(function VisitSelector({
         }
       }
 
+      if (key === "startDateTime" || key === "endDateTime") {
+        queryClient.removeQueries({
+          queryKey: ["costumes", "list", "search"],
+        });
+      }
       onChange(newValues);
     },
-    [values, onChange],
+    [values, onChange, queryClient],
   );
   return (
     <Paper withBorder p="md" radius="md">

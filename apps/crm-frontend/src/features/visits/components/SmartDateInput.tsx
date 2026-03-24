@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent } from "react";
+import React, { useState, type KeyboardEvent } from "react";
 import { TextInput, ActionIcon, Popover, Box } from "@mantine/core";
 import { DatePicker } from "@mantine/dates";
 import { IconCalendar } from "@tabler/icons-react";
@@ -11,7 +11,6 @@ interface SmartDateInputProps {
   error?: React.ReactNode;
   minDate?: string | null;
 }
-
 export function SmartDateInput({
   label,
   value,
@@ -79,6 +78,10 @@ export function SmartDateInput({
     }
   };
 
+  const handleFocus = (event: React.FocusEvent<HTMLInputElement>) => {
+    event.currentTarget.select();
+  };
+
   return (
     <Box>
       <TextInput
@@ -90,6 +93,7 @@ export function SmartDateInput({
           setInputValue(e.currentTarget.value.replace(/[^0-9.]/g, ""))
         }
         onKeyDown={handleKeyDown}
+        onFocus={handleFocus}
         onBlur={() => commitChange(inputValue)}
         rightSection={
           <Popover
