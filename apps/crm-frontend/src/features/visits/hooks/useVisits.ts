@@ -30,6 +30,7 @@ export function useCreateVisit() {
         position: "top-right",
       });
       queryClient.invalidateQueries({ queryKey: ["visits"] });
+      queryClient.invalidateQueries({ queryKey: ["costumes"] });
     },
     onError: (error: ApiError) => {
       notifications.show({

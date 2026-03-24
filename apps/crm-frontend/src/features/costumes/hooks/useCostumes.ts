@@ -16,16 +16,15 @@ export const costumesKeys = {
 
 export function useSearchAvailableCostumes(
   searchQuery: string,
-  stardDate: string,
+  startDate: string,
   endDate: string,
 ) {
   return useQuery({
-    queryKey: costumesKeys.search(searchQuery),
+    queryKey: [...costumesKeys.search(searchQuery), startDate, endDate],
     queryFn: () =>
-      costumeService.searchAvailableCostumes(searchQuery, stardDate, endDate),
-    enabled: searchQuery.trim().length >= 2,
+      costumeService.searchAvailableCostumes(searchQuery, startDate, endDate),
+    enabled: searchQuery.trim().length >= 2 && !!startDate && !!endDate,
     staleTime: 1000 * 60 * 5,
-    placeholderData: (previousData) => previousData,
   });
 }
 

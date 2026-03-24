@@ -28,10 +28,19 @@ export const CostumeSearchAvailableField = memo(
 
     const selectData = useMemo(() => {
       return (
-        data?.map((costume) => ({
-          value: costume.costumeId.toString(),
-          label: `${costume.name} (${costume.inventoryCode})`,
-        })) || []
+        data?.map((costume) => {
+          const isIssued = costume.status === "issued";
+
+          return {
+            value: costume.costumeId.toString(),
+            // Добавляем пометку прямо в текст для простого поиска
+            label: `${costume.name} (${costume.inventoryCode})${isIssued ? " — [ЗАНЯТ]" : ""}`,
+            // Отключаем возможность выбора, если статус "issued"
+            disabled: isIssued,
+            // Пробрасываем статус дальше для кастомного рендеринга
+            status: costume.status,
+          };
+        }) || []
       );
     }, [data]);
 

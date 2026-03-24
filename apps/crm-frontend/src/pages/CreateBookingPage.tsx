@@ -45,7 +45,7 @@ export function CreateBookingPage() {
 
   const handleReset = () => {
     form.reset();
-    setFormKey((prev) => prev + 1); // Меняем ключ -> все селекторы перерисуются с нуля
+    setFormKey((prev) => prev + 1);
   };
 
   return (
@@ -57,7 +57,32 @@ export function CreateBookingPage() {
       <VisitSelector
         values={form.values}
         errors={form.errors}
-        onChange={(newValues) => form.setValues(newValues)}
+        onChange={(newValues) => {
+          // Проверяем, изменились ли даты
+          const isDateChanged =
+            newValues.startDateTime !== form.values.startDateTime ||
+            newValues.endDateTime !== form.values.endDateTime;
+
+          if (isDateChanged) {
+            // Если дата изменилась -> обновляем даты И обнуляем costumeId во всех заказах
+            form.setValues({
+              ...form.values,
+              ...newValues,
+              orders: [
+                {
+                  childId: null,
+                  costumeId: null,
+                  rentPrice: undefined,
+                  prepaymentAmount: undefined,
+                  notes: "",
+                },
+              ],
+            });
+          } else {
+            // Если изменилось только время — просто обновляем значения
+            form.setValues({ ...form.values, ...newValues });
+          }
+        }}
       />
 
       <OrderList form={form} clientId={Number(form.values.clientId) || null} />

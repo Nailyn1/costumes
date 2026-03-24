@@ -49,7 +49,7 @@ export function OrderList({ form, clientId }: OrderListProps) {
 
       {form.values.orders.map((_, index) => (
         <OrderBlock
-          key={index}
+          key={`${form.values.startDateTime}-${form.values.endDateTime}-${index}`}
           index={index}
           form={form}
           clientId={clientId}
