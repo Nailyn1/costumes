@@ -9,11 +9,11 @@ type HandleErrorOptions = {
 
 export function handleError(
   error: unknown,
-  options: HandleErrorOptions
+  options: HandleErrorOptions,
 ): string | null {
   const {
     title,
-    fallbackMessage = "Unexpected error",
+    fallbackMessage = "Непредвиденная ошибка",
     silentStatuses = [],
   } = options;
 

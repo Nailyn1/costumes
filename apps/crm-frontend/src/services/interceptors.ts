@@ -1,7 +1,6 @@
 import type { AxiosInstance, InternalAxiosRequestConfig } from "axios";
 import { useAuthStore } from "src/stores/auth.store";
 import { authService } from "src/features/auth/services/auth.service";
-import { notifications } from "@mantine/notifications";
 
 export const setupInterceptors = (instance: AxiosInstance) => {
   instance.interceptors.request.use(
@@ -55,21 +54,6 @@ export const setupInterceptors = (instance: AxiosInstance) => {
           return Promise.reject(refreshError);
         }
       }
-
-      if (error.response?.status !== 401 || isAuthPath) {
-        const serverMessage = error.response?.data?.message;
-        const errorMessage = Array.isArray(serverMessage)
-          ? serverMessage[0]
-          : serverMessage || "Что-то пошло не так";
-
-        notifications.show({
-          title: "Ошибка",
-          message: errorMessage,
-          color: "red",
-          autoClose: 5000,
-        });
-      }
-
       return Promise.reject(error);
     },
   );
