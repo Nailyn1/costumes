@@ -1,3 +1,4 @@
+import type { OrdersNotWrittenResponseDto } from "@costumes/shared";
 import type { ReactNode } from "react";
 
 export interface VisitData {
@@ -50,4 +51,8 @@ export interface VisitOrder {
   rentPrice: number | undefined;
   prepaymentAmount: number | undefined;
   notes: string;
+}
+
+export interface CostumeDesktopAndMobileProps {
+  items: OrdersNotWrittenResponseDto["items"];
 }

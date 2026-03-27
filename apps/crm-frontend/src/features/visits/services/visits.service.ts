@@ -8,4 +8,12 @@ export const visitsService = {
   createVisit(data: CreateVisitRequestDto) {
     return apiClient.VisitOperation_create(data);
   },
+  getVisitNotWritten() {
+    return apiClient.VisitOperation_getNotWritten(undefined);
+  },
+  markTagVisitWritten(orderId: number) {
+    return apiClient.VisitOperation_markTagWritten(undefined, {
+      params: { orderId },
+    });
+  },
 };

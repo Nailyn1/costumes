@@ -7,6 +7,7 @@ import {
   Stack,
   Text,
   Divider,
+  Badge,
 } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { Outlet, Link, useLocation } from "react-router-dom";
@@ -18,13 +19,23 @@ import {
   IconCalendarStats,
   IconUserCircle,
 } from "@tabler/icons-react";
+import { useNotWrittenCostumes } from "src/features/visits/hooks/useVisits";
 
 export function MainLayout() {
   const [opened, { toggle }] = useDisclosure();
   const location = useLocation();
 
+  const { data: costumes } = useNotWrittenCostumes();
+  const unrecordedCount = costumes?.length || 0;
+
   const mainLinks = [
     { link: "/bookings/new", label: "Создать бронь", icon: IconCalendarPlus },
+    {
+      link: "/bookings/unrecorded",
+      label: "Незаписанные",
+      icon: IconTag,
+      showBadge: true,
+    },
     {
       link: "/bookings/issue",
       label: "Выдача костюмов",
@@ -40,7 +51,6 @@ export function MainLayout() {
       label: "Просмотр брони",
       icon: IconCalendarStats,
     },
-    { link: "/bookings/unrecorded", label: "Незаписанные", icon: IconTag },
     { link: "/profile", label: "Профиль", icon: IconUserCircle },
   ];
 
@@ -51,6 +61,13 @@ export function MainLayout() {
       to={link.link}
       label={link.label}
       leftSection={<link.icon size="1.2rem" stroke={1.5} />}
+      rightSection={
+        link.showBadge && unrecordedCount > 0 ? (
+          <Badge size="sm" variant="filled" color="red" circle>
+            {unrecordedCount}
+          </Badge>
+        ) : null
+      }
       active={location.pathname === link.link}
       onClick={() => {
         if (opened) toggle();
@@ -80,6 +97,11 @@ export function MainLayout() {
           <Title order={4} c="blue.7" style={{ letterSpacing: "1px" }}>
             PROKAT PUPAVKA
           </Title>
+          {unrecordedCount > 0 && (
+            <Badge color="red" variant="dot" size="sm">
+              Есть незаписанные
+            </Badge>
+          )}
         </Group>
       </AppShell.Header>
 
