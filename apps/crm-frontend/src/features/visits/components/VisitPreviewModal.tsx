@@ -47,6 +47,10 @@ export function VisitPreviewModal({
       title="Проверка данных визита"
       size="lg"
       radius="md"
+      closeButtonProps={{
+        size: "lg",
+        iconSize: 24,
+      }}
     >
       <Stack gap="md">
         <Paper withBorder p="md" bg="blue.0" radius="md">

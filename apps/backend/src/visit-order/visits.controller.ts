@@ -31,6 +31,8 @@ import {
   MarkDepositReturnedDto,
   OrdersNotWrittenResponseDto,
   visitCompleteReturnResponseDto,
+  visitIssuedRepsonseDto,
+  visitUnreturnedDepositsResponseDto,
 } from '@costumes/shared';
 
 @Controller('visits')
@@ -145,6 +147,24 @@ export class VisitController {
     @Body() dto: CompleteReturnRequest,
   ): Promise<visitCompleteReturnResponseDto> {
     return await this.visitOrderService.visitCompleteReturn(visitId, dto);
+  }
+
+  @Get('unreturned-deposits')
+  @UseGuards(JwtAuthGuard)
+  async unreturnedDeposits(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number = 1,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number = 20,
+  ): Promise<visitUnreturnedDepositsResponseDto> {
+    return await this.visitOrderService.visitUnreturnedDeposits(page, limit);
+  }
+
+  @Get('issued')
+  @UseGuards(JwtAuthGuard)
+  async getIssuedVisits(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number = 1,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number = 20,
+  ): Promise<visitIssuedRepsonseDto> {
+    return await this.visitOrderService.visitIssued(page, limit);
   }
 
   @Post(':visitId/cancel')

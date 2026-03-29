@@ -62,3 +62,11 @@ export type visitCompleteReturnRequestDto = z.infer<
 export type visitCancelRequestDto = z.infer<
   typeof schemas.Visits_VisitCancelRequest
 >;
+
+export type visitUnreturnedDepositsResponseDto = z.infer<
+  typeof schemas.Visits_GetUnreturnedDepositsResponse
+>;
+
+export type visitIssuedRepsonseDto = z.infer<
+  typeof schemas.Visits_GetIssuedResponse
+>;

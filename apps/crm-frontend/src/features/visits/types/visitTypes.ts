@@ -1,6 +1,7 @@
 import type {
   GetVisitReservedDto,
   OrdersNotWrittenResponseDto,
+  visitUnreturnedDepositsResponseDto,
 } from "@costumes/shared";
 import type { ReactNode } from "react";
 
@@ -66,3 +67,6 @@ export interface IssueListProps {
   items: ReservedVisitItem[];
   onOpenVisit: (visit: ReservedVisitItem) => void;
 }
+
+export type UnreturnedDepositItem =
+  visitUnreturnedDepositsResponseDto["items"][number];

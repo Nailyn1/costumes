@@ -27,6 +27,7 @@ import {
   visitCancelRequestDto,
   visitCompleteReturnRequestDto,
   visitCompleteReturnResponseDto,
+  visitIssuedRepsonseDto,
   VisitIssueRequestDto,
 } from '@costumes/shared';
 import { DepositType, OrderStatus, Prisma } from '../prisma/generated/client';
@@ -601,6 +602,7 @@ export class VisitOrderService {
       return {
         visitId: visit.id,
         visitCode: visit.visitCode,
+        clientName: visit.client.name,
         childrenNames,
         costumeNames,
         endDateTime: visit.endDateTime.toISOString().split('T')[0],
@@ -656,7 +658,7 @@ export class VisitOrderService {
         visitId: visit.id,
         visitCode: visit.visitCode,
         childrenNames: Array.from(childrenSet).join(', '),
-        costumeNames: Array.from(costumesSet).join(', '),
+        costumesNames: Array.from(costumesSet).join(', '),
         returnDate: visit.endDateTime.toISOString().split('T')[0],
         clientPhone: visit.client.phone,
         clientName: visit.client.name,
@@ -823,6 +825,135 @@ export class VisitOrderService {
       visitCode: updatedVisit.visitCode,
       status: updatedVisit.status as 'completed',
       message: 'Визит успешно завершен, все костюмы возвращены',
+    };
+  }
+
+  async visitUnreturnedDeposits(page: number = 1, limit: number = 20) {
+    const skip = (page - 1) * limit;
+    const whereCondition = {
+      status: 'completed' as const,
+      deposit: {
+        returned: false,
+        type: {
+          not: 'none' as const,
+        },
+      },
+    };
+
+    const [total, visits] = await this.prisma.$transaction([
+      this.prisma.visit.count({ where: whereCondition }),
+      this.prisma.visit.findMany({
+        where: whereCondition,
+        skip,
+        take: limit,
+        orderBy: {
+          endDateTime: 'desc',
+        },
+        include: {
+          client: true,
+          deposit: true,
+          orders: {
+            include: {
+              child: true,
+              costume: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    const items = visits.map((visit) => {
+      const childrenNames = Array.from(
+        new Set(visit.orders.map((order) => order.child.name)),
+      ).join(', ');
+
+      const costumeNames = visit.orders
+        .map((order) => order.costume.name)
+        .join(', ');
+
+      return {
+        visitId: visit.id,
+        visitCode: visit.visitCode,
+        childrenNames,
+        costumeNames,
+        startDateTime: visit.startDateTime.toISOString().split('T')[0],
+        endDateTime: visit.endDateTime.toISOString().split('T')[0],
+        clientPhone: visit.client.phone,
+        clientName: visit.client.name,
+        deposit: {
+          type: (visit.deposit?.type || 'none') as 'cash' | 'document' | 'none',
+          amount: visit.deposit?.amount ?? undefined,
+        },
+        notes: visit.notes || '',
+      };
+    });
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+      hasMore: skip + limit < total,
+    };
+  }
+
+  async visitIssued(
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<visitIssuedRepsonseDto> {
+    const skip = (page - 1) * limit;
+    const whereCondition = {
+      status: 'issued' as const,
+    };
+
+    const [total, visits] = await this.prisma.$transaction([
+      this.prisma.visit.count({ where: whereCondition }),
+      this.prisma.visit.findMany({
+        where: whereCondition,
+        skip,
+        take: limit,
+        orderBy: {
+          endDateTime: 'asc',
+        },
+        include: {
+          client: true,
+          orders: {
+            include: {
+              child: true,
+              costume: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    const items = visits.map((visit) => {
+      const childrenNames = Array.from(
+        new Set(visit.orders.map((order) => order.child.name)),
+      ).join(', ');
+
+      const costumesNames = visit.orders
+        .map((order) => order.costume.name)
+        .join(', ');
+
+      return {
+        visitId: visit.id,
+        visitCode: visit.visitCode,
+        childrenNames,
+        costumesNames,
+        startDateTime: visit.startDateTime.toISOString().split('T')[0],
+        endDateTime: visit.endDateTime.toISOString().split('T')[0],
+        clientPhone: visit.client.phone,
+        clientName: visit.client.name,
+      };
+    });
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+      hasMore: skip + limit < total,
     };
   }
 

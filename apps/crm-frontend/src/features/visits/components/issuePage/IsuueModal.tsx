@@ -124,6 +124,10 @@ export function IssueModal({
       }
       size="lg"
       fullScreen={isMobile}
+      closeButtonProps={{
+        size: "lg",
+        iconSize: 24,
+      }}
     >
       {isLoading && (
         <Center p="xl" mih={200}>
