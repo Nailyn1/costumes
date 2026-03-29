@@ -387,49 +387,87 @@ export class VisitOrderService {
     });
   }
 
-  async visitReserved(date?: string): Promise<GetVisitReservedDto[]> {
-    const targetDate = date ? new Date(date) : new Date();
+  async visitReserved(
+    startDate?: string,
+    endDate?: string,
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<GetVisitReservedDto> {
+    if (startDate && endDate) {
+      if (new Date(startDate) > new Date(endDate)) {
+        throw new BadRequestException(
+          'endDate не может начинаться раньше startDate',
+        );
+      }
+    }
 
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
+    const where: Prisma.VisitWhereInput = {
+      status: 'reserved',
+    };
 
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    if (startDate || endDate) {
+      where.startDateTime = {};
 
-    const visits = await this.prisma.visit.findMany({
-      where: {
-        startDateTime: {
-          gte: startOfDay,
-          lte: endOfDay,
-        },
-        status: 'reserved',
-      },
-      include: {
-        client: true,
-        orders: {
-          include: {
-            child: true,
-            costume: true,
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        where.startDateTime.gte = start;
+      }
+
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        where.startDateTime.lte = end;
+      }
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [visits, totalCount] = await Promise.all([
+      this.prisma.visit.findMany({
+        where,
+        include: {
+          client: true,
+          orders: {
+            include: {
+              child: true,
+              costume: true,
+            },
           },
         },
-      },
-      orderBy: {
-        startDateTime: 'asc',
-      },
-    });
-    return visits.map((visit) => {
+        orderBy: {
+          startDateTime: 'asc',
+        },
+        take: limit,
+        skip: skip,
+      }),
+      this.prisma.visit.count({ where }),
+    ]);
+
+    const items = visits.map((visit) => {
       const childrenNames = Array.from(
         new Set(visit.orders.map((o) => o.child.name)),
       ).join(', ');
+
       const costumesNames = visit.orders.map((o) => o.costume.name).join(', ');
+
       return {
         visitId: visit.id,
         visitCode: visit.visitCode,
         clientName: visit.client.name,
         childrenNames,
         costumesNames,
+        clientPhone: visit.client.phone,
       };
     });
+
+    return {
+      items,
+      total: totalCount,
+      page,
+      limit,
+      hasMore: skip + items.length < totalCount,
+    };
   }
 
   async visitSearch(q: string): Promise<GetVisitSearchDto[]> {
@@ -443,6 +481,7 @@ export class VisitOrderService {
               some: {
                 OR: [
                   { child: { name: { contains: q, mode: 'insensitive' } } },
+                  { client: { phone: { contains: q, mode: 'insensitive' } } },
                   { costume: { name: { contains: q, mode: 'insensitive' } } },
                   {
                     costume: {
@@ -519,6 +558,7 @@ export class VisitOrderService {
       endDateTime: visit.endDateTime.toISOString().split('T')[0],
       issueTimeFrom: visit.issueTimeFrom,
       issueTimeTo: visit.issueTimeTo,
+      returnTimeUntil: visit.returnTimeUntil,
       totalRentPrice,
       totalPrepayment,
       remainingToPay,

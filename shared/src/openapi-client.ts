@@ -269,6 +269,16 @@ const Visits_GetReservedResponse = z
     ),
     childrenNames: z.string(),
     costumesNames: z.string(),
+    clientPhone: Clients_PhoneString.regex(/^\+7\d{10}$/),
+  })
+  .passthrough();
+const Visits_PaginatedReservedResponse = z
+  .object({
+    items: z.array(Visits_GetReservedResponse),
+    total: z.number().int(),
+    page: z.number().int(),
+    limit: z.number().int(),
+    hasMore: z.boolean(),
   })
   .passthrough();
 const Visits_VisitReturnSearchResponse = z
@@ -329,6 +339,9 @@ const Visits_VisitForIssueResponse = z
       /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/
     ),
     issueTimeTo: Visits_TimeString.regex(/^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/),
+    returnTimeUntil: Visits_TimeString.regex(
+      /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/
+    ),
     endDateTime: z.string(),
     totalRentPrice: z.number().int(),
     totalPrepayment: z.number().int(),
@@ -428,6 +441,7 @@ export const schemas = {
   Visits_Order,
   Visits_NotWrittenOrdersResponse,
   Visits_GetReservedResponse,
+  Visits_PaginatedReservedResponse,
   Visits_VisitReturnSearchResponse,
   Visits_VisitsSearchResponse,
   Visits_VisitCancelRequest,
@@ -864,12 +878,27 @@ const endpoints = makeApi([
     requestFormat: "json",
     parameters: [
       {
-        name: "data",
+        name: "startDate",
         type: "Query",
         schema: z.string().optional(),
       },
+      {
+        name: "endDate",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "page",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
     ],
-    response: z.array(Visits_GetReservedResponse),
+    response: Visits_PaginatedReservedResponse,
   },
   {
     method: "get",

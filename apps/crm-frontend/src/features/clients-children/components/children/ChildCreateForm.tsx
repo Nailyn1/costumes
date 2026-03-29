@@ -1,6 +1,6 @@
 import { Stack, TextInput, Button } from "@mantine/core";
 import { useForm } from "@mantine/form";
-import { useCreateChild } from "../../hooks/useChild"; // проверь путь к хуку
+import { useCreateChild } from "../../hooks/useChild";
 import type { SelectedChild } from "../../types/clientTypes";
 
 interface ChildCreateFormProps {
@@ -15,22 +15,9 @@ export function ChildCreateForm({ clientId, onCreated }: ChildCreateFormProps) {
     initialValues: { name: "" },
     validate: {
       name: (v) => {
-        // 1. Проверка на длину
         if (v.trim().length < 2) {
           return "Слишком короткое имя";
         }
-
-        // 2. Проверка на наличие цифр (/\d/ ищет любую цифру от 0 до 9)
-        if (/\d/.test(v)) {
-          return "Имя не может содержать цифры";
-        }
-
-        // 3. (Опционально) Если нужно разрешить ТОЛЬКО буквы и пробелы
-        // ^[a-zA-Zа-яА-ЯёЁ\s-]+$ разрешает латиницу, кириллицу, пробелы и дефис
-        if (!/^[a-zA-Zа-яА-ЯёЁ\s-]+$/.test(v)) {
-          return "Используйте только буквы";
-        }
-
         return null;
       },
     },
@@ -59,7 +46,6 @@ export function ChildCreateForm({ clientId, onCreated }: ChildCreateFormProps) {
           placeholder="Введите имя"
           {...form.getInputProps("name")}
           autoFocus
-          // Чтобы Enter срабатывал корректно внутри Collapse
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();

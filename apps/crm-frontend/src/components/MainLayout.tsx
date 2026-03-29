@@ -97,11 +97,6 @@ export function MainLayout() {
           <Title order={4} c="blue.7" style={{ letterSpacing: "1px" }}>
             PROKAT PUPAVKA
           </Title>
-          {unrecordedCount > 0 && (
-            <Badge color="red" variant="dot" size="sm">
-              Есть незаписанные
-            </Badge>
-          )}
         </Group>
       </AppShell.Header>
 

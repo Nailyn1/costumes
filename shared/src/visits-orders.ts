@@ -28,7 +28,7 @@ export type VisitIssueRequestDto = z.infer<
 export const VisitIssueRequestSchema = schemas.Visits_IssueVisitRequest;
 
 export type GetVisitReservedDto = z.infer<
-  typeof schemas.Visits_GetReservedResponse
+  typeof schemas.Visits_PaginatedReservedResponse
 >;
 
 export type GetVisitSearchDto = z.infer<

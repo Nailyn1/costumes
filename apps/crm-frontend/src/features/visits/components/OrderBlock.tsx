@@ -2,7 +2,6 @@ import {
   ActionIcon,
   Divider,
   Group,
-  NumberInput,
   Paper,
   Stack,
   Text,
@@ -13,6 +12,7 @@ import { IconTrash } from "@tabler/icons-react";
 import { ChildSelector } from "src/features/clients-children/components/children/ChildSelector";
 import { CostumeSelector } from "src/features/costumes/components/costumeSelector";
 import type { BookingFormValues } from "../types/visitTypes";
+import { MoneyInput } from "src/components/MoneyInput";
 
 interface OrderBlockProps {
   index: number;
@@ -58,47 +58,25 @@ export function OrderBlock({
         />
 
         <Group grow>
-          <NumberInput
+          <MoneyInput
             label="Аренда"
             placeholder="0 ₸"
-            hideControls
-            suffix=" ₸"
-            thousandSeparator=" "
-            allowNegative={false}
-            decimalScale={0}
             {...form.getInputProps(`orders.${index}.rentPrice`)}
-            onFocus={(event) => {
-              const input = event.currentTarget;
-              setTimeout(() => {
-                input.select();
-              }, 0);
-            }}
             onChange={(val) => {
               const numericValue = typeof val === "number" ? val : undefined;
               form.setFieldValue(`orders.${index}.rentPrice`, numericValue);
-              // Если новая аренда меньше текущей предоплаты — подрезаем предоплату
+
               if (typeof val === "number" && prepaymentValue > val) {
                 form.setFieldValue(`orders.${index}.prepaymentAmount`, val);
               }
             }}
           />
 
-          <NumberInput
+          <MoneyInput
             label="Предоплата"
             placeholder="0 ₸"
-            hideControls
-            suffix=" ₸"
-            thousandSeparator=" "
-            allowNegative={false}
-            decimalScale={0}
             max={rentValue}
             {...form.getInputProps(`orders.${index}.prepaymentAmount`)}
-            onFocus={(event) => {
-              const input = event.currentTarget;
-              setTimeout(() => {
-                input.select();
-              }, 0);
-            }}
           />
         </Group>
 

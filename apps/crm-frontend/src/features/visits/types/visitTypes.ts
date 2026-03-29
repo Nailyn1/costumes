@@ -1,4 +1,7 @@
-import type { OrdersNotWrittenResponseDto } from "@costumes/shared";
+import type {
+  GetVisitReservedDto,
+  OrdersNotWrittenResponseDto,
+} from "@costumes/shared";
 import type { ReactNode } from "react";
 
 export interface VisitData {
@@ -55,4 +58,11 @@ export interface VisitOrder {
 
 export interface CostumeDesktopAndMobileProps {
   items: OrdersNotWrittenResponseDto["items"];
+}
+
+export type ReservedVisitItem = GetVisitReservedDto["items"][0];
+
+export interface IssueListProps {
+  items: ReservedVisitItem[];
+  onOpenVisit: (visit: ReservedVisitItem) => void;
 }

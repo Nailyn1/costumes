@@ -128,6 +128,15 @@ model GetReservedResponse {
     clientName: CostumeApp.Clients.ClientName;
     childrenNames: string;
     costumesNames: string;
+    clientPhone: CostumeApp.Clients.PhoneString;
+}
+
+model PaginatedReservedResponse {
+  items: GetReservedResponse[];
+  total: int32;
+  page: int32;
+  limit: int32;
+  hasMore: boolean;
 }
 
 model VisitsSearchResponse {
@@ -147,6 +156,7 @@ model VisitForIssueResponse {
   startDateTime: plainDate;
   issueTimeFrom: TimeString;
   issueTimeTo: TimeString;
+  returnTimeUntil: TimeString;
   endDateTime: plainDate;
   totalRentPrice: int32;
   totalPrepayment: int32;
@@ -236,12 +246,17 @@ interface VisitOperation {
     @body body: Visit;
   } | Common.Error;
 
-  @get
-  @route("reserved")
-  getReserved(@query data?:string): {
-    @statusCode statusCode: 200;
-    @body body: GetReservedResponse[];
-  } | Common.Error;
+@get
+@route("reserved")
+getReserved(
+  @query startDate?: string, 
+  @query endDate?: string, 
+  @query page?: int32,   
+  @query limit?: int32 
+): {
+  @statusCode statusCode: 200;
+  @body body: PaginatedReservedResponse;
+} | Common.Error;
 
 
   @get

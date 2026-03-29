@@ -89,7 +89,7 @@ export function VisitPreviewModal({
         <Divider
           label={
             <Text size="md" fw={700}>
-              Детали заказов
+              Детали заказа
             </Text>
           }
           labelPosition="center"

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  DefaultValuePipe,
   Get,
   HttpCode,
   HttpStatus,
@@ -59,9 +60,17 @@ export class VisitController {
   @Get('reserved')
   @UseGuards(JwtAuthGuard)
   async getReservedVisits(
-    @Query('date') date?: string,
-  ): Promise<GetVisitReservedDto[]> {
-    return await this.visitOrderService.visitReserved(date);
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number = 1,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number = 20,
+  ): Promise<GetVisitReservedDto> {
+    return await this.visitOrderService.visitReserved(
+      startDate,
+      endDate,
+      page,
+      limit,
+    );
   }
 
   @Get('search')
