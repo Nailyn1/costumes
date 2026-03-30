@@ -17,9 +17,8 @@ model Client {
   clientId: int32;
   name: ClientName;
   phone: PhoneString;
-  children?: string[];
+  children?: CostumeApp.Children.Child[];
 }
-
 model CreateClientRequest {
   name: ClientName;
   phone: PhoneString;

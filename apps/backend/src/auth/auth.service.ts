@@ -32,13 +32,13 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('Invalid Credentials');
+      throw new UnauthorizedException('Неверный логин или пароль');
     }
 
     const isPasswordValid = await argon2.verify(user.password, data.password);
 
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('Неверный логин или пароль');
     }
 
     const { accessToken, refreshToken } = await this.issueTokens(

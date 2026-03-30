@@ -6,11 +6,12 @@
     "shared"
   ],
   "overrides": {
-    "zod": "4.3.5"
+    "zod": "^3.24.2"
   },
   "scripts": {
     "dev:shared": "tsc -b shared --watch",
     "dev:backend": "nest start backend --watch",
+    "dev:frontend": "npm run dev -w crm-frontend",
     "start:dev": "concurrently \"npm run dev:shared\" \"npm run dev:backend\"",
     "build": "nest build backend"
   },
@@ -20,6 +21,6 @@
     "typescript-eslint": "^8.46.4"
   },
   "dependencies": {
-    "zod": "4.3.5"
+    "zod": "^3.24.2"
   }
 }

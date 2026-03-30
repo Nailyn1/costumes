@@ -128,6 +128,15 @@ model GetReservedResponse {
     clientName: CostumeApp.Clients.ClientName;
     childrenNames: string;
     costumesNames: string;
+    clientPhone: CostumeApp.Clients.PhoneString;
+}
+
+model PaginatedReservedResponse {
+  items: GetReservedResponse[];
+  total: int32;
+  page: int32;
+  limit: int32;
+  hasMore: boolean;
 }
 
 model VisitsSearchResponse {
@@ -147,6 +156,7 @@ model VisitForIssueResponse {
   startDateTime: plainDate;
   issueTimeFrom: TimeString;
   issueTimeTo: TimeString;
+  returnTimeUntil: TimeString;
   endDateTime: plainDate;
   totalRentPrice: int32;
   totalPrepayment: int32;
@@ -158,6 +168,7 @@ model VisitForIssueResponse {
 model IssuedForReturnResponse {
   visitId: int32;
   visitCode: VisitCode;
+  clientName: CostumeApp.Clients.ClientName;
   childrenNames: string;
   costumeNames: string;
   endDateTime: plainDate;
@@ -209,12 +220,49 @@ model VisitReturnSearchResponse {
   visitId: int32;
   visitCode: VisitCode;
   childrenNames: string;
-  costumeNames: string;
+  costumesNames: string;
   returnDate: plainDate;
   clientPhone: CostumeApp.Clients.PhoneString;
   clientName: CostumeApp.Clients.ClientName;
 }
 
+model GetUnreturnedResponse{
+  visitId: int32;
+  visitCode: VisitCode;
+  childrenNames: string;
+  costumeNames: string;
+  startDateTime: plainDate;
+  endDateTime: plainDate;
+  clientPhone: CostumeApp.Clients.PhoneString;
+  clientName: CostumeApp.Clients.ClientName;
+  deposit: VisitDepositInfo;
+  notes: string;
+}
+model GetUnreturnedDepositsResponse{
+  items: GetUnreturnedResponse[];
+  total: int32;
+  page: int32;
+  limit: int32;
+  hasMore: boolean;
+}
+
+model GetIssuedItem{
+  visitId: int32;
+  visitCode: VisitCode;
+  clientName: CostumeApp.Clients.ClientName;
+  clientPhone: CostumeApp.Clients.PhoneString;
+  startDateTime: plainDate;
+  endDateTime: plainDate;
+  childrenNames: string;
+  costumesNames: string;
+}
+model GetIssuedResponse{
+  items: GetIssuedItem[];
+  total: int32;
+  page: int32;
+  limit: int32;
+  hasMore: boolean;
+}
 @doc("Запрос на отмену визита")
 model VisitCancelRequest {
   @doc("Причина отмены визита")
@@ -236,12 +284,17 @@ interface VisitOperation {
     @body body: Visit;
   } | Common.Error;
 
-  @get
-  @route("reserved")
-  getReserved(@query data?:string): {
-    @statusCode statusCode: 200;
-    @body body: GetReservedResponse[];
-  } | Common.Error;
+@get
+@route("reserved")
+getReserved(
+  @query startDate?: string, 
+  @query endDate?: string, 
+  @query page?: int32,   
+  @query limit?: int32 
+): {
+  @statusCode statusCode: 200;
+  @body body: PaginatedReservedResponse;
+} | Common.Error;
 
 
   @get
@@ -303,6 +356,20 @@ interface VisitOperation {
   markDepositReturned(@path visitId: int32, @body body: { notes?: string }): {
     @statusCode statusCode: 200;
     @body body: MarkDepositReturnedResponse;
+  } | Common.Error;
+
+  @get
+  @route("unreturned-deposits")
+  getUnreturnedDeposits( @query page?: int32, @query limit?: int32): {
+    @statusCode statusCode: 200;
+    @body body: GetUnreturnedDepositsResponse;
+  } | Common.Error;
+
+  @get
+  @route("issued")
+  getIssuedVisits(@query page?: int32, @query limit?: int32): {
+    @statusCode statusCode: 200;
+    @body body: GetIssuedResponse;
   } | Common.Error;
 
   @get

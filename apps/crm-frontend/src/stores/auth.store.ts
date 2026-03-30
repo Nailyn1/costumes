@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { devtools, persist } from "zustand/middleware";
-import type { LoginSuccessResponseDto } from "@project/shared";
+import type { LoginSuccessResponseDto } from "@costumes/shared";
 
 interface AuthState {
   user: LoginSuccessResponseDto["user"] | null;
@@ -40,7 +40,7 @@ export const useAuthStore = create<AuthState>()(
             isAuth: false,
           }),
       }),
-      { name: "auth-storage" }
-    )
-  )
+      { name: "auth-storage" },
+    ),
+  ),
 );

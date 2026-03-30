@@ -11,18 +11,29 @@ export const setupInterceptors = (instance: AxiosInstance) => {
         config.headers.Authorization = `Bearer ${token}`;
       }
 
+      const method = config.method?.toLowerCase();
+      if (
+        ["post", "put", "patch"].includes(method || "") &&
+        !config.headers["X-Idempotency-Key"]
+      ) {
+        config.headers["X-Idempotency-Key"] = crypto.randomUUID();
+      }
+
       return config;
     },
-    (error) => Promise.reject(error)
+    (error) => Promise.reject(error),
   );
 
   instance.interceptors.response.use(
     (response) => response,
     async (error) => {
       const originalRequest = error.config;
+      const status = error.response?.status;
+      const isAuthPath = originalRequest?.url?.includes("/auth/");
 
       if (
-        error.response?.status === 401 &&
+        status === 401 &&
+        !isAuthPath &&
         originalRequest &&
         !originalRequest._retry
       ) {
@@ -43,8 +54,7 @@ export const setupInterceptors = (instance: AxiosInstance) => {
           return Promise.reject(refreshError);
         }
       }
-
       return Promise.reject(error);
-    }
+    },
   );
 };

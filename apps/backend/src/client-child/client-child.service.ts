@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CreateChildRequestDto,
@@ -10,7 +14,7 @@ import {
   UpdateClientRequestDto,
   UpdateClientResponseDto,
 } from '@costumes/shared';
-import { CreateClientResponse } from './dto/client-child.dto';
+
 @Injectable()
 export class ClientChildService {
   constructor(private readonly prisma: PrismaService) {}
@@ -77,6 +81,15 @@ export class ClientChildService {
   async createClient(
     data: CreateClientRequestDto,
   ): Promise<CreateClientResponseDto> {
+    const existingClient = await this.prisma.client.findFirst({
+      where: {
+        phone: data.phone,
+        deletedAt: null,
+      },
+    });
+    if (existingClient) {
+      throw new BadRequestException('Client with this phone already exists');
+    }
     const client = await this.prisma.client.create({
       data: { name: data.name, phone: data.phone },
     });
@@ -129,7 +142,7 @@ export class ClientChildService {
       });
   }
 
-  async searchClients(query: string): Promise<CreateClientResponse[]> {
+  async searchClients(query: string): Promise<CreateClientResponseDto[]> {
     if (!query || query.length < 2) return [];
 
     let normalizedQuery = query;
@@ -159,7 +172,7 @@ export class ClientChildService {
         name: true,
         phone: true,
         children: {
-          select: { name: true },
+          select: { name: true, id: true },
         },
       },
       take: 10,
@@ -169,7 +182,10 @@ export class ClientChildService {
       clientId: client.id,
       name: client.name,
       phone: client.phone,
-      children: client.children.map((child) => child.name),
+      children: client.children?.map((child) => ({
+        childId: child.id,
+        name: child.name,
+      })),
     }));
   }
 }

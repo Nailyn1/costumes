@@ -27,9 +27,10 @@ import {
   visitCancelRequestDto,
   visitCompleteReturnRequestDto,
   visitCompleteReturnResponseDto,
+  visitIssuedRepsonseDto,
   VisitIssueRequestDto,
 } from '@costumes/shared';
-import { OrderStatus, Prisma } from '../prisma/generated/client';
+import { DepositType, OrderStatus, Prisma } from '../prisma/generated/client';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 
 interface PinoLoggerWithId {
@@ -368,7 +369,7 @@ export class VisitOrderService {
         await tx.deposit.create({
           data: {
             visitId: visitId,
-            type: deposit.type,
+            type: deposit.type as DepositType,
             amount: deposit.type === 'cash' ? (deposit.amount ?? 0) : 0,
             returned: false,
           },
@@ -387,49 +388,87 @@ export class VisitOrderService {
     });
   }
 
-  async visitReserved(date?: string): Promise<GetVisitReservedDto[]> {
-    const targetDate = date ? new Date(date) : new Date();
+  async visitReserved(
+    startDate?: string,
+    endDate?: string,
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<GetVisitReservedDto> {
+    if (startDate && endDate) {
+      if (new Date(startDate) > new Date(endDate)) {
+        throw new BadRequestException(
+          'endDate не может начинаться раньше startDate',
+        );
+      }
+    }
 
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
+    const where: Prisma.VisitWhereInput = {
+      status: 'reserved',
+    };
 
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    if (startDate || endDate) {
+      where.startDateTime = {};
 
-    const visits = await this.prisma.visit.findMany({
-      where: {
-        startDateTime: {
-          gte: startOfDay,
-          lte: endOfDay,
-        },
-        status: 'reserved',
-      },
-      include: {
-        client: true,
-        orders: {
-          include: {
-            child: true,
-            costume: true,
+      if (startDate) {
+        const start = new Date(startDate);
+        start.setHours(0, 0, 0, 0);
+        where.startDateTime.gte = start;
+      }
+
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        where.startDateTime.lte = end;
+      }
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [visits, totalCount] = await Promise.all([
+      this.prisma.visit.findMany({
+        where,
+        include: {
+          client: true,
+          orders: {
+            include: {
+              child: true,
+              costume: true,
+            },
           },
         },
-      },
-      orderBy: {
-        startDateTime: 'asc',
-      },
-    });
-    return visits.map((visit) => {
+        orderBy: {
+          startDateTime: 'asc',
+        },
+        take: limit,
+        skip: skip,
+      }),
+      this.prisma.visit.count({ where }),
+    ]);
+
+    const items = visits.map((visit) => {
       const childrenNames = Array.from(
         new Set(visit.orders.map((o) => o.child.name)),
       ).join(', ');
+
       const costumesNames = visit.orders.map((o) => o.costume.name).join(', ');
+
       return {
         visitId: visit.id,
         visitCode: visit.visitCode,
         clientName: visit.client.name,
         childrenNames,
         costumesNames,
+        clientPhone: visit.client.phone,
       };
     });
+
+    return {
+      items,
+      total: totalCount,
+      page,
+      limit,
+      hasMore: skip + items.length < totalCount,
+    };
   }
 
   async visitSearch(q: string): Promise<GetVisitSearchDto[]> {
@@ -443,6 +482,7 @@ export class VisitOrderService {
               some: {
                 OR: [
                   { child: { name: { contains: q, mode: 'insensitive' } } },
+                  { client: { phone: { contains: q, mode: 'insensitive' } } },
                   { costume: { name: { contains: q, mode: 'insensitive' } } },
                   {
                     costume: {
@@ -519,6 +559,7 @@ export class VisitOrderService {
       endDateTime: visit.endDateTime.toISOString().split('T')[0],
       issueTimeFrom: visit.issueTimeFrom,
       issueTimeTo: visit.issueTimeTo,
+      returnTimeUntil: visit.returnTimeUntil,
       totalRentPrice,
       totalPrepayment,
       remainingToPay,
@@ -561,6 +602,7 @@ export class VisitOrderService {
       return {
         visitId: visit.id,
         visitCode: visit.visitCode,
+        clientName: visit.client.name,
         childrenNames,
         costumeNames,
         endDateTime: visit.endDateTime.toISOString().split('T')[0],
@@ -616,7 +658,7 @@ export class VisitOrderService {
         visitId: visit.id,
         visitCode: visit.visitCode,
         childrenNames: Array.from(childrenSet).join(', '),
-        costumeNames: Array.from(costumesSet).join(', '),
+        costumesNames: Array.from(costumesSet).join(', '),
         returnDate: visit.endDateTime.toISOString().split('T')[0],
         clientPhone: visit.client.phone,
         clientName: visit.client.name,
@@ -783,6 +825,135 @@ export class VisitOrderService {
       visitCode: updatedVisit.visitCode,
       status: updatedVisit.status as 'completed',
       message: 'Визит успешно завершен, все костюмы возвращены',
+    };
+  }
+
+  async visitUnreturnedDeposits(page: number = 1, limit: number = 20) {
+    const skip = (page - 1) * limit;
+    const whereCondition = {
+      status: 'completed' as const,
+      deposit: {
+        returned: false,
+        type: {
+          not: 'none' as const,
+        },
+      },
+    };
+
+    const [total, visits] = await this.prisma.$transaction([
+      this.prisma.visit.count({ where: whereCondition }),
+      this.prisma.visit.findMany({
+        where: whereCondition,
+        skip,
+        take: limit,
+        orderBy: {
+          endDateTime: 'desc',
+        },
+        include: {
+          client: true,
+          deposit: true,
+          orders: {
+            include: {
+              child: true,
+              costume: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    const items = visits.map((visit) => {
+      const childrenNames = Array.from(
+        new Set(visit.orders.map((order) => order.child.name)),
+      ).join(', ');
+
+      const costumeNames = visit.orders
+        .map((order) => order.costume.name)
+        .join(', ');
+
+      return {
+        visitId: visit.id,
+        visitCode: visit.visitCode,
+        childrenNames,
+        costumeNames,
+        startDateTime: visit.startDateTime.toISOString().split('T')[0],
+        endDateTime: visit.endDateTime.toISOString().split('T')[0],
+        clientPhone: visit.client.phone,
+        clientName: visit.client.name,
+        deposit: {
+          type: (visit.deposit?.type || 'none') as 'cash' | 'document' | 'none',
+          amount: visit.deposit?.amount ?? undefined,
+        },
+        notes: visit.notes || '',
+      };
+    });
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+      hasMore: skip + limit < total,
+    };
+  }
+
+  async visitIssued(
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<visitIssuedRepsonseDto> {
+    const skip = (page - 1) * limit;
+    const whereCondition = {
+      status: 'issued' as const,
+    };
+
+    const [total, visits] = await this.prisma.$transaction([
+      this.prisma.visit.count({ where: whereCondition }),
+      this.prisma.visit.findMany({
+        where: whereCondition,
+        skip,
+        take: limit,
+        orderBy: {
+          endDateTime: 'asc',
+        },
+        include: {
+          client: true,
+          orders: {
+            include: {
+              child: true,
+              costume: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    const items = visits.map((visit) => {
+      const childrenNames = Array.from(
+        new Set(visit.orders.map((order) => order.child.name)),
+      ).join(', ');
+
+      const costumesNames = visit.orders
+        .map((order) => order.costume.name)
+        .join(', ');
+
+      return {
+        visitId: visit.id,
+        visitCode: visit.visitCode,
+        childrenNames,
+        costumesNames,
+        startDateTime: visit.startDateTime.toISOString().split('T')[0],
+        endDateTime: visit.endDateTime.toISOString().split('T')[0],
+        clientPhone: visit.client.phone,
+        clientName: visit.client.name,
+      };
+    });
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+      hasMore: skip + limit < total,
     };
   }
 

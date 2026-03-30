@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  DefaultValuePipe,
   Get,
   HttpCode,
   HttpStatus,
@@ -30,6 +31,8 @@ import {
   MarkDepositReturnedDto,
   OrdersNotWrittenResponseDto,
   visitCompleteReturnResponseDto,
+  visitIssuedRepsonseDto,
+  visitUnreturnedDepositsResponseDto,
 } from '@costumes/shared';
 
 @Controller('visits')
@@ -59,9 +62,17 @@ export class VisitController {
   @Get('reserved')
   @UseGuards(JwtAuthGuard)
   async getReservedVisits(
-    @Query('date') date?: string,
-  ): Promise<GetVisitReservedDto[]> {
-    return await this.visitOrderService.visitReserved(date);
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number = 1,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number = 20,
+  ): Promise<GetVisitReservedDto> {
+    return await this.visitOrderService.visitReserved(
+      startDate,
+      endDate,
+      page,
+      limit,
+    );
   }
 
   @Get('search')
@@ -136,6 +147,24 @@ export class VisitController {
     @Body() dto: CompleteReturnRequest,
   ): Promise<visitCompleteReturnResponseDto> {
     return await this.visitOrderService.visitCompleteReturn(visitId, dto);
+  }
+
+  @Get('unreturned-deposits')
+  @UseGuards(JwtAuthGuard)
+  async unreturnedDeposits(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number = 1,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number = 20,
+  ): Promise<visitUnreturnedDepositsResponseDto> {
+    return await this.visitOrderService.visitUnreturnedDeposits(page, limit);
+  }
+
+  @Get('issued')
+  @UseGuards(JwtAuthGuard)
+  async getIssuedVisits(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number = 1,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number = 20,
+  ): Promise<visitIssuedRepsonseDto> {
+    return await this.visitOrderService.visitIssued(page, limit);
   }
 
   @Post(':visitId/cancel')

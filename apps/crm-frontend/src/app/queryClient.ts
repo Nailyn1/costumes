@@ -14,7 +14,11 @@ export const queryClient = new QueryClient({
   },
 
   queryCache: new QueryCache({
-    onError: (error) => {
+    onError: (error, query) => {
+      if (query.meta?.silent) {
+        return;
+      }
+
       const message = handleError(error, { title: QUERY_ERROR_TITLE });
 
       if (message) {

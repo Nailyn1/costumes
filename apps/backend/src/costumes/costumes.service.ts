@@ -85,6 +85,7 @@ export class CostumesService {
             },
           },
         ],
+        deletedAt: null,
       },
       take: 20,
     });
@@ -197,8 +198,10 @@ export class CostumesService {
         visitCode: order.visit.visitCode,
         childName: order.child?.name || 'Имя не указано',
         clientPhone: order.client?.phone || 'Телефон не указан',
-        startDateTime: order.startDateTime.toISOString(),
-        endDateTime: order.endDateTime.toISOString(),
+        startDateTime: order.startDateTime.toISOString().split('T')[0],
+        endDateTime: order.endDateTime.toISOString().split('T')[0],
+        issueTimeFrom: order.visit.issueTimeFrom,
+        returnTimeUntil: order.visit.returnTimeUntil,
       };
     });
 

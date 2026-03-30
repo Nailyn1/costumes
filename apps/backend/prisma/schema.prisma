@@ -29,7 +29,7 @@ model User {
 model Client {
   id        Int       @id @default(autoincrement())
   name      String
-  phone     String    @unique
+  phone     String   
   notes     String?
   children  Child[]
   visits    Visit[]

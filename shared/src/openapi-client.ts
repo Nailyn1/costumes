@@ -60,6 +60,9 @@ const Clients_CreateClientRequest = z
     phone: Clients_PhoneString.regex(/^\+7\d{10}$/),
   })
   .passthrough();
+const Children_Child = z
+  .object({ childId: z.number().int(), name: z.string() })
+  .passthrough();
 const Clients_Client = z
   .object({
     clientId: z.number().int(),
@@ -67,7 +70,7 @@ const Clients_Client = z
       /^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\s-]+$/
     ),
     phone: Clients_PhoneString.regex(/^\+7\d{10}$/),
-    children: z.array(z.string()).optional(),
+    children: z.array(Children_Child).optional(),
   })
   .passthrough();
 const Clients_UpdateClientRequest = z
@@ -112,6 +115,7 @@ const Costumes_UpdateCostumeRequest = z
   .partial()
   .passthrough();
 const Costumes_VisitCode = z.string();
+const Visits_TimeString = z.string();
 const Costumes_AvailabilityPeriod = z
   .object({
     visitCode: Costumes_VisitCode.regex(/^\d{4}$/),
@@ -119,6 +123,12 @@ const Costumes_AvailabilityPeriod = z
     clientPhone: z.string(),
     startDateTime: z.string(),
     endDateTime: z.string(),
+    issueTimeFrom: Visits_TimeString.regex(
+      /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/
+    ),
+    returnTimeUntil: Visits_TimeString.regex(
+      /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/
+    ),
   })
   .passthrough();
 const Costumes_CostumeFullAvailability = z
@@ -130,7 +140,6 @@ const Costumes_CostumeFullAvailability = z
     noPeriodsMessage: z.union([z.string(), z.null()]),
   })
   .passthrough();
-const Visits_TimeString = z.string();
 const Visits_CreateVisitRequest = z
   .object({
     clientId: z.number().int(),
@@ -219,10 +228,36 @@ const Visits_Visit = z
     orders: z.array(Visits_VisitOrder),
   })
   .passthrough();
+const Visits_GetIssuedItem = z
+  .object({
+    visitId: z.number().int(),
+    visitCode: Costumes_VisitCode.regex(/^\d{4}$/),
+    clientName: Clients_ClientName.min(2).regex(
+      /^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\s-]+$/
+    ),
+    clientPhone: Clients_PhoneString.regex(/^\+7\d{10}$/),
+    startDateTime: z.string(),
+    endDateTime: z.string(),
+    childrenNames: z.string(),
+    costumesNames: z.string(),
+  })
+  .passthrough();
+const Visits_GetIssuedResponse = z
+  .object({
+    items: z.array(Visits_GetIssuedItem),
+    total: z.number().int(),
+    page: z.number().int(),
+    limit: z.number().int(),
+    hasMore: z.boolean(),
+  })
+  .passthrough();
 const Visits_IssuedForReturnResponse = z
   .object({
     visitId: z.number().int(),
     visitCode: Costumes_VisitCode.regex(/^\d{4}$/),
+    clientName: Clients_ClientName.min(2).regex(
+      /^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\s-]+$/
+    ),
     childrenNames: z.string(),
     costumeNames: z.string(),
     endDateTime: z.string(),
@@ -266,6 +301,16 @@ const Visits_GetReservedResponse = z
     ),
     childrenNames: z.string(),
     costumesNames: z.string(),
+    clientPhone: Clients_PhoneString.regex(/^\+7\d{10}$/),
+  })
+  .passthrough();
+const Visits_PaginatedReservedResponse = z
+  .object({
+    items: z.array(Visits_GetReservedResponse),
+    total: z.number().int(),
+    page: z.number().int(),
+    limit: z.number().int(),
+    hasMore: z.boolean(),
   })
   .passthrough();
 const Visits_VisitReturnSearchResponse = z
@@ -273,7 +318,7 @@ const Visits_VisitReturnSearchResponse = z
     visitId: z.number().int(),
     visitCode: Costumes_VisitCode.regex(/^\d{4}$/),
     childrenNames: z.string(),
-    costumeNames: z.string(),
+    costumesNames: z.string(),
     returnDate: z.string(),
     clientPhone: Clients_PhoneString.regex(/^\+7\d{10}$/),
     clientName: Clients_ClientName.min(2).regex(
@@ -292,6 +337,35 @@ const Visits_VisitsSearchResponse = z
     startDateTime: z.string(),
     childrenNames: z.string(),
     costumesNames: z.string(),
+  })
+  .passthrough();
+const Visits_DepositType = z.enum(["cash", "document", "none"]);
+const Visits_VisitDepositInfo = z
+  .object({ type: Visits_DepositType, amount: z.number().int().optional() })
+  .passthrough();
+const Visits_GetUnreturnedResponse = z
+  .object({
+    visitId: z.number().int(),
+    visitCode: Costumes_VisitCode.regex(/^\d{4}$/),
+    childrenNames: z.string(),
+    costumeNames: z.string(),
+    startDateTime: z.string(),
+    endDateTime: z.string(),
+    clientPhone: Clients_PhoneString.regex(/^\+7\d{10}$/),
+    clientName: Clients_ClientName.min(2).regex(
+      /^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\s-]+$/
+    ),
+    deposit: Visits_VisitDepositInfo,
+    notes: z.string(),
+  })
+  .passthrough();
+const Visits_GetUnreturnedDepositsResponse = z
+  .object({
+    items: z.array(Visits_GetUnreturnedResponse),
+    total: z.number().int(),
+    page: z.number().int(),
+    limit: z.number().int(),
+    hasMore: z.boolean(),
   })
   .passthrough();
 const Visits_VisitCancelRequest = z
@@ -326,6 +400,9 @@ const Visits_VisitForIssueResponse = z
       /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/
     ),
     issueTimeTo: Visits_TimeString.regex(/^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/),
+    returnTimeUntil: Visits_TimeString.regex(
+      /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/
+    ),
     endDateTime: z.string(),
     totalRentPrice: z.number().int(),
     totalPrepayment: z.number().int(),
@@ -347,10 +424,6 @@ const Visits_VisitReturnOrder = z
     finalPayment: z.number().int(),
     returned: z.boolean(),
   })
-  .passthrough();
-const Visits_DepositType = z.enum(["cash", "document", "none"]);
-const Visits_VisitDepositInfo = z
-  .object({ type: Visits_DepositType, amount: z.number().int().optional() })
   .passthrough();
 const Visits_VisitForReturnResponse = z
   .object({
@@ -401,6 +474,7 @@ export const schemas = {
   Clients_ClientName,
   Clients_PhoneString,
   Clients_CreateClientRequest,
+  Children_Child,
   Clients_Client,
   Clients_UpdateClientRequest,
   Costumes_CreateCostumeRequest,
@@ -411,28 +485,33 @@ export const schemas = {
   Costumes_AvailableCostume,
   Costumes_UpdateCostumeRequest,
   Costumes_VisitCode,
+  Visits_TimeString,
   Costumes_AvailabilityPeriod,
   Costumes_CostumeFullAvailability,
-  Visits_TimeString,
   Visits_CreateVisitRequest,
   Visits_VisitStatus,
   Visits_Notification,
   Visits_TagStatus,
   Visits_VisitOrder,
   Visits_Visit,
+  Visits_GetIssuedItem,
+  Visits_GetIssuedResponse,
   Visits_IssuedForReturnResponse,
   Visits_Order,
   Visits_NotWrittenOrdersResponse,
   Visits_GetReservedResponse,
+  Visits_PaginatedReservedResponse,
   Visits_VisitReturnSearchResponse,
   Visits_VisitsSearchResponse,
+  Visits_DepositType,
+  Visits_VisitDepositInfo,
+  Visits_GetUnreturnedResponse,
+  Visits_GetUnreturnedDepositsResponse,
   Visits_VisitCancelRequest,
   Visits_CompleteReturnRequest,
   Visits_CompleteReturnResponse,
   Visits_VisitForIssueResponse,
   Visits_VisitReturnOrder,
-  Visits_DepositType,
-  Visits_VisitDepositInfo,
   Visits_VisitForReturnResponse,
   Visits_IssueVisitRequest,
   Visits_MarkDepositReturnedResponse,
@@ -832,6 +911,25 @@ const endpoints = makeApi([
   },
   {
     method: "get",
+    path: "/visits/issued",
+    alias: "VisitOperation_getIssuedVisits",
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "page",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+    ],
+    response: Visits_GetIssuedResponse,
+  },
+  {
+    method: "get",
     path: "/visits/issued-for-return",
     alias: "VisitOperation_getIssuedForReturn",
     requestFormat: "json",
@@ -860,12 +958,27 @@ const endpoints = makeApi([
     requestFormat: "json",
     parameters: [
       {
-        name: "data",
+        name: "startDate",
         type: "Query",
         schema: z.string().optional(),
       },
+      {
+        name: "endDate",
+        type: "Query",
+        schema: z.string().optional(),
+      },
+      {
+        name: "page",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
     ],
-    response: z.array(Visits_GetReservedResponse),
+    response: Visits_PaginatedReservedResponse,
   },
   {
     method: "get",
@@ -894,6 +1007,25 @@ const endpoints = makeApi([
       },
     ],
     response: z.array(Visits_VisitsSearchResponse),
+  },
+  {
+    method: "get",
+    path: "/visits/unreturned-deposits",
+    alias: "VisitOperation_getUnreturnedDeposits",
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "page",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+    ],
+    response: Visits_GetUnreturnedDepositsResponse,
   },
 ]);
 

@@ -1,18 +1,17 @@
 import { Button, Paper, Stack, Text, TextInput, Title } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { zodResolver } from "mantine-form-zod-resolver";
-import { schemas } from "@project/shared";
+import { LoginRequestSchema } from "@costumes/shared";
 import { useLogin } from "../hooks/useLogin";
 
 export const LoginForm = () => {
   const loginMutation = useLogin();
-
   const form = useForm({
     initialValues: {
       login: "",
       password: "",
     },
-    validate: zodResolver(schemas.Auth_LoginRequest),
+    validate: zodResolver(LoginRequestSchema),
   });
 
   const onSubmit = form.onSubmit((values) => {
