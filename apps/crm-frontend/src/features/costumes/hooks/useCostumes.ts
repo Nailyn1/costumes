@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { costumeService } from "../services/costumes.service";
 import type {
   CreateCostumesRequestDto,
@@ -76,5 +81,28 @@ export function useDeleteCostume() {
 
       queryClient.removeQueries({ queryKey: costumesKeys.detail(costumeId) });
     },
+  });
+}
+
+export function useSearchCostume(searchQuery: string) {
+  return useQuery({
+    queryKey: [...costumesKeys.search(searchQuery)],
+    queryFn: () => costumeService.searchCostumes(searchQuery),
+    enabled: searchQuery.trim().length >= 2,
+    staleTime: 1000 * 60 * 5,
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useIsAvailableCostume(costumeId: number) {
+  return useQuery({
+    queryKey: [...costumesKeys.detail(costumeId)],
+    queryFn: () => {
+      if (!costumeId) {
+        throw new Error("costumeId обязателен для выполнения запроса");
+      }
+      return costumeService.isAvailableCostume(costumeId);
+    },
+    enabled: !!costumeId,
   });
 }

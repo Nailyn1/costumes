@@ -115,6 +115,7 @@ const Costumes_UpdateCostumeRequest = z
   .partial()
   .passthrough();
 const Costumes_VisitCode = z.string();
+const Visits_TimeString = z.string();
 const Costumes_AvailabilityPeriod = z
   .object({
     visitCode: Costumes_VisitCode.regex(/^\d{4}$/),
@@ -122,6 +123,12 @@ const Costumes_AvailabilityPeriod = z
     clientPhone: z.string(),
     startDateTime: z.string(),
     endDateTime: z.string(),
+    issueTimeFrom: Visits_TimeString.regex(
+      /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/
+    ),
+    returnTimeUntil: Visits_TimeString.regex(
+      /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/
+    ),
   })
   .passthrough();
 const Costumes_CostumeFullAvailability = z
@@ -133,7 +140,6 @@ const Costumes_CostumeFullAvailability = z
     noPeriodsMessage: z.union([z.string(), z.null()]),
   })
   .passthrough();
-const Visits_TimeString = z.string();
 const Visits_CreateVisitRequest = z
   .object({
     clientId: z.number().int(),
@@ -479,9 +485,9 @@ export const schemas = {
   Costumes_AvailableCostume,
   Costumes_UpdateCostumeRequest,
   Costumes_VisitCode,
+  Visits_TimeString,
   Costumes_AvailabilityPeriod,
   Costumes_CostumeFullAvailability,
-  Visits_TimeString,
   Visits_CreateVisitRequest,
   Visits_VisitStatus,
   Visits_Notification,

@@ -40,6 +40,8 @@ model AvailabilityPeriod {
   clientPhone: string;
   startDateTime: plainDate;
   endDateTime: plainDate;
+  issueTimeFrom: CostumeApp.Visits.TimeString;
+  returnTimeUntil: CostumeApp.Visits.TimeString;
 }
 
 model CostumeFullAvailability {
