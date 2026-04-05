@@ -292,6 +292,37 @@ const Visits_Order = z
 const Visits_NotWrittenOrdersResponse = z
   .object({ items: z.array(Visits_Order), message: z.string().optional() })
   .passthrough();
+const Visits_NotificationItem = z
+  .object({
+    notificationId: z.number().int(),
+    status: z.enum([
+      "pending",
+      "sent",
+      "delivered",
+      "failed",
+      "isConfirmed",
+      "read",
+      "noAccount",
+    ]),
+    visitCode: Costumes_VisitCode.regex(/^\d{4}$/),
+    clientName: Clients_ClientName.min(2).regex(
+      /^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\s-]+$/
+    ),
+    clientPhone: Clients_PhoneString.regex(/^\+7\d{10}$/),
+    childrenNames: z.string(),
+    costumeNames: z.string(),
+  })
+  .passthrough();
+const Visits_GetNotificationResponse = z
+  .object({
+    items: z.array(Visits_NotificationItem),
+    totalToday: z.number().int(),
+    total: z.number().int(),
+    page: z.number().int(),
+    limit: z.number().int(),
+    hasMore: z.boolean(),
+  })
+  .passthrough();
 const Visits_GetReservedResponse = z
   .object({
     visitId: z.number().int(),
@@ -499,6 +530,8 @@ export const schemas = {
   Visits_IssuedForReturnResponse,
   Visits_Order,
   Visits_NotWrittenOrdersResponse,
+  Visits_NotificationItem,
+  Visits_GetNotificationResponse,
   Visits_GetReservedResponse,
   Visits_PaginatedReservedResponse,
   Visits_VisitReturnSearchResponse,
@@ -941,6 +974,25 @@ const endpoints = makeApi([
     alias: "VisitOperation_getNotWritten",
     requestFormat: "json",
     response: Visits_NotWrittenOrdersResponse,
+  },
+  {
+    method: "get",
+    path: "/visits/notification",
+    alias: "VisitOperation_getVisitNotification",
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "page",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+    ],
+    response: Visits_GetNotificationResponse,
   },
   {
     method: "post",

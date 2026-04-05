@@ -70,3 +70,7 @@ export type visitUnreturnedDepositsResponseDto = z.infer<
 export type visitIssuedRepsonseDto = z.infer<
   typeof schemas.Visits_GetIssuedResponse
 >;
+
+export type visitNotificationResponseDto = z.infer<
+  typeof schemas.Visits_GetNotificationResponse
+>;

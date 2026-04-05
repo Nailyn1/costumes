@@ -32,6 +32,7 @@ import {
   OrdersNotWrittenResponseDto,
   visitCompleteReturnResponseDto,
   visitIssuedRepsonseDto,
+  visitNotificationResponseDto,
   visitUnreturnedDepositsResponseDto,
 } from '@costumes/shared';
 
@@ -73,6 +74,15 @@ export class VisitController {
       page,
       limit,
     );
+  }
+
+  @Get('notification')
+  @UseGuards(JwtAuthGuard)
+  async getVisitsNotification(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number = 1,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number = 20,
+  ): Promise<visitNotificationResponseDto> {
+    return await this.visitOrderService.visitNotification(page, limit);
   }
 
   @Get('search')

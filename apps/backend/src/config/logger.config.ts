@@ -22,6 +22,25 @@ export const loggerConfigFactory = (configService: ConfigService): Params => {
         const login = (req as RequestWithUser).user?.login || 'Guest';
         return `${login} | ${req.method} ${req.url} | ERROR: ${err.message}`;
       },
+      customLogLevel: (req, res, err) => {
+        if (err) return 'error';
+        if (
+          req.url?.includes('/webhooks/whatsapp') &&
+          res.statusCode >= 200 &&
+          res.statusCode < 300
+        ) {
+          return 'silent';
+        }
+        if (
+          req.url?.includes('/visits/not_written') &&
+          res.statusCode < 400 &&
+          req.url?.includes('/visits/notification')
+        ) {
+          return 'silent';
+        }
+
+        return process.env.NODE_ENV === 'production' ? 'info' : 'debug';
+      },
       redact: {
         paths: ['req.headers.authorization', 'phone'],
         censor: '***',
@@ -45,7 +64,7 @@ export const loggerConfigFactory = (configService: ConfigService): Params => {
                   singleLine: false,
                   levelFirst: true,
                   translateTime: 'HH:MM:ss',
-                  ignore: 'req,res,context,login,responseTime',
+                  ignore: 'req,res,context,login,responseTime,event',
                   messageFormat: '{context} | {msg}',
                 },
           },

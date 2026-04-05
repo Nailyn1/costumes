@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  Get,
   HttpCode,
   HttpStatus,
   Post,
@@ -78,7 +77,7 @@ export class NotificationController {
   async handleWebHook(@Body() body: GreenApiWebhook, @Req() req: any) {
     const l = await this.notificationService.getContextualLogger(body, req);
 
-    l.info(
+    l.debug(
       { webhookType: body.typeWebhook, payload: body },
       'Received Green-API webhook',
     );
@@ -117,10 +116,5 @@ export class NotificationController {
     }
 
     return { ok: true };
-  }
-
-  @Get('/debug-sentry')
-  getError() {
-    throw new Error('My first Sentry error!');
   }
 }

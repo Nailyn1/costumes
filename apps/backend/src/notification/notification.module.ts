@@ -6,6 +6,9 @@ import { BullModule } from '@nestjs/bullmq';
 import { WhatsappProvider } from './whatsapp.provider';
 import { NotificationProcessor } from './notification.processor';
 import { HttpModule } from '@nestjs/axios';
+import { NotificationGateway } from './notification.gateway';
+import { WsJwtGuard } from '../auth/jwt/ws-jwt.guard';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
@@ -23,9 +26,16 @@ import { HttpModule } from '@nestjs/axios';
         },
       },
     }),
+    AuthModule,
   ],
   controllers: [NotificationController],
-  providers: [NotificationService, WhatsappProvider, NotificationProcessor],
+  providers: [
+    NotificationService,
+    WhatsappProvider,
+    NotificationProcessor,
+    NotificationGateway,
+    WsJwtGuard,
+  ],
   exports: [BullModule],
 })
 export class NotificationModule {}

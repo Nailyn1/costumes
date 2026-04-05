@@ -36,7 +36,6 @@ export function VisitSummaryPanel({
 
     getCode(undefined, {
       onSuccess: (code) => {
-        console.log(code);
         const formattedCode = String(code);
         form.setFieldValue("visitCode", formattedCode);
         open();
