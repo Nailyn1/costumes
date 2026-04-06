@@ -59,3 +59,4 @@ src/prisma/generated
 
 
 *.tsbuildinfo
+src/prisma/seed.ts

@@ -16,7 +16,12 @@ async function bootstrap() {
 
   app.use(cookieParser());
   app.enableCors({
-    origin: process.env.CLIENT_URL,
+    origin: [
+      process.env.CLIENT_URL,
+      'http://localhost',
+      'http://127.0.0.1',
+      'http://localhost:80',
+    ],
     credentials: true,
     exposedHeaders: 'set-cookie',
   });
