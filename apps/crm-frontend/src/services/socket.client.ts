@@ -4,7 +4,8 @@ import { io, Socket } from "socket.io-client";
 import { queryClient } from "src/app/queryClient";
 import { useAuthStore } from "src/stores/auth.store";
 
-const SOCKET_URL = import.meta.env.VITE_API_URL;
+const SOCKET_URL =
+  import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL;
 interface StatusUpdatePayload {
   notificationId: number;
   status:
