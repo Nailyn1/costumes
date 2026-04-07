@@ -5,32 +5,19 @@ import { PrismaService } from './prisma.service';
 const prisma = new PrismaService();
 
 async function main() {
+  const createUser = (index: number) => ({
+    login: process.env[`USER${index}_LOGIN`] as string,
+    name: process.env[`USER${index}_NAME`] as string,
+    password: process.env[`USER${index}_PASSWORD`] as string,
+  });
+
+  // 2. Создаём массив пользователей
   const users = [
-    {
-      login: 'Nail_prokat',
-      name: 'Наиль',
-      password: 'prokatPupavka_nail_4321',
-    },
-    {
-      login: 'Asya_prokat',
-      name: 'Ася',
-      password: 'prokatPupavka_asya_1234',
-    },
-    {
-      login: 'Mama_Prokat',
-      name: 'Мама',
-      password: 'prokatPupavka_mama_4312',
-    },
-    {
-      login: 'Kamila_Prokat',
-      name: 'Камила',
-      password: 'prokatPupavka_kamila_1243',
-    },
-    {
-      login: 'User_Prokat',
-      name: 'Пользователь',
-      password: 'prokatPupavka_user_3412',
-    },
+    createUser(1),
+    createUser(2),
+    createUser(3),
+    createUser(4),
+    createUser(5),
   ];
 
   for (const user of users) {
