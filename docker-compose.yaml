@@ -44,6 +44,7 @@ services:
       dockerfile: ./apps/backend/Dockerfile
     container_name: nest-backend
     restart: always
+    image: nailyn1/costumes-backend:latest
     ports:
       - "5000:5000"
     environment:
@@ -63,6 +64,7 @@ services:
       dockerfile: ./apps/crm-frontend/Dockerfile
     container_name: crm-frontend
     restart: always
+    image: nailyn1/costumes-frontend:latest
     ports:
       - "80:80"
     networks:
