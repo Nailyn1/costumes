@@ -1,7 +1,7 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationStatus, Prisma } from '../prisma/generated/client';
-import { UnrecoverableError } from 'bullmq';
+import { Queue, UnrecoverableError } from 'bullmq';
 import { WhatsappProvider } from './whatsapp.provider';
 import { REDIS_CLIENT } from '../redis/redis.constants';
 import Redis from 'ioredis';
@@ -9,6 +9,8 @@ import { ConfigService } from '@nestjs/config';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { Logger } from 'pino';
 import { GreenApiWebhook } from './notification.controller';
+import { InjectQueue } from '@nestjs/bullmq';
+import { NotificationGateway } from './notification.gateway';
 
 type VisitWithDetails = Prisma.VisitGetPayload<{
   include: {
@@ -41,6 +43,9 @@ export class NotificationService {
     private readonly configService: ConfigService,
     @InjectPinoLogger(NotificationService.name)
     private readonly logger: PinoLogger,
+    @InjectQueue('notifications') private readonly notificationsQueue: Queue,
+    @Inject(forwardRef(() => NotificationGateway))
+    private readonly notificationGateway: NotificationGateway,
   ) {}
 
   async onModuleInit() {
@@ -68,8 +73,15 @@ export class NotificationService {
     notificationId: number,
     loggerOverride?: Logger,
   ) {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const totalToday = await this.prisma.notification.count({
+      where: { createdAt: { gte: startOfDay } },
+    });
     const l: Logger =
       loggerOverride || (this.logger.logger as unknown as Logger);
+    const traceId = l.bindings().traceId;
     const notification = await this.prisma.notification.findUnique({
       where: { id: notificationId },
       include: {
@@ -124,6 +136,14 @@ export class NotificationService {
         },
       });
 
+      this.notificationGateway.emitNotificationStatusUpdate(
+        {
+          notificationId,
+          status: 'sent',
+          totalToday,
+        },
+        traceId as string,
+      );
       l.info(
         { notificationId, externalId, visitCode },
         'Notification successfully sent and status updated',
@@ -151,8 +171,113 @@ export class NotificationService {
         },
       });
 
+      this.notificationGateway.emitNotificationStatusUpdate(
+        {
+          notificationId,
+          status: 'failed',
+          totalToday,
+        },
+        traceId as string,
+      );
+
       throw error;
     }
+  }
+
+  async handleManualResend(notificationId: number, logger: Logger) {
+    logger.info('Starting manual resend process');
+    const traceId = logger.bindings().traceId;
+    const notification = await this.prisma.notification.findUnique({
+      where: { id: notificationId },
+    });
+
+    if (!notification) {
+      throw new Error(`Notification ${notificationId} not found`);
+    }
+
+    const jobId = `notification-${notificationId}`;
+    const existingJob = await this.notificationsQueue.getJob(jobId);
+
+    if (existingJob) {
+      logger.info({ jobId }, 'Found existing job in queue, removing it');
+      await existingJob.remove();
+    }
+
+    await this.prisma.notification.update({
+      where: { id: notificationId },
+      data: {
+        status: 'pending',
+        errorText: null,
+        traceId: traceId,
+      },
+    });
+
+    await this.notificationsQueue.add(
+      'send-whatsapp',
+      { notificationId, traceId },
+      { jobId },
+    );
+
+    logger.info('Successfully queued new job for resend');
+
+    return { success: true };
+  }
+
+  async handleUpdatePhoneAndResend(
+    notificationId: number,
+    newPhone: string,
+    logger: Logger,
+  ) {
+    const traceId = logger.bindings().traceId;
+    logger.info('Starting phone update and resend process');
+
+    const notification = await this.prisma.notification.findUnique({
+      where: { id: notificationId },
+      include: { visit: true },
+    });
+
+    if (!notification || !notification.visit) {
+      throw new Error(`Notification or related visit not found`);
+    }
+
+    const clientId = notification.visit.clientId;
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.client.update({
+        where: { id: clientId },
+        data: { phone: newPhone },
+      });
+
+      await tx.notification.update({
+        where: { id: notificationId },
+        data: {
+          status: 'pending',
+          errorText: null,
+          traceId: traceId,
+        },
+      });
+    });
+
+    logger.info(
+      { clientId },
+      'Client phone and notification status updated in DB',
+    );
+
+    const jobId = `notification-${notificationId}`;
+    const existingJob = await this.notificationsQueue.getJob(jobId);
+    if (existingJob) {
+      await existingJob.remove();
+    }
+
+    await this.notificationsQueue.add(
+      'send-whatsapp',
+      { notificationId, traceId },
+      { jobId },
+    );
+
+    logger.info('Successfully queued new job for resend after phone update');
+
+    return { success: true };
   }
 
   async changeOutgoingStatus(
@@ -168,7 +293,7 @@ export class NotificationService {
     });
 
     const l = this.getL(loggerOverride, currentNotification?.traceId);
-
+    const traceId = l.bindings().traceId;
     if (!currentNotification) {
       l.warn(
         { idMessage, newStatus },
@@ -186,6 +311,15 @@ export class NotificationService {
         where: { id: currentNotification.id },
         data: { status: newStatus as NotificationStatus },
       });
+
+      this.notificationGateway.emitNotificationStatusUpdate(
+        {
+          notificationId: currentNotification.id,
+          status: newStatus,
+        },
+        traceId as string,
+      );
+
       l.info(
         {
           idMessage,
@@ -224,12 +358,21 @@ export class NotificationService {
       });
 
       const l = this.getL(loggerOverride, lastNotification?.traceId);
+      const traceId = l.bindings().traceId;
 
       if (lastNotification) {
         await this.prisma.notification.update({
           where: { id: lastNotification.id },
           data: { status: 'isConfirmed' as NotificationStatus },
         });
+
+        this.notificationGateway.emitNotificationStatusUpdate(
+          {
+            notificationId: lastNotification.id,
+            status: 'isConfirmed',
+          },
+          traceId as string,
+        );
 
         l.info(
           {

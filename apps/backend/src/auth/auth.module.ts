@@ -18,6 +18,6 @@ import { JwtRefreshStrategy } from './jwt/jwt.RefreshStrategy';
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, JwtRefreshStrategy],
-  exports: [JwtStrategy, PassportModule],
+  exports: [JwtStrategy, PassportModule, JwtModule],
 })
 export class AuthModule {}

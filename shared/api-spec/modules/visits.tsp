@@ -263,6 +263,25 @@ model GetIssuedResponse{
   limit: int32;
   hasMore: boolean;
 }
+
+model NotificationItem {
+  notificationId: int32;
+  status: "pending" | "sent" | "delivered" | "failed" | "isConfirmed" | "read" | "noAccount";
+  visitCode: VisitCode;
+  clientName: CostumeApp.Clients.ClientName;
+  clientPhone: CostumeApp.Clients.PhoneString;
+  childrenNames: string;
+  costumeNames: string;
+}
+
+model GetNotificationResponse {
+  items: NotificationItem[];
+  totalToday: int32;
+  total: int32;
+  page: int32;
+  limit: int32;
+  hasMore: boolean;
+}
 @doc("Запрос на отмену визита")
 model VisitCancelRequest {
   @doc("Причина отмены визита")
@@ -383,6 +402,13 @@ getReserved(
   @route("{orderId}/mark-tag-written")
   markTagWritten(@path orderId: int32): {
     @statusCode statusCode: 204;
+  } | Common.Error;
+
+  @get
+  @route("notification")
+  getVisitNotification(@query page?: int32, @query limit?: int32): {
+    @statusCode statusCode: 200;
+    @body body: GetNotificationResponse;
   } | Common.Error;
 
   @doc("Отмена визита и всех связанных заказов")

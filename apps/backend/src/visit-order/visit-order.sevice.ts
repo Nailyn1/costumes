@@ -29,6 +29,7 @@ import {
   visitCompleteReturnResponseDto,
   visitIssuedRepsonseDto,
   VisitIssueRequestDto,
+  visitNotificationResponseDto,
 } from '@costumes/shared';
 import { DepositType, OrderStatus, Prisma } from '../prisma/generated/client';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
@@ -187,10 +188,28 @@ export class VisitOrderService {
       await this.redis.del(redisKey);
 
       const pendingNotification = result.notifications[0];
-      await this.notificationQueue.add('send-whatsapp', {
-        notificationId: pendingNotification.id,
-        traceId: pendingNotification.traceId,
-      });
+
+      try {
+        await this.notificationQueue.add(
+          'send-whatsapp',
+          {
+            notificationId: pendingNotification.id,
+            traceId: pendingNotification.traceId,
+          },
+          {
+            jobId: `notification-${pendingNotification.id}`,
+          },
+        );
+      } catch (queueError) {
+        this.logger.logger.error(
+          {
+            err: queueError,
+            visitId: result.id,
+            notificationId: pendingNotification.id,
+          },
+          'Failed to add WhatsApp job to queue. Visit was created, but notification requires manual resend.',
+        );
+      }
 
       const preparedData = {
         id: result.id,
@@ -994,5 +1013,74 @@ export class VisitOrderService {
         },
       });
     });
+  }
+
+  async visitNotification(
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<visitNotificationResponseDto> {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const skip = (page - 1) * limit;
+
+    const [total, totalToday, notifications] = await this.prisma.$transaction([
+      this.prisma.notification.count(),
+
+      this.prisma.notification.count({
+        where: {
+          createdAt: {
+            gte: startOfDay,
+          },
+        },
+      }),
+
+      this.prisma.notification.findMany({
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          visit: {
+            include: {
+              client: true,
+              orders: {
+                include: {
+                  child: true,
+                  costume: true,
+                },
+              },
+            },
+          },
+        },
+      }),
+    ]);
+
+    const items = notifications.map((notif) => {
+      const visit = notif.visit;
+      const childrenNames = Array.from(
+        new Set(visit.orders.map((o) => o.child.name)),
+      ).join(', ');
+
+      const costumeNames = visit.orders.map((o) => o.costume.name).join(', ');
+
+      return {
+        notificationId: notif.id,
+        status: notif.status,
+        visitCode: visit.visitCode,
+        clientName: visit.client.name,
+        clientPhone: visit.client.phone,
+        childrenNames,
+        costumeNames,
+      };
+    });
+
+    return {
+      items,
+      page,
+      limit,
+      total,
+      hasMore: page * limit < total,
+      totalToday,
+    };
   }
 }

@@ -74,4 +74,7 @@ export const visitsService = {
   getIssuedVisits(params?: GetParams) {
     return apiClient.VisitOperation_getIssuedVisits({ queries: params });
   },
+  getVisitsNotification(params?: GetParams) {
+    return apiClient.VisitOperation_getVisitNotification({ queries: params });
+  },
 };

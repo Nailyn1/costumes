@@ -8,6 +8,7 @@ import { UnrecordedCostumesPage } from "src/pages/UnrecordedCostumes";
 import { ProfilePage } from "src/pages/ProfilePage";
 import { PrivateRoute } from "./providers/PrivateRoute";
 import { MainLayout } from "src/components/MainLayout";
+import { NotificationPage } from "src/pages/NotificationPage";
 
 export const router = createBrowserRouter([
   {
@@ -43,6 +44,10 @@ export const router = createBrowserRouter([
               {
                 path: "return",
                 element: <ReturnPage />,
+              },
+              {
+                path: "notifications",
+                element: <NotificationPage />,
               },
               {
                 path: "schedule",
