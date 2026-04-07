@@ -10,7 +10,7 @@
   "license": "MIT",
   "scripts": {
     "gen:api": "tsp compile api-spec/main.tsp --emit @typespec/openapi3 --output-dir api-spec/tsp-output && npx openapi-zod-client api-spec/tsp-output/schema/openapi.yaml --output src/openapi-client.ts",
-    "build": "tsc --build"
+    "build": "tsc --build --force"
   },
   "devDependencies": {
     "@typespec/compiler": "latest",

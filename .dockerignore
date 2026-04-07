@@ -1,6 +1,11 @@
 node_modules
-apps/*/node_modules
-packages/*/node_modules
-dist
+npm-debug.log
+Dockerfile
+.dockerignore
 .git
-.env
+.gitignore
+dist
+apps/*/dist
+shared/dist
+*.tsbuildinfo
+apps/*/node_modules

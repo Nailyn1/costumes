@@ -8,4 +8,5 @@ dist/
 # Dependency directories
 node_modules/
 
-.tsbuildinfo
+*.tsbuildinfo
+tsconfig.tsbuildinfo
