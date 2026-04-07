@@ -7,7 +7,8 @@ WORKDIR /app
 COPY . .
 RUN npm install
 
-RUN npx tsc -b shared
+WORKDIR /app/shared
+RUN npm run build
 
 WORKDIR /app/apps/backend
 RUN npx prisma generate
