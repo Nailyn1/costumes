@@ -45,4 +45,4 @@ jobs:
 
             docker compose up -d
 
-            docker compose exec -T backend npx prisma migrate deploy
+            docker compose exec -T -w /app/apps/backend backend npx prisma migrate deploy
