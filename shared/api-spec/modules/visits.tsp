@@ -298,7 +298,9 @@ interface VisitOperation {
   } | Common.Error;
 
   @post
-  create(@body body: CreateVisitRequest): {
+  create(
+    @query sendNotification?: boolean = true,
+    @body body: CreateVisitRequest): {
     @statusCode statusCode: 201;
     @body body: Visit;
   } | Common.Error;

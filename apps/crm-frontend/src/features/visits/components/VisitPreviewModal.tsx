@@ -9,14 +9,16 @@ import {
   Badge,
   Button,
   SimpleGrid,
+  Checkbox,
 } from "@mantine/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { costumesKeys } from "src/features/costumes/hooks/useCostumes";
 import type { UseFormReturnType } from "@mantine/form";
-import type { BookingFormValues } from "../types/visitTypes"; // Путь к твоим типам
+import type { BookingFormValues } from "../types/visitTypes";
 import type { SelectedChild } from "src/features/clients-children/types/clientTypes";
 import type { SelectedCostumeData } from "src/features/costumes/types/costumeTypes";
 import { formatHumanDate } from "src/utills/formatters";
+import { useState } from "react";
 
 interface VisitPreviewModalProps {
   opened: boolean;
@@ -24,7 +26,7 @@ interface VisitPreviewModalProps {
   form: UseFormReturnType<BookingFormValues>;
   totalRent: number;
   totalPrepayment: number;
-  onSubmit: () => void;
+  onSubmit: (sendNotification: boolean) => void;
   isSubmitting: boolean;
 }
 
@@ -39,6 +41,7 @@ export function VisitPreviewModal({
 }: VisitPreviewModalProps) {
   const queryClient = useQueryClient();
   const { values } = form;
+  const [sendNotification, setSendNotification] = useState(true);
 
   return (
     <Modal
@@ -187,12 +190,25 @@ export function VisitPreviewModal({
           </Group>
         </Stack>
 
+        <Paper withBorder p="sm" radius="md" bg="gray.0" mt="sm">
+          <Checkbox
+            label="Отправить клиенту уведомление в WhatsApp"
+            description="Сообщение с деталями бронирования уйдет автоматически"
+            checked={sendNotification}
+            onChange={(event) =>
+              setSendNotification(event.currentTarget.checked)
+            }
+            color="green"
+            size="sm"
+          />
+        </Paper>
+
         <Button
           size="lg"
           fullWidth
           color="blue"
           mt="md"
-          onClick={onSubmit}
+          onClick={() => onSubmit(sendNotification)}
           loading={isSubmitting}
         >
           Подтвердить и создать

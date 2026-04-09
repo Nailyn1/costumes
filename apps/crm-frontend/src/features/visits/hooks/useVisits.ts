@@ -20,6 +20,11 @@ import type {
 } from "@costumes/shared";
 import { notifications } from "@mantine/notifications";
 
+interface CreateVisitVariables {
+  data: CreateVisitRequestDto;
+  sendNotification: boolean;
+}
+
 export function useVisitPreviewCode() {
   return useMutation({
     mutationFn: () => visitsService.getPreviewCode(),
@@ -30,8 +35,8 @@ export function useCreateVisit() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: CreateVisitRequestDto) =>
-      visitsService.createVisit(data),
+    mutationFn: ({ data, sendNotification }: CreateVisitVariables) =>
+      visitsService.createVisit(data, sendNotification),
     onSuccess: () => {
       notifications.show({
         title: "Успех!",
