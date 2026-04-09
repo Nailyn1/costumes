@@ -807,6 +807,11 @@ const endpoints = makeApi([
         type: "Body",
         schema: Visits_CreateVisitRequest,
       },
+      {
+        name: "sendNotification",
+        type: "Query",
+        schema: z.boolean().optional().default(true),
+      },
     ],
     response: Visits_Visit,
   },

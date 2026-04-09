@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  ParseBoolPipe,
   ParseIntPipe,
   Post,
   Query,
@@ -49,9 +50,11 @@ export class VisitController {
   @Post()
   @UseGuards(JwtAuthGuard)
   async CreateVisit(
+    @Query('sendNotification', new DefaultValuePipe(true), ParseBoolPipe)
+    sendNotification: boolean,
     @Body() dto: CreateVisitRequest,
   ): Promise<CreateVisitResponseDto> {
-    return await this.visitOrderService.createVisit(dto);
+    return await this.visitOrderService.createVisit(dto, sendNotification);
   }
 
   @Get('not_written')

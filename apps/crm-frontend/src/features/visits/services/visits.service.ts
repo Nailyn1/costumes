@@ -21,8 +21,10 @@ export const visitsService = {
   getPreviewCode() {
     return apiClient.VisitOperation_previewCode(undefined);
   },
-  createVisit(data: CreateVisitRequestDto) {
-    return apiClient.VisitOperation_create(data);
+  createVisit(data: CreateVisitRequestDto, sendNotification: boolean) {
+    return apiClient.VisitOperation_create(data, {
+      queries: { sendNotification },
+    });
   },
   getVisitNotWritten() {
     return apiClient.VisitOperation_getNotWritten(undefined);

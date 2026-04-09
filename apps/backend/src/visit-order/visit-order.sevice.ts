@@ -88,6 +88,7 @@ export class VisitOrderService {
 
   async createVisit(
     data: CreateVisitRequestDto,
+    sendNotification: boolean,
   ): Promise<CreateVisitResponseDto> {
     const fullStartDt = this.parseDateTime(
       data.startDateTime,
@@ -163,13 +164,15 @@ export class VisitOrderService {
                 endDateTime: fullEndDt,
               })),
             },
-            notifications: {
-              create: {
-                type: 'booking_confirmation',
-                status: 'pending',
-                traceId: traceId,
+            ...(sendNotification && {
+              notifications: {
+                create: {
+                  type: 'booking_confirmation',
+                  status: 'pending',
+                  traceId: traceId,
+                },
               },
-            },
+            }),
           },
           include: {
             client: true,
@@ -187,28 +190,30 @@ export class VisitOrderService {
       });
       await this.redis.del(redisKey);
 
-      const pendingNotification = result.notifications[0];
+      if (sendNotification && result.notifications.length > 0) {
+        const pendingNotification = result.notifications[0];
 
-      try {
-        await this.notificationQueue.add(
-          'send-whatsapp',
-          {
-            notificationId: pendingNotification.id,
-            traceId: pendingNotification.traceId,
-          },
-          {
-            jobId: `notification-${pendingNotification.id}`,
-          },
-        );
-      } catch (queueError) {
-        this.logger.logger.error(
-          {
-            err: queueError,
-            visitId: result.id,
-            notificationId: pendingNotification.id,
-          },
-          'Failed to add WhatsApp job to queue. Visit was created, but notification requires manual resend.',
-        );
+        try {
+          await this.notificationQueue.add(
+            'send-whatsapp',
+            {
+              notificationId: pendingNotification.id,
+              traceId: pendingNotification.traceId,
+            },
+            {
+              jobId: `notification-${pendingNotification.id}`,
+            },
+          );
+        } catch (queueError) {
+          this.logger.logger.error(
+            {
+              err: queueError,
+              visitId: result.id,
+              notificationId: pendingNotification.id,
+            },
+            'Failed to add WhatsApp job to queue. Visit was created, but notification requires manual resend.',
+          );
+        }
       }
 
       const preparedData = {

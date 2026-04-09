@@ -43,7 +43,7 @@ export function VisitSummaryPanel({
     });
   };
 
-  const handleFinalSubmit = () => {
+  const handleFinalSubmit = (sendNotification: boolean) => {
     const { values } = form;
     const payload = {
       visitCode: values.visitCode || "",
@@ -63,16 +63,19 @@ export function VisitSummaryPanel({
       })),
     };
 
-    createVisit(payload, {
-      onSuccess: () => {
-        if (onSuccessfullyCreated) {
-          onSuccessfullyCreated();
-        } else {
-          form.reset();
-        }
-        close();
+    createVisit(
+      { data: payload, sendNotification: sendNotification },
+      {
+        onSuccess: () => {
+          if (onSuccessfullyCreated) {
+            onSuccessfullyCreated();
+          } else {
+            form.reset();
+          }
+          close();
+        },
       },
-    });
+    );
   };
 
   return (
