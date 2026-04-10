@@ -5,3 +5,4 @@ dist
 .env
 *.tsbuildinfo
 docker-compose.override.yml
+docker-compose.dev.yml
