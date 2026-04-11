@@ -117,9 +117,14 @@ export function CostumeMobileCard({ items }: CostumeDesktopAndMobileProps) {
                     <Text size="lg" fw={500}>
                       {order.childName}
                     </Text>
-                    <Text size="lg" c="dimmed">
-                      Код визита: {order.visitCode}
-                    </Text>
+                    <Group>
+                      <Text size="lg" c="black">
+                        Код визита:
+                      </Text>
+                      <Badge color="blue" variant="filled" size="lg">
+                        {order.visitCode}
+                      </Badge>
+                    </Group>
                   </Box>
 
                   <Group gap="xs">
@@ -157,6 +162,9 @@ export function CostumeMobileCard({ items }: CostumeDesktopAndMobileProps) {
                       </Group>
                     </Box>
                   )}
+                  <Text size="md" c="red">
+                    Не забыть записать код костюма и код визита!
+                  </Text>
 
                   <Button
                     fullWidth
