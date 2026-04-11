@@ -165,6 +165,8 @@ export function NotificationCard({
             label="Номер телефона WhatsApp"
             placeholder="+7 (777) 000-00-00"
             value={phoneInput}
+            type="tel" // Вызываем правильный тип
+            inputMode="tel"
             onAccept={(value: string) => {
               setPhoneInput(value);
               if (phoneError) setPhoneError(null);

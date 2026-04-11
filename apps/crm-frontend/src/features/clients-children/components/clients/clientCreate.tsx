@@ -47,6 +47,8 @@ export function ClientCreateForm({ onCreated }: ClientCreateFormProps) {
               placeholder="+7 (___) ___-__-__"
               error={form.errors.phone}
               value={form.values.phone}
+              type="tel"
+              inputMode="tel"
               renderRoot={({ children, ...others }) => (
                 <IMaskInput
                   {...others}

@@ -117,7 +117,7 @@ export function MainLayout() {
         <AppShell.Section>
           <Divider my="sm" />
           <Text size="xs" c="dimmed" ta="center">
-            v1.0.1 • 2026
+            v1.0.5 • 2026
           </Text>
         </AppShell.Section>
       </AppShell.Navbar>
