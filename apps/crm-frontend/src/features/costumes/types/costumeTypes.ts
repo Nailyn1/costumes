@@ -22,6 +22,7 @@ export interface SelectedCostumeCardProps {
 
 export interface CostumeCreateFormProps {
   onCreated: (costume: SelectedCostumeData) => void;
+  buttonText?: string;
 }
 
 export interface CostumeSelectorProps {

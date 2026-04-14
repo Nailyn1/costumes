@@ -19,6 +19,9 @@ export type CostumesSearchAvailableResponseDto = z.infer<
 export type CostumesAvailabilityResponseDto = z.infer<
   typeof schemas.Costumes_CostumeFullAvailability
 >;
+export type CostumesListResponseDto = z.infer<
+  typeof schemas.Costumes_GetCostumesList
+>;
 
 export const CreateCostumesRequestSchema =
   schemas.Costumes_CreateCostumeRequest;

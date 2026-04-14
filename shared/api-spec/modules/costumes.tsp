@@ -36,6 +36,7 @@ model CostumeSearchResult {
 
 model AvailabilityPeriod {
   visitCode: VisitCode;
+  clientName: string;
   childName: string;
   clientPhone: string;
   startDateTime: plainDate;
@@ -49,7 +50,13 @@ model CostumeFullAvailability {
   periods: AvailabilityPeriod[];
   noPeriodsMessage: string | null;
 }
-
+model GetCostumesList{
+  items: Costume[];
+  total: int32;
+  page: int32;
+  limit: int32;
+  hasMore: boolean;
+}
 model CreateCostumeRequest {
   @minLength(2)
   name: string;
@@ -99,4 +106,10 @@ interface CostumeOperations {
   delete(@path costumeId: int32): {
     @statusCode statusCode: 204;
   } | Common.Error;
+
+  @get
+  @route("list")
+  getCostumesList(@query page?: int32, @query limit?: int32): {
+    @statusCode statusCode: 200;
+    @body body: GetCostumesList} | Common.Error;
 }

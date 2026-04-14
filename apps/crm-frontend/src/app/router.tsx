@@ -3,7 +3,7 @@ import { LoginPage } from "src/pages/LoginPage";
 import { CreateBookingPage } from "src/pages/CreateBookingPage";
 import { IssuePage } from "src/pages/IssuePage";
 import { ReturnPage } from "src/pages/ReturnPage";
-import { SchedulePage } from "src/pages/SchedulePage";
+import { CostumesPage } from "src/pages/CostumesPage";
 import { UnrecordedCostumesPage } from "src/pages/UnrecordedCostumes";
 import { ProfilePage } from "src/pages/ProfilePage";
 import { PrivateRoute } from "./providers/PrivateRoute";
@@ -50,8 +50,8 @@ export const router = createBrowserRouter([
                 element: <NotificationPage />,
               },
               {
-                path: "schedule",
-                element: <SchedulePage />,
+                path: "costumes",
+                element: <CostumesPage />,
               },
             ],
           },

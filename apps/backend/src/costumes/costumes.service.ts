@@ -6,6 +6,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import {
   CostumesAvailabilityResponseDto,
+  CostumesListResponseDto,
   CostumesSearchAvailableResponseDto,
   CostumesSearchResponseDto,
   CreateCostumesRequestDto,
@@ -198,6 +199,7 @@ export class CostumesService {
         visitCode: order.visit.visitCode,
         childName: order.child?.name || 'Имя не указано',
         clientPhone: order.client?.phone || 'Телефон не указан',
+        clientName: order.client?.name,
         startDateTime: order.startDateTime.toISOString().split('T')[0],
         endDateTime: order.endDateTime.toISOString().split('T')[0],
         issueTimeFrom: order.visit.issueTimeFrom,
@@ -214,6 +216,50 @@ export class CostumesService {
         periods.length === 0
           ? 'На выбранный костюм активных броней не найдено'
           : null,
+    };
+  }
+
+  async getCostumesList(
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<CostumesListResponseDto> {
+    const skip = (page - 1) * limit;
+
+    const whereCondition = {
+      deletedAt: null,
+    };
+
+    const [rawItems, total] = await this.prisma.$transaction([
+      this.prisma.costume.findMany({
+        where: whereCondition,
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          name: true,
+          inventoryCode: true,
+        },
+        orderBy: {
+          id: 'desc',
+        },
+      }),
+      this.prisma.costume.count({
+        where: whereCondition,
+      }),
+    ]);
+
+    const items = rawItems.map((item) => ({
+      costumeId: item.id,
+      name: item.name,
+      inventoryCode: item.inventoryCode,
+    }));
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+      hasMore: skip + items.length < total,
     };
   }
 }
