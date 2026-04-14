@@ -16,9 +16,9 @@ import {
   IconTag,
   IconPackageExport,
   IconPackageImport,
-  IconCalendarStats,
   IconUserCircle,
   IconMessage2,
+  IconShirt,
 } from "@tabler/icons-react";
 import { useNotWrittenCostumes } from "src/features/visits/hooks/useVisits";
 
@@ -53,9 +53,9 @@ export function MainLayout() {
       icon: IconMessage2,
     },
     {
-      link: "/bookings/schedule",
-      label: "Просмотр брони",
-      icon: IconCalendarStats,
+      link: "/bookings/costumes",
+      label: "Костюмы",
+      icon: IconShirt,
     },
     { link: "/profile", label: "Профиль", icon: IconUserCircle },
   ];

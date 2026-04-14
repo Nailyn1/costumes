@@ -93,6 +93,15 @@ const Costumes_Costume = z
     inventoryCode: Costumes_InventoryCode.regex(/^C-\d{4}$/),
   })
   .passthrough();
+const Costumes_GetCostumesList = z
+  .object({
+    items: z.array(Costumes_Costume),
+    total: z.number().int(),
+    page: z.number().int(),
+    limit: z.number().int(),
+    hasMore: z.boolean(),
+  })
+  .passthrough();
 const Costumes_CostumeSearchResult = z
   .object({
     costumeId: z.number().int(),
@@ -119,6 +128,7 @@ const Visits_TimeString = z.string();
 const Costumes_AvailabilityPeriod = z
   .object({
     visitCode: Costumes_VisitCode.regex(/^\d{4}$/),
+    clientName: z.string(),
     childName: z.string(),
     clientPhone: z.string(),
     startDateTime: z.string(),
@@ -511,6 +521,7 @@ export const schemas = {
   Costumes_CreateCostumeRequest,
   Costumes_InventoryCode,
   Costumes_Costume,
+  Costumes_GetCostumesList,
   Costumes_CostumeSearchResult,
   Costumes_CostumeStatus,
   Costumes_AvailableCostume,
@@ -757,6 +768,25 @@ const endpoints = makeApi([
       },
     ],
     response: Costumes_CostumeFullAvailability,
+  },
+  {
+    method: "get",
+    path: "/costumes/list",
+    alias: "CostumeOperations_getCostumesList",
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "page",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+    ],
+    response: Costumes_GetCostumesList,
   },
   {
     method: "get",

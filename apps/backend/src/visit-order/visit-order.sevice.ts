@@ -297,6 +297,9 @@ export class VisitOrderService {
     const orders = await this.prisma.order.findMany({
       where: {
         tagStatus: 'not_written',
+        status: {
+          not: 'cancelled',
+        },
       },
       include: {
         costume: true,

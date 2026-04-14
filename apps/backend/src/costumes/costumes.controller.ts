@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  DefaultValuePipe,
   Delete,
   Get,
   HttpCode,
@@ -19,6 +20,7 @@ import {
   UpdateCostumesRequest,
 } from './dto/costumes.dto';
 import {
+  CostumesListResponseDto,
   CostumesSearchAvailableResponseDto,
   CostumesSearchResponseDto,
   CreateUpdateCostumesResponseDto,
@@ -81,5 +83,14 @@ export class CostumesController {
     @Param('costumeId', ParseIntPipe) costumeId: number,
   ) {
     return await this.costumesService.costumesAvailability(costumeId);
+  }
+
+  @Get('list')
+  @UseGuards(JwtAuthGuard)
+  async costumesList(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number = 1,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number = 20,
+  ): Promise<CostumesListResponseDto> {
+    return await this.costumesService.getCostumesList(page, limit);
   }
 }

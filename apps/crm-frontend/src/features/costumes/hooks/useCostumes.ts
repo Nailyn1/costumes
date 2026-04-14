@@ -1,11 +1,14 @@
 import {
   keepPreviousData,
+  useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
+  type InfiniteData,
 } from "@tanstack/react-query";
 import { costumeService } from "../services/costumes.service";
 import type {
+  CostumesListResponseDto,
   CreateCostumesRequestDto,
   UpdateCostumesRequestDto,
 } from "@costumes/shared";
@@ -60,12 +63,12 @@ export function useUpdateCostume() {
       costumeId: number;
       data: UpdateCostumesRequestDto;
     }) => costumeService.updateCostume(data, costumeId),
-    onSuccess: (updatedCostume) => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: costumesKeys.lists() });
-      queryClient.setQueryData(
-        costumesKeys.detail(updatedCostume.costumeId),
-        updatedCostume,
-      );
+
+      queryClient.invalidateQueries({
+        queryKey: costumesKeys.detail(variables.costumeId),
+      });
     },
   });
 }
@@ -77,9 +80,23 @@ export function useDeleteCostume() {
     mutationFn: (costumeId: number) => costumeService.deleteCostume(costumeId),
 
     onSuccess: (_, costumeId) => {
-      queryClient.invalidateQueries({ queryKey: costumesKeys.lists() });
-
       queryClient.removeQueries({ queryKey: costumesKeys.detail(costumeId) });
+
+      queryClient.setQueriesData(
+        { queryKey: costumesKeys.lists() },
+        (oldData: InfiniteData<CostumesListResponseDto>) => {
+          if (!oldData) return oldData;
+          return {
+            ...oldData,
+            pages: oldData.pages.map((page) => ({
+              ...page,
+              items: page.items.filter((item) => item.costumeId !== costumeId),
+            })),
+          };
+        },
+      );
+
+      queryClient.invalidateQueries({ queryKey: costumesKeys.lists() });
     },
   });
 }
@@ -94,7 +111,10 @@ export function useSearchCostume(searchQuery: string) {
   });
 }
 
-export function useIsAvailableCostume(costumeId: number) {
+export function useIsAvailableCostume(
+  costumeId: number,
+  isModalOpened: boolean = true,
+) {
   return useQuery({
     queryKey: [...costumesKeys.detail(costumeId)],
     queryFn: () => {
@@ -103,6 +123,25 @@ export function useIsAvailableCostume(costumeId: number) {
       }
       return costumeService.isAvailableCostume(costumeId);
     },
-    enabled: !!costumeId,
+    enabled: !!costumeId && isModalOpened,
+  });
+}
+
+export function useCostumeList(enabled = true) {
+  return useInfiniteQuery({
+    queryKey: [...costumesKeys.lists()],
+    queryFn: ({ pageParam }) =>
+      costumeService.getCostumesList({ page: pageParam }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => {
+      if (lastPage.hasMore) {
+        return lastPage.page + 1;
+      }
+      return undefined;
+    },
+    enabled,
+    refetchInterval: 15000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
   });
 }

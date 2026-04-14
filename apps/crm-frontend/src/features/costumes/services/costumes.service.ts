@@ -2,6 +2,7 @@ import type {
   CreateCostumesRequestDto,
   UpdateCostumesRequestDto,
 } from "@costumes/shared";
+import type { GetParams } from "src/features/visits/services/visits.service";
 import { apiClient } from "src/services/apiClient";
 
 export const costumeService = {
@@ -37,6 +38,11 @@ export const costumeService = {
   isAvailableCostume(costumeId: number) {
     return apiClient.CostumeOperations_getDetailedAvailability({
       params: { costumeId },
+    });
+  },
+  getCostumesList(params?: GetParams) {
+    return apiClient.CostumeOperations_getCostumesList({
+      queries: params,
     });
   },
 };

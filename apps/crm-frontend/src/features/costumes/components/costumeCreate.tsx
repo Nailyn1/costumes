@@ -3,7 +3,10 @@ import { useForm } from "@mantine/form";
 import { useCreateCostume } from "../hooks/useCostumes";
 import type { CostumeCreateFormProps } from "../types/costumeTypes";
 
-export function CostumeCreateForm({ onCreated }: CostumeCreateFormProps) {
+export function CostumeCreateForm({
+  onCreated,
+  buttonText = "Создать и выбрать",
+}: CostumeCreateFormProps) {
   const createMutation = useCreateCostume();
 
   const form = useForm({
@@ -55,7 +58,7 @@ export function CostumeCreateForm({ onCreated }: CostumeCreateFormProps) {
           loading={createMutation.isPending}
           fullWidth
         >
-          Создать и выбрать
+          {buttonText}
         </Button>
       </Stack>
     </form>
