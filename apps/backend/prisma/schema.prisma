@@ -31,6 +31,10 @@ model Client {
   name      String
   phone     String   
   notes     String?
+
+  isBlacklisted   Boolean   @default(false) @map("is_blacklisted")
+  blacklistReason String?   @map("blacklist_reason")
+  
   children  Child[]
   visits    Visit[]
   orders    Order[]

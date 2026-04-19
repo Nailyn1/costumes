@@ -94,6 +94,8 @@ export const ClientScalarFieldEnum = {
   name: 'name',
   phone: 'phone',
   notes: 'notes',
+  isBlacklisted: 'isBlacklisted',
+  blacklistReason: 'blacklistReason',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   deletedAt: 'deletedAt'

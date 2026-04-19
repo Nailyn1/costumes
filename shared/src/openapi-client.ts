@@ -71,6 +71,78 @@ const Clients_Client = z
     ),
     phone: Clients_PhoneString.regex(/^\+7\d{10}$/),
     children: z.array(Children_Child).optional(),
+    isBlacklisted: z.boolean(),
+    blacklistReason: z.string().optional(),
+  })
+  .passthrough();
+const Costumes_VisitCode = z.string();
+const Visits_VisitStatus = z.enum([
+  "reserved",
+  "issued",
+  "completed",
+  "cancelled",
+]);
+const Visits_TimeString = z.string();
+const Visits_OrderStatus = z.enum([
+  "reserved",
+  "issued",
+  "returned",
+  "cancelled",
+]);
+const Clients_ClientOrderHistory = z
+  .object({
+    orderId: z.number().int(),
+    costumeName: z.string(),
+    inventoryCode: z.string(),
+    childName: z.string(),
+    orderStatus: Visits_OrderStatus,
+    rentPrice: z.number().int(),
+    prepaymentAmount: z.number().int(),
+    finalPayment: z.number().int().optional(),
+  })
+  .passthrough();
+const Clients_ClientVisitHistory = z
+  .object({
+    visitId: z.number().int(),
+    visitCode: Costumes_VisitCode.regex(/^\d{4}$/),
+    visitStatus: Visits_VisitStatus,
+    createdAt: z.string().datetime({ offset: true }),
+    startDateTime: z.string(),
+    endDateTime: z.string(),
+    issueTimeFrom: Visits_TimeString.regex(
+      /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/
+    ),
+    returnTimeUntil: Visits_TimeString.regex(
+      /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/
+    ),
+    visitNote: z.string().optional(),
+    orders: z.array(Clients_ClientOrderHistory),
+  })
+  .passthrough();
+const Clients_GetClientDetailed = z
+  .object({
+    client: Clients_Client,
+    visits: z.array(Clients_ClientVisitHistory),
+  })
+  .passthrough();
+const Clients_ClientItem = z
+  .object({
+    clientId: z.number().int(),
+    name: Clients_ClientName.min(2).regex(
+      /^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\s-]+$/
+    ),
+    phone: Clients_PhoneString.regex(/^\+7\d{10}$/),
+    isBlacklisted: z.boolean(),
+  })
+  .passthrough();
+const Clients_GetClientList = z
+  .object({
+    items: z.array(Clients_ClientItem),
+    totalOrders: z.number().int(),
+    total: z.number().int(),
+    page: z.number().int(),
+    limit: z.number().int(),
+    hasMore: z.boolean(),
   })
   .passthrough();
 const Clients_UpdateClientRequest = z
@@ -80,6 +152,10 @@ const Clients_UpdateClientRequest = z
     ),
     phone: Clients_PhoneString.regex(/^\+7\d{10}$/),
   })
+  .partial()
+  .passthrough();
+const Clients_blacklistReason = z
+  .object({ blacklistReason: z.string() })
   .partial()
   .passthrough();
 const Costumes_CreateCostumeRequest = z
@@ -123,8 +199,6 @@ const Costumes_UpdateCostumeRequest = z
   .object({ name: z.string().min(2) })
   .partial()
   .passthrough();
-const Costumes_VisitCode = z.string();
-const Visits_TimeString = z.string();
 const Costumes_AvailabilityPeriod = z
   .object({
     visitCode: Costumes_VisitCode.regex(/^\d{4}$/),
@@ -177,12 +251,6 @@ const Visits_CreateVisitRequest = z
     ),
   })
   .passthrough();
-const Visits_VisitStatus = z.enum([
-  "reserved",
-  "issued",
-  "completed",
-  "cancelled",
-]);
 const Visits_Notification = z
   .object({
     id: z.number().int(),
@@ -517,7 +585,17 @@ export const schemas = {
   Clients_CreateClientRequest,
   Children_Child,
   Clients_Client,
+  Costumes_VisitCode,
+  Visits_VisitStatus,
+  Visits_TimeString,
+  Visits_OrderStatus,
+  Clients_ClientOrderHistory,
+  Clients_ClientVisitHistory,
+  Clients_GetClientDetailed,
+  Clients_ClientItem,
+  Clients_GetClientList,
   Clients_UpdateClientRequest,
+  Clients_blacklistReason,
   Costumes_CreateCostumeRequest,
   Costumes_InventoryCode,
   Costumes_Costume,
@@ -526,12 +604,9 @@ export const schemas = {
   Costumes_CostumeStatus,
   Costumes_AvailableCostume,
   Costumes_UpdateCostumeRequest,
-  Costumes_VisitCode,
-  Visits_TimeString,
   Costumes_AvailabilityPeriod,
   Costumes_CostumeFullAvailability,
   Visits_CreateVisitRequest,
-  Visits_VisitStatus,
   Visits_Notification,
   Visits_TagStatus,
   Visits_VisitOrder,
@@ -690,6 +765,75 @@ const endpoints = makeApi([
       },
     ],
     response: z.void(),
+  },
+  {
+    method: "post",
+    path: "/clients/:clientId/blacklist",
+    alias: "ClientOperations_addClientInBlackList",
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "body",
+        type: "Body",
+        schema: z
+          .object({ blacklistReason: z.string() })
+          .partial()
+          .passthrough(),
+      },
+      {
+        name: "clientId",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "delete",
+    path: "/clients/:clientId/blacklist",
+    alias: "ClientOperations_removeClientFromBlackList",
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "clientId",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
+    method: "get",
+    path: "/clients/detail/:clientId",
+    alias: "ClientOperations_getClientDetail",
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "clientId",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: Clients_GetClientDetailed,
+  },
+  {
+    method: "get",
+    path: "/clients/list",
+    alias: "ClientOperations_getClientList",
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "page",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+      {
+        name: "limit",
+        type: "Query",
+        schema: z.number().int().optional(),
+      },
+    ],
+    response: Clients_GetClientList,
   },
   {
     method: "get",

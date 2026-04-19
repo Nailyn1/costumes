@@ -7,6 +7,7 @@ import {
   CreateClientResponseSchema,
   UpdateClientRequestSchema,
   UpdateClientResponseSchema,
+  AddClientInBlacklistRequestSchema,
 } from '@costumes/shared';
 import { createZodDto } from '../../common/zod-dto';
 
@@ -36,4 +37,7 @@ export class UpdateClientRequest extends createZodDto(
 ) {}
 export class UpdateClientResponse extends createZodDto(
   UpdateClientResponseSchema,
+) {}
+export class AddClientInBlacklistRequest extends createZodDto(
+  AddClientInBlacklistRequestSchema,
 ) {}

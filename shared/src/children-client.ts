@@ -27,8 +27,19 @@ export type UpdateClientRequestDto = z.infer<
   typeof schemas.Clients_UpdateClientRequest
 >;
 export type UpdateClientResponseDto = z.infer<typeof schemas.Clients_Client>;
+export type GetListClientResponseDto = z.infer<
+  typeof schemas.Clients_GetClientList
+>;
+export type GetDetailedClientResponseDto = z.infer<
+  typeof schemas.Clients_GetClientDetailed
+>;
+export type AddClientInBlackListRequestDto = z.infer<
+  typeof schemas.Clients_blacklistReason
+>;
 
 export const CreateClientRequestSchema = schemas.Clients_CreateClientRequest;
 export const CreateClientResponseSchema = schemas.Clients_Client;
 export const UpdateClientRequestSchema = schemas.Clients_UpdateClientRequest;
 export const UpdateClientResponseSchema = schemas.Clients_Client;
+export const AddClientInBlacklistRequestSchema =
+  schemas.Clients_blacklistReason;

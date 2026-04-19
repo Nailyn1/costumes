@@ -13,6 +13,9 @@ import {
   CreateClientResponseDto,
   UpdateClientRequestDto,
   UpdateClientResponseDto,
+  GetListClientResponseDto,
+  GetDetailedClientResponseDto,
+  AddClientInBlackListRequestDto,
 } from '@costumes/shared';
 
 @Injectable()
@@ -94,12 +97,13 @@ export class ClientChildService {
       data: { name: data.name, phone: data.phone },
     });
 
-    const { id: clientId, name, phone } = client;
+    const { id: clientId, name, phone, isBlacklisted } = client;
     return {
       clientId,
       name,
       phone,
       children: [],
+      isBlacklisted,
     };
   }
 
@@ -122,12 +126,13 @@ export class ClientChildService {
         throw err;
       });
 
-    const { name, phone } = client;
+    const { name, phone, isBlacklisted } = client;
     return {
       clientId,
       name,
       phone,
       children: [],
+      isBlacklisted,
     };
   }
 
@@ -174,6 +179,7 @@ export class ClientChildService {
         children: {
           select: { name: true, id: true },
         },
+        isBlacklisted: true,
       },
       take: 10,
     });
@@ -186,6 +192,153 @@ export class ClientChildService {
         childId: child.id,
         name: child.name,
       })),
+      isBlacklisted: client.isBlacklisted,
     }));
+  }
+
+  async listClients(
+    page: number = 1,
+    limit: number = 20,
+  ): Promise<GetListClientResponseDto> {
+    const skip = (page - 1) * limit;
+
+    const [rawClients, total, totalOrders] = await this.prisma.$transaction([
+      this.prisma.client.findMany({
+        where: { deletedAt: null },
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+          isBlacklisted: true,
+        },
+        orderBy: { id: 'desc' },
+      }),
+      this.prisma.client.count({
+        where: { deletedAt: null },
+      }),
+      this.prisma.order.count({
+        where: { deletedAt: null },
+      }),
+    ]);
+
+    const items = rawClients.map((client) => ({
+      clientId: client.id,
+      name: client.name,
+      phone: client.phone,
+      isBlacklisted: client.isBlacklisted,
+    }));
+
+    return {
+      items,
+      totalOrders,
+      total,
+      page,
+      limit,
+      hasMore: skip + items.length < total,
+    };
+  }
+
+  async detailedClient(
+    clientId: number,
+  ): Promise<GetDetailedClientResponseDto> {
+    const clientData = await this.prisma.client.findUnique({
+      where: {
+        id: clientId,
+        deletedAt: null,
+      },
+      include: {
+        children: {
+          where: { deletedAt: null },
+        },
+        visits: {
+          where: { deletedAt: null },
+          orderBy: { createdAt: 'desc' },
+          include: {
+            orders: {
+              where: { deletedAt: null },
+              include: {
+                costume: true,
+                child: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!clientData) {
+      throw new NotFoundException(`Клиент с ID ${clientId} не найден`);
+    }
+
+    const visits = clientData.visits.map((visit) => {
+      return {
+        visitId: visit.id,
+        visitCode: visit.visitCode,
+        visitStatus: visit.status,
+        createdAt: visit.createdAt.toISOString(),
+        startDateTime: visit.startDateTime.toISOString().split('T')[0],
+        endDateTime: visit.endDateTime.toISOString().split('T')[0],
+        issueTimeFrom: visit.issueTimeFrom,
+        returnTimeUntil: visit.returnTimeUntil,
+        visitNote: visit.notes || undefined,
+        orders: visit.orders.map((order) => ({
+          orderId: order.id,
+          costumeName: order.costume.name,
+          inventoryCode: order.costume.inventoryCode,
+          childName: order.child.name,
+          orderStatus: order.status,
+          rentPrice: order.rentPrice,
+          prepaymentAmount: order.prepaymentAmount,
+          finalPayment: order.finalPayment || undefined,
+        })),
+      };
+    });
+
+    return {
+      client: {
+        clientId: clientData.id,
+        name: clientData.name,
+        phone: clientData.phone,
+        isBlacklisted: clientData.isBlacklisted,
+        blacklistReason: clientData.blacklistReason || undefined,
+        children: clientData.children.map((child) => ({
+          childId: child.id,
+          name: child.name,
+        })),
+      },
+      visits,
+    };
+  }
+  async addClientToBlacklist(
+    clientId: number,
+    body: AddClientInBlackListRequestDto,
+  ): Promise<void> {
+    await this.prisma.client
+      .update({
+        where: { id: clientId },
+        data: {
+          isBlacklisted: true,
+          blacklistReason: body.blacklistReason,
+        },
+      })
+      .catch(() => {
+        throw new NotFoundException(`Клиент с ID ${clientId} не найден`);
+      });
+  }
+
+  async removeClientFromBlacklist(clientId: number): Promise<void> {
+    await this.prisma.client
+      .update({
+        where: { id: clientId },
+        data: {
+          isBlacklisted: false,
+          blacklistReason: null,
+        },
+      })
+      .catch(() => {
+        throw new NotFoundException(`Клиент с ID ${clientId} не найден`);
+      });
   }
 }

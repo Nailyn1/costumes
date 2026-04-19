@@ -30,6 +30,13 @@ enum TagStatus {
     not_written,
 }
 
+enum OrderStatus {
+  reserved,
+  issued,
+  returned,
+  cancelled,
+}
+
 model VisitOrder {
   orderId: int32;
   childName: CostumeApp.Children.ChildName;

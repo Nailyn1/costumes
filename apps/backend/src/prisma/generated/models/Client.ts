@@ -39,6 +39,8 @@ export type ClientMinAggregateOutputType = {
   name: string | null
   phone: string | null
   notes: string | null
+  isBlacklisted: boolean | null
+  blacklistReason: string | null
   createdAt: Date | null
   updatedAt: Date | null
   deletedAt: Date | null
@@ -49,6 +51,8 @@ export type ClientMaxAggregateOutputType = {
   name: string | null
   phone: string | null
   notes: string | null
+  isBlacklisted: boolean | null
+  blacklistReason: string | null
   createdAt: Date | null
   updatedAt: Date | null
   deletedAt: Date | null
@@ -59,6 +63,8 @@ export type ClientCountAggregateOutputType = {
   name: number
   phone: number
   notes: number
+  isBlacklisted: number
+  blacklistReason: number
   createdAt: number
   updatedAt: number
   deletedAt: number
@@ -79,6 +85,8 @@ export type ClientMinAggregateInputType = {
   name?: true
   phone?: true
   notes?: true
+  isBlacklisted?: true
+  blacklistReason?: true
   createdAt?: true
   updatedAt?: true
   deletedAt?: true
@@ -89,6 +97,8 @@ export type ClientMaxAggregateInputType = {
   name?: true
   phone?: true
   notes?: true
+  isBlacklisted?: true
+  blacklistReason?: true
   createdAt?: true
   updatedAt?: true
   deletedAt?: true
@@ -99,6 +109,8 @@ export type ClientCountAggregateInputType = {
   name?: true
   phone?: true
   notes?: true
+  isBlacklisted?: true
+  blacklistReason?: true
   createdAt?: true
   updatedAt?: true
   deletedAt?: true
@@ -196,6 +208,8 @@ export type ClientGroupByOutputType = {
   name: string
   phone: string
   notes: string | null
+  isBlacklisted: boolean
+  blacklistReason: string | null
   createdAt: Date
   updatedAt: Date
   deletedAt: Date | null
@@ -229,6 +243,8 @@ export type ClientWhereInput = {
   name?: Prisma.StringFilter<"Client"> | string
   phone?: Prisma.StringFilter<"Client"> | string
   notes?: Prisma.StringNullableFilter<"Client"> | string | null
+  isBlacklisted?: Prisma.BoolFilter<"Client"> | boolean
+  blacklistReason?: Prisma.StringNullableFilter<"Client"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Client"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Client"> | Date | string
   deletedAt?: Prisma.DateTimeNullableFilter<"Client"> | Date | string | null
@@ -242,6 +258,8 @@ export type ClientOrderByWithRelationInput = {
   name?: Prisma.SortOrder
   phone?: Prisma.SortOrder
   notes?: Prisma.SortOrderInput | Prisma.SortOrder
+  isBlacklisted?: Prisma.SortOrder
+  blacklistReason?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   deletedAt?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -258,6 +276,8 @@ export type ClientWhereUniqueInput = Prisma.AtLeast<{
   name?: Prisma.StringFilter<"Client"> | string
   phone?: Prisma.StringFilter<"Client"> | string
   notes?: Prisma.StringNullableFilter<"Client"> | string | null
+  isBlacklisted?: Prisma.BoolFilter<"Client"> | boolean
+  blacklistReason?: Prisma.StringNullableFilter<"Client"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Client"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Client"> | Date | string
   deletedAt?: Prisma.DateTimeNullableFilter<"Client"> | Date | string | null
@@ -271,6 +291,8 @@ export type ClientOrderByWithAggregationInput = {
   name?: Prisma.SortOrder
   phone?: Prisma.SortOrder
   notes?: Prisma.SortOrderInput | Prisma.SortOrder
+  isBlacklisted?: Prisma.SortOrder
+  blacklistReason?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   deletedAt?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -289,6 +311,8 @@ export type ClientScalarWhereWithAggregatesInput = {
   name?: Prisma.StringWithAggregatesFilter<"Client"> | string
   phone?: Prisma.StringWithAggregatesFilter<"Client"> | string
   notes?: Prisma.StringNullableWithAggregatesFilter<"Client"> | string | null
+  isBlacklisted?: Prisma.BoolWithAggregatesFilter<"Client"> | boolean
+  blacklistReason?: Prisma.StringNullableWithAggregatesFilter<"Client"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Client"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Client"> | Date | string
   deletedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Client"> | Date | string | null
@@ -298,6 +322,8 @@ export type ClientCreateInput = {
   name: string
   phone: string
   notes?: string | null
+  isBlacklisted?: boolean
+  blacklistReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
@@ -311,6 +337,8 @@ export type ClientUncheckedCreateInput = {
   name: string
   phone: string
   notes?: string | null
+  isBlacklisted?: boolean
+  blacklistReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
@@ -323,6 +351,8 @@ export type ClientUpdateInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isBlacklisted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  blacklistReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -336,6 +366,8 @@ export type ClientUncheckedUpdateInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isBlacklisted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  blacklistReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -349,6 +381,8 @@ export type ClientCreateManyInput = {
   name: string
   phone: string
   notes?: string | null
+  isBlacklisted?: boolean
+  blacklistReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
@@ -358,6 +392,8 @@ export type ClientUpdateManyMutationInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isBlacklisted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  blacklistReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -368,6 +404,8 @@ export type ClientUncheckedUpdateManyInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isBlacklisted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  blacklistReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -378,6 +416,8 @@ export type ClientCountOrderByAggregateInput = {
   name?: Prisma.SortOrder
   phone?: Prisma.SortOrder
   notes?: Prisma.SortOrder
+  isBlacklisted?: Prisma.SortOrder
+  blacklistReason?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   deletedAt?: Prisma.SortOrder
@@ -392,6 +432,8 @@ export type ClientMaxOrderByAggregateInput = {
   name?: Prisma.SortOrder
   phone?: Prisma.SortOrder
   notes?: Prisma.SortOrder
+  isBlacklisted?: Prisma.SortOrder
+  blacklistReason?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   deletedAt?: Prisma.SortOrder
@@ -402,6 +444,8 @@ export type ClientMinOrderByAggregateInput = {
   name?: Prisma.SortOrder
   phone?: Prisma.SortOrder
   notes?: Prisma.SortOrder
+  isBlacklisted?: Prisma.SortOrder
+  blacklistReason?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   deletedAt?: Prisma.SortOrder
@@ -418,6 +462,10 @@ export type ClientScalarRelationFilter = {
 
 export type NullableStringFieldUpdateOperationsInput = {
   set?: string | null
+}
+
+export type BoolFieldUpdateOperationsInput = {
+  set?: boolean
 }
 
 export type NullableDateTimeFieldUpdateOperationsInput = {
@@ -470,6 +518,8 @@ export type ClientCreateWithoutChildrenInput = {
   name: string
   phone: string
   notes?: string | null
+  isBlacklisted?: boolean
+  blacklistReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
@@ -482,6 +532,8 @@ export type ClientUncheckedCreateWithoutChildrenInput = {
   name: string
   phone: string
   notes?: string | null
+  isBlacklisted?: boolean
+  blacklistReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
@@ -509,6 +561,8 @@ export type ClientUpdateWithoutChildrenInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isBlacklisted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  blacklistReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -521,6 +575,8 @@ export type ClientUncheckedUpdateWithoutChildrenInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isBlacklisted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  blacklistReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -532,6 +588,8 @@ export type ClientCreateWithoutVisitsInput = {
   name: string
   phone: string
   notes?: string | null
+  isBlacklisted?: boolean
+  blacklistReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
@@ -544,6 +602,8 @@ export type ClientUncheckedCreateWithoutVisitsInput = {
   name: string
   phone: string
   notes?: string | null
+  isBlacklisted?: boolean
+  blacklistReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
@@ -571,6 +631,8 @@ export type ClientUpdateWithoutVisitsInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isBlacklisted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  blacklistReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -583,6 +645,8 @@ export type ClientUncheckedUpdateWithoutVisitsInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isBlacklisted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  blacklistReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -594,6 +658,8 @@ export type ClientCreateWithoutOrdersInput = {
   name: string
   phone: string
   notes?: string | null
+  isBlacklisted?: boolean
+  blacklistReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
@@ -606,6 +672,8 @@ export type ClientUncheckedCreateWithoutOrdersInput = {
   name: string
   phone: string
   notes?: string | null
+  isBlacklisted?: boolean
+  blacklistReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   deletedAt?: Date | string | null
@@ -633,6 +701,8 @@ export type ClientUpdateWithoutOrdersInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isBlacklisted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  blacklistReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -645,6 +715,8 @@ export type ClientUncheckedUpdateWithoutOrdersInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   phone?: Prisma.StringFieldUpdateOperationsInput | string
   notes?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  isBlacklisted?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  blacklistReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -706,6 +778,8 @@ export type ClientSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   name?: boolean
   phone?: boolean
   notes?: boolean
+  isBlacklisted?: boolean
+  blacklistReason?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   deletedAt?: boolean
@@ -720,6 +794,8 @@ export type ClientSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extens
   name?: boolean
   phone?: boolean
   notes?: boolean
+  isBlacklisted?: boolean
+  blacklistReason?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   deletedAt?: boolean
@@ -730,6 +806,8 @@ export type ClientSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extens
   name?: boolean
   phone?: boolean
   notes?: boolean
+  isBlacklisted?: boolean
+  blacklistReason?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   deletedAt?: boolean
@@ -740,12 +818,14 @@ export type ClientSelectScalar = {
   name?: boolean
   phone?: boolean
   notes?: boolean
+  isBlacklisted?: boolean
+  blacklistReason?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   deletedAt?: boolean
 }
 
-export type ClientOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "phone" | "notes" | "createdAt" | "updatedAt" | "deletedAt", ExtArgs["result"]["client"]>
+export type ClientOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "phone" | "notes" | "isBlacklisted" | "blacklistReason" | "createdAt" | "updatedAt" | "deletedAt", ExtArgs["result"]["client"]>
 export type ClientInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   children?: boolean | Prisma.Client$childrenArgs<ExtArgs>
   visits?: boolean | Prisma.Client$visitsArgs<ExtArgs>
@@ -767,6 +847,8 @@ export type $ClientPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     name: string
     phone: string
     notes: string | null
+    isBlacklisted: boolean
+    blacklistReason: string | null
     createdAt: Date
     updatedAt: Date
     deletedAt: Date | null
@@ -1200,6 +1282,8 @@ export interface ClientFieldRefs {
   readonly name: Prisma.FieldRef<"Client", 'String'>
   readonly phone: Prisma.FieldRef<"Client", 'String'>
   readonly notes: Prisma.FieldRef<"Client", 'String'>
+  readonly isBlacklisted: Prisma.FieldRef<"Client", 'Boolean'>
+  readonly blacklistReason: Prisma.FieldRef<"Client", 'String'>
   readonly createdAt: Prisma.FieldRef<"Client", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Client", 'DateTime'>
   readonly deletedAt: Prisma.FieldRef<"Client", 'DateTime'>
