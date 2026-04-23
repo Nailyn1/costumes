@@ -1059,6 +1059,8 @@ export const ClientScalarFieldEnum = {
   name: 'name',
   phone: 'phone',
   notes: 'notes',
+  isBlacklisted: 'isBlacklisted',
+  blacklistReason: 'blacklistReason',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   deletedAt: 'deletedAt'
@@ -1236,6 +1238,13 @@ export type ListDateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaM
 
 
 /**
+ * Reference to a field of type 'Boolean'
+ */
+export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Boolean'>
+    
+
+
+/**
  * Reference to a field of type 'CostumeStatus'
  */
 export type EnumCostumeStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'CostumeStatus'>
@@ -1302,13 +1311,6 @@ export type EnumDepositTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$Pris
  * Reference to a field of type 'DepositType[]'
  */
 export type ListEnumDepositTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DepositType[]'>
-    
-
-
-/**
- * Reference to a field of type 'Boolean'
- */
-export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Boolean'>
     
 
 

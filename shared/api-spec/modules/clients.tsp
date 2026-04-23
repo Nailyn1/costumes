@@ -18,6 +18,8 @@ model Client {
   name: ClientName;
   phone: PhoneString;
   children?: CostumeApp.Children.Child[];
+  isBlacklisted: boolean;
+  blacklistReason?: string;
 }
 model CreateClientRequest {
   name: ClientName;
@@ -29,6 +31,53 @@ model UpdateClientRequest {
   phone?: PhoneString;
 }
 
+model ClientItem {
+  clientId: int32;
+  name: ClientName;
+  phone: PhoneString;
+  isBlacklisted: boolean;
+}
+model GetClientList{
+  items: ClientItem[];
+  totalOrders: int32;
+  total: int32;
+  page: int32;
+  limit: int32;
+  hasMore: boolean;
+}
+
+model ClientOrderHistory {
+  orderId: int32;
+  costumeName: string;
+  inventoryCode: string;
+  childName: string;
+  orderStatus: CostumeApp.Visits.OrderStatus;
+  rentPrice: int32;
+  prepaymentAmount: int32;
+  finalPayment?: int32; 
+}
+
+model ClientVisitHistory {
+  visitId: int32;
+  visitCode: CostumeApp.Costumes.VisitCode;
+  visitStatus: CostumeApp.Visits.VisitStatus;
+  createdAt: utcDateTime;
+  startDateTime: plainDate;
+  endDateTime: plainDate;
+  issueTimeFrom: CostumeApp.Visits.TimeString;
+  returnTimeUntil: CostumeApp.Visits.TimeString;
+  visitNote?: string;
+
+  orders: ClientOrderHistory[];
+}
+model GetClientDetailed {
+  client: Client;
+  visits: ClientVisitHistory[];
+}
+
+model blacklistReason {
+  blacklistReason?: string
+}
 @route("/clients")
 interface ClientOperations {
   @get
@@ -56,6 +105,32 @@ interface ClientOperations {
   @delete
   @route("{clientId}")
   delete(@path clientId: int32): {
+    @statusCode statusCode: 204;
+  } | Common.Error;
+
+  @get
+  @route("list")
+  getClientList(@query page?: int32, @query limit?: int32): {
+    @statusCode statusCode: 200;
+    @body body: GetClientList} | Common.Error;
+  
+  @get
+  @route("detail/{clientId}")
+  getClientDetail(@path clientId: int32): {
+    @statusCode statusCode: 200;
+    @body body: GetClientDetailed
+  } | Common.Error;
+
+  @post
+  @route("{clientId}/blacklist")
+  addClientInBlackList(@path clientId: int32, @body request: blacklistReason; ): {
+    @statusCode statusCode: 201;
+    @body body: void;
+  } | Common.Error;
+
+  @delete
+  @route("{clientId}/blacklist")
+  removeClientFromBlackList(@path clientId: int32): {
     @statusCode statusCode: 204;
   } | Common.Error;
 }

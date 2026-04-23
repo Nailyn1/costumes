@@ -24,6 +24,8 @@ export const loggerConfigFactory = (configService: ConfigService): Params => {
       },
       customLogLevel: (req, res, err) => {
         if (err) return 'error';
+        const url = req.url || '';
+
         if (
           req.url?.includes('/webhooks/whatsapp') &&
           res.statusCode >= 200 &&
@@ -32,14 +34,14 @@ export const loggerConfigFactory = (configService: ConfigService): Params => {
           return 'silent';
         }
         if (
-          req.url?.includes('/visits/not_written') &&
           res.statusCode < 400 &&
-          req.url?.includes('/visits/notification')
+          (url.includes('/visits/not_written') ||
+            url.includes('/visits/notification'))
         ) {
           return 'silent';
         }
 
-        return process.env.NODE_ENV === 'production' ? 'info' : 'debug';
+        return isProduction ? 'info' : 'debug';
       },
       redact: {
         paths: ['req.headers.authorization', 'phone'],
@@ -55,10 +57,10 @@ export const loggerConfigFactory = (configService: ConfigService): Params => {
       transport: {
         targets: [
           {
-            target: isProduction ? 'pino/lib/worker' : 'pino-pretty',
+            target: isProduction ? 'pino/file' : 'pino-pretty',
             level: isProduction ? 'info' : 'debug',
             options: isProduction
-              ? {}
+              ? { destination: 1 }
               : {
                   colorize: true,
                   singleLine: false,
