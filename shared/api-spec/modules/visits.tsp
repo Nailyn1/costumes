@@ -354,6 +354,11 @@ getReserved(
     @statusCode statusCode: 204;
   } | Common.Error;
 
+  @post
+  @route("{visitId}/unissue")
+  unissue(@path visitId: int32): {
+    @statusCode statusCode: 204;
+  } | Common.Error;
   
   @get
   @route("issued-for-return")

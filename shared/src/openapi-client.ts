@@ -1122,6 +1122,20 @@ const endpoints = makeApi([
     response: Visits_MarkDepositReturnedResponse,
   },
   {
+    method: "post",
+    path: "/visits/:visitId/unissue",
+    alias: "VisitOperation_unissue",
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "visitId",
+        type: "Path",
+        schema: z.number().int(),
+      },
+    ],
+    response: z.void(),
+  },
+  {
     method: "get",
     path: "/visits/issued",
     alias: "VisitOperation_getIssuedVisits",
