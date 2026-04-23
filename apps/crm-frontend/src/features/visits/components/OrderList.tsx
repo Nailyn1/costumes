@@ -24,7 +24,6 @@ export function OrderList({ form, clientId }: OrderListProps) {
     if (form.values.orders.length > 1) {
       form.removeListItem("orders", index);
     } else {
-      // Сброс последнего оставшегося блока
       form.setFieldValue("orders.0", {
         childId: null,
         costumeId: null,

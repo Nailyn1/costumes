@@ -11,9 +11,10 @@ import {
   Button,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
-import { IconCheck } from "@tabler/icons-react";
-import { useCompleteReturnVisit } from "../../hooks/useVisits";
+import { IconArrowBack, IconCheck } from "@tabler/icons-react";
+import { useCompleteReturnVisit, useUnissueVisit } from "../../hooks/useVisits";
 import { formatPhoneNumber } from "src/utills/formatters";
+import { useState } from "react";
 
 interface ReturnFormContentProps {
   visitId: number;
@@ -27,6 +28,9 @@ export function ReturnFormContent({
   onClose,
 }: ReturnFormContentProps) {
   const returnMutation = useCompleteReturnVisit();
+  const unissueMutation = useUnissueVisit();
+
+  const [isUnissuing, setIsUnissuing] = useState(false);
 
   const form = useForm({
     initialValues: {
@@ -57,6 +61,10 @@ export function ReturnFormContent({
       { onSuccess: () => onClose() },
     );
   });
+
+  const handleConfirmUnissue = () => {
+    unissueMutation.mutate({ visitId }, { onSuccess: () => onClose() });
+  };
 
   const allItemsSelected =
     data.orders.length > 0 &&
@@ -144,22 +152,67 @@ export function ReturnFormContent({
           {...form.getInputProps("notes")}
         />
 
-        <Button
-          type="submit"
-          fullWidth
-          size="lg"
-          color="green"
-          disabled={!allItemsSelected}
-          loading={returnMutation.isPending}
-          leftSection={<IconCheck size={20} />}
-        >
-          Костюмы возвращены
-        </Button>
+        {!isUnissuing ? (
+          <Stack gap="sm" mt="sm">
+            <Button
+              type="submit"
+              fullWidth
+              size="lg"
+              color="green"
+              disabled={!allItemsSelected || unissueMutation.isPending}
+              loading={returnMutation.isPending}
+              leftSection={<IconCheck size={20} />}
+            >
+              Костюмы возвращены
+            </Button>
 
-        {!allItemsSelected && (
-          <Text size="xs" c="dimmed" ta="center">
-            Кнопка станет активной, когда вы отметите все костюмы
-          </Text>
+            {!allItemsSelected && (
+              <Text size="xs" c="dimmed" ta="center">
+                Кнопка станет активной, когда вы отметите все костюмы
+              </Text>
+            )}
+
+            <Button
+              type="button"
+              variant="subtle"
+              color="orange"
+              leftSection={<IconArrowBack size={18} />}
+              onClick={() => setIsUnissuing(true)}
+              disabled={returnMutation.isPending}
+            >
+              Откатить выдачу
+            </Button>
+          </Stack>
+        ) : (
+          <Paper withBorder p="md" radius="md" bg="orange.0" mt="sm">
+            <Stack gap="sm">
+              <Text fw={600} c="orange.9" ta="center">
+                Уверены, что хотите откатить выдачу?
+              </Text>
+              <Text size="sm" c="orange.9" ta="center" mt="-sm">
+                Визит снова появится в списке ожидающих выдачи.
+              </Text>
+
+              <Group grow mt="xs">
+                <Button
+                  type="button"
+                  variant="default"
+                  onClick={() => setIsUnissuing(false)}
+                  disabled={unissueMutation.isPending}
+                >
+                  Назад
+                </Button>
+                <Button
+                  type="button"
+                  color="orange"
+                  onClick={handleConfirmUnissue}
+                  loading={unissueMutation.isPending}
+                >
+                  Подтвердить
+                </Button>
+              </Group>
+            </Stack>
+          </Paper>
         )}
       </Stack>
     </form>

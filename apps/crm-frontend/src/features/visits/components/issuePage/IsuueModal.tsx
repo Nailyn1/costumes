@@ -310,7 +310,6 @@ export function IssueModal({
                 </Button>
               </Stack>
             ) : (
-              // РЕЖИМ ОТМЕНЫ: Показываем поле причины и опасные кнопки
               <Paper withBorder p="md" radius="md" bg="red.0" mt="md">
                 <Stack gap="sm">
                   <Text fw={600} c="red.9">
