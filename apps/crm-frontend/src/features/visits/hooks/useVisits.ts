@@ -197,6 +197,51 @@ export function useCancelVisit() {
   });
 }
 
+export function useUnissueVisit() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ visitId }: { visitId: number }) =>
+      visitsService.visitUnissue(visitId),
+
+    onSuccess: (_, variables) => {
+      queryClient.setQueriesData(
+        { queryKey: ["visits", "issued"] },
+        (oldData: InfiniteData<visitIssuedRepsonseDto>) => {
+          if (!oldData || !oldData.pages) return oldData;
+          return {
+            ...oldData,
+            pages: oldData.pages.map((page) => ({
+              ...page,
+              items: page.items.filter(
+                (item) => item.visitId !== variables.visitId,
+              ),
+            })),
+          };
+        },
+      );
+
+      queryClient.invalidateQueries({
+        queryKey: ["visits", "reserved"],
+      });
+
+      queryClient.removeQueries({
+        queryKey: ["visit", "for-issue", variables.visitId],
+      });
+
+      queryClient.removeQueries({
+        queryKey: ["visit", "for-return", variables.visitId],
+      });
+
+      notifications.show({
+        title: "Отмена выдачи",
+        message: "Визит успешно возвращен в список ожидающих выдачи",
+        color: "blue",
+      });
+    },
+  });
+}
+
 export function useSearchVisits(searchQuery: string) {
   return useQuery({
     queryKey: ["visits", "search", "reserved", searchQuery],

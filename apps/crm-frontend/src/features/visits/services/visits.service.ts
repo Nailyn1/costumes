@@ -79,4 +79,7 @@ export const visitsService = {
   getVisitsNotification(params?: GetParams) {
     return apiClient.VisitOperation_getVisitNotification({ queries: params });
   },
+  visitUnissue(visitId: number) {
+    return apiClient.VisitOperation_unissue(undefined, { params: { visitId } });
+  },
 };
