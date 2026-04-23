@@ -301,6 +301,9 @@ export class VisitOrderService {
           not: 'cancelled',
         },
       },
+      orderBy: {
+        createdAt: 'desc',
+      },
       include: {
         costume: true,
         child: true,
