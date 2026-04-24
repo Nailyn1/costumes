@@ -389,6 +389,7 @@ const Visits_NotificationItem = z
     clientPhone: Clients_PhoneString.regex(/^\+7\d{10}$/),
     childrenNames: z.string(),
     costumeNames: z.string(),
+    message: z.string(),
   })
   .passthrough();
 const Visits_GetNotificationResponse = z

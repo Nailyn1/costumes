@@ -107,6 +107,13 @@ export class VisitController {
     return await this.visitOrderService.visitIssue(dto, visitId);
   }
 
+  @Post(':visitId/unissue')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async visitUnissue(@Param('visitId', ParseIntPipe) visitId: number) {
+    return await this.visitOrderService.visitUnissue(visitId);
+  }
+
   @Get(':visitId/for-issue')
   @UseGuards(JwtAuthGuard)
   async getVisitForIssue(

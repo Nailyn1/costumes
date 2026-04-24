@@ -12,8 +12,17 @@ import {
   Divider,
   Box,
   InputBase,
+  Collapse,
+  CopyButton,
 } from "@mantine/core";
-import { IconDotsVertical, IconRefresh, IconEdit } from "@tabler/icons-react";
+import {
+  IconDotsVertical,
+  IconRefresh,
+  IconEdit,
+  IconBrandWhatsapp,
+  IconCopy,
+  IconCheck,
+} from "@tabler/icons-react";
 import {
   useResendNotification,
   useUpdatePhoneAndResend,
@@ -55,6 +64,9 @@ export function NotificationCard({
   const [phoneInput, setPhoneInput] = useState(item.clientPhone);
   const [phoneError, setPhoneError] = useState<string | null>(null);
 
+  // Состояние для раскрытия блока ручной отправки
+  const [isExpanded, setIsExpanded] = useState(false);
+
   const resendMutation = useResendNotification();
   const updatePhoneMutation = useUpdatePhoneAndResend();
 
@@ -83,6 +95,10 @@ export function NotificationCard({
 
   const isPending = resendMutation.isPending || updatePhoneMutation.isPending;
 
+  // Подготавливаем чистый номер для ссылки wa.me (убираем все кроме цифр)
+  const waNumber = item.clientPhone.replace(/\D/g, "");
+  const waLink = `https://wa.me/${waNumber}`;
+
   return (
     <>
       <Paper shadow="sm" p="md" radius="md" withBorder>
@@ -98,7 +114,13 @@ export function NotificationCard({
 
             <Menu position="bottom-end" shadow="sm">
               <Menu.Target>
-                <ActionIcon variant="subtle" color="gray" loading={isPending}>
+                {/* Остановка всплытия события, чтобы при клике на меню не открывался блок ручной отправки */}
+                <ActionIcon
+                  variant="subtle"
+                  color="gray"
+                  loading={isPending}
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <IconDotsVertical size={18} />
                 </ActionIcon>
               </Menu.Target>
@@ -122,7 +144,11 @@ export function NotificationCard({
 
           <Divider my="sm" />
 
-          <Box>
+          {/* Оборачиваем информацию о клиенте в кликабельный Box */}
+          <Box
+            onClick={() => setIsExpanded(!isExpanded)}
+            style={{ cursor: "pointer" }}
+          >
             <Group gap="xs" mb={4}>
               <Text size="md" c="dimmed">
                 Визит:
@@ -137,14 +163,59 @@ export function NotificationCard({
             <Text size="sm" c="dimmed" style={{ letterSpacing: "0.5px" }}>
               {formatPhoneNumber(item.clientPhone)}
             </Text>
+
+            <Box mt="sm">
+              <Text size="lg">{item.childrenNames}</Text>
+              <Text size="lg" c="dimmed">
+                {item.costumeNames}
+              </Text>
+            </Box>
           </Box>
 
-          <Box mt="sm">
-            <Text size="lg">{item.childrenNames}</Text>
-            <Text size="lg" c="dimmed">
-              {item.costumeNames}
-            </Text>
-          </Box>
+          <Collapse in={isExpanded}>
+            <Divider mb="sm" variant="dashed" />
+            <Stack gap="sm">
+              <Text size="sm" fw={500} ta="center" c="dimmed">
+                Отправить сообщение в ручную
+              </Text>
+              <Group grow>
+                <CopyButton value={item.message || ""} timeout={2000}>
+                  {({ copied, copy }) => (
+                    <Button
+                      color={copied ? "teal" : "gray"}
+                      variant={copied ? "filled" : "light"}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        copy();
+                      }}
+                      leftSection={
+                        copied ? (
+                          <IconCheck size={18} />
+                        ) : (
+                          <IconCopy size={18} />
+                        )
+                      }
+                    >
+                      {copied ? "Скопировано" : "Текст"}
+                    </Button>
+                  )}
+                </CopyButton>
+
+                <Button
+                  component="a"
+                  href={waLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  color="green"
+                  variant="light"
+                  onClick={(e) => e.stopPropagation()}
+                  leftSection={<IconBrandWhatsapp size={18} />}
+                >
+                  WhatsApp
+                </Button>
+              </Group>
+            </Stack>
+          </Collapse>
         </Stack>
       </Paper>
 
