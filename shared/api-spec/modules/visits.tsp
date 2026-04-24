@@ -279,6 +279,7 @@ model NotificationItem {
   clientPhone: CostumeApp.Clients.PhoneString;
   childrenNames: string;
   costumeNames: string;
+  message: string;
 }
 
 model GetNotificationResponse {

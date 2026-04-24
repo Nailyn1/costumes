@@ -33,6 +33,8 @@ import {
 } from '@costumes/shared';
 import { DepositType, OrderStatus, Prisma } from '../prisma/generated/client';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
+import { buildVisitMessage } from '../common/utils/visit-message.utils';
+import { VisitWithDetails } from '../notification/notification.service';
 
 interface PinoLoggerWithId {
   id?: string;
@@ -415,6 +417,43 @@ export class VisitOrderService {
         }
         throw error;
       }
+    });
+  }
+
+  async visitUnissue(visitId: number): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const visit = await tx.visit.findUnique({
+        where: { id: visitId },
+      });
+
+      if (!visit) {
+        throw new NotFoundException(`Визит с ID ${visitId} не найден`);
+      }
+
+      if (visit.status !== 'issued') {
+        throw new BadRequestException(
+          'Отменить выдачу можно только для визита со статусом "Выдан" (issued)',
+        );
+      }
+
+      await tx.order.updateMany({
+        where: { visitId: visitId },
+        data: {
+          status: 'reserved',
+          finalPayment: null,
+        },
+      });
+
+      await tx.visit.update({
+        where: { id: visitId },
+        data: {
+          status: 'reserved',
+        },
+      });
+
+      await tx.deposit.deleteMany({
+        where: { visitId: visitId },
+      });
     });
   }
 
@@ -1074,6 +1113,7 @@ export class VisitOrderService {
 
       const costumeNames = visit.orders.map((o) => o.costume.name).join(', ');
 
+      const message = buildVisitMessage(visit as VisitWithDetails);
       return {
         notificationId: notif.id,
         status: notif.status,
@@ -1082,6 +1122,7 @@ export class VisitOrderService {
         clientPhone: visit.client.phone,
         childrenNames,
         costumeNames,
+        message,
       };
     });
 

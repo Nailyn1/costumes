@@ -12,7 +12,7 @@ import { GreenApiWebhook } from './notification.controller';
 import { InjectQueue } from '@nestjs/bullmq';
 import { NotificationGateway } from './notification.gateway';
 
-type VisitWithDetails = Prisma.VisitGetPayload<{
+export type VisitWithDetails = Prisma.VisitGetPayload<{
   include: {
     client: true;
     orders: {
