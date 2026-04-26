@@ -24,6 +24,7 @@ import {
   MarkDepositReturnedDto,
   OrdersNotWrittenResponseDto,
   OrdersNotWrittenResponseSchema,
+  searchNotificationDto,
   visitCancelRequestDto,
   visitCompleteReturnRequestDto,
   visitCompleteReturnResponseDto,
@@ -1134,5 +1135,75 @@ export class VisitOrderService {
       hasMore: page * limit < total,
       totalToday,
     };
+  }
+
+  async searchNotification(search: string): Promise<searchNotificationDto[]> {
+    const notifications = await this.prisma.notification.findMany({
+      take: 20,
+      where: {
+        visit: {
+          OR: [
+            {
+              visitCode: { contains: search, mode: 'insensitive' },
+            },
+            {
+              client: {
+                name: { contains: search, mode: 'insensitive' },
+              },
+            },
+            {
+              client: {
+                phone: { contains: search },
+              },
+            },
+            {
+              orders: {
+                some: {
+                  child: {
+                    name: { contains: search, mode: 'insensitive' },
+                  },
+                },
+              },
+            },
+          ],
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        visit: {
+          include: {
+            client: true,
+            orders: {
+              include: {
+                child: true,
+                costume: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return notifications.map((notif) => {
+      const visit = notif.visit;
+      const childrenNames = Array.from(
+        new Set(visit.orders.map((o) => o.child.name)),
+      ).join(', ');
+
+      const costumeNames = visit.orders.map((o) => o.costume.name).join(', ');
+
+      const message = buildVisitMessage(visit as VisitWithDetails);
+
+      return {
+        notificationId: notif.id,
+        status: notif.status,
+        visitCode: visit.visitCode,
+        clientName: visit.client.name,
+        clientPhone: visit.client.phone,
+        childrenNames,
+        costumeNames,
+        message,
+      };
+    });
   }
 }

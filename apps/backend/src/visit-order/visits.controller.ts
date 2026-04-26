@@ -31,6 +31,7 @@ import {
   IssuedForReturnDto,
   MarkDepositReturnedDto,
   OrdersNotWrittenResponseDto,
+  searchNotificationDto,
   visitCompleteReturnResponseDto,
   visitIssuedRepsonseDto,
   visitNotificationResponseDto,
@@ -86,6 +87,17 @@ export class VisitController {
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number = 20,
   ): Promise<visitNotificationResponseDto> {
     return await this.visitOrderService.visitNotification(page, limit);
+  }
+
+  @Get('notification-search')
+  @UseGuards(JwtAuthGuard)
+  async searchNotification(
+    @Query('q') q: string,
+  ): Promise<searchNotificationDto[]> {
+    if (!q || q.length < 2) {
+      return [];
+    }
+    return await this.visitOrderService.searchNotification(q);
   }
 
   @Get('search')
