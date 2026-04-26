@@ -82,4 +82,9 @@ export const visitsService = {
   visitUnissue(visitId: number) {
     return apiClient.VisitOperation_unissue(undefined, { params: { visitId } });
   },
+  searchNotification(search: string) {
+    return apiClient.VisitOperation_searchNotification({
+      queries: { q: search },
+    });
+  },
 };

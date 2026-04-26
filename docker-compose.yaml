@@ -1,6 +1,7 @@
 services:
   postgres:
     image: postgres:15-alpine
+    ports: -"5432:5432"
     container_name: nest-postgres
     restart: always
     env_file:

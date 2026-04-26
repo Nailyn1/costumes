@@ -1189,6 +1189,20 @@ const endpoints = makeApi([
     response: Visits_GetNotificationResponse,
   },
   {
+    method: "get",
+    path: "/visits/notification-search",
+    alias: "VisitOperation_searchNotification",
+    requestFormat: "json",
+    parameters: [
+      {
+        name: "q",
+        type: "Query",
+        schema: z.string().min(2),
+      },
+    ],
+    response: z.array(Visits_NotificationItem),
+  },
+  {
     method: "post",
     path: "/visits/preview-code",
     alias: "VisitOperation_previewCode",
