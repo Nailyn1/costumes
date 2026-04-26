@@ -5,10 +5,18 @@ import {
   Text,
   Center,
   Loader,
-  Button,
+  TextInput,
 } from "@mantine/core";
-import { useShowNotification } from "src/features/visits/hooks/useNotifications";
+import {
+  useSearchNotification,
+  useShowNotification,
+} from "src/features/visits/hooks/useNotifications";
 import { NotificationCard } from "src/features/visits/components/NotificationCard";
+import { InView } from "react-intersection-observer";
+import { useState } from "react";
+import { useDebouncedValue } from "@mantine/hooks";
+import { IconSearch } from "@tabler/icons-react";
+import type { searchNotificationDto } from "@costumes/shared";
 
 const getTotalTodayColor = (total: number) => {
   if (total < 30) return "green";
@@ -17,34 +25,93 @@ const getTotalTodayColor = (total: number) => {
 };
 
 export function NotificationPage() {
+  const [search, setSearch] = useState("");
+  const [debouncedSearch] = useDebouncedValue(search, 500);
+
+  const isSearching = debouncedSearch.trim().length >= 2;
+
   const {
-    data,
-    isLoading,
-    isError,
+    data: pagedData,
+    isLoading: isPagedLoading,
+    isError: isPagedError,
     hasNextPage,
     fetchNextPage,
     isFetchingNextPage,
-  } = useShowNotification();
+  } = useShowNotification(!isSearching);
 
-  // Достаем totalToday из первой страницы пагинации (безопасное извлечение)
-  const totalToday = data?.pages[0]?.totalToday || 0;
+  const {
+    data: searchData,
+    isLoading: isSearchLoading,
+    isError: isSearchError,
+  } = useSearchNotification(debouncedSearch);
+
+  const totalToday = pagedData?.pages[0]?.totalToday || 0;
   const color = getTotalTodayColor(totalToday);
 
-  if (isLoading) {
-    return (
-      <Center h="100vh">
-        <Loader />
-      </Center>
-    );
-  }
+  const renderContent = () => {
+    if (isSearching && isSearchLoading) {
+      return (
+        <Center h={200}>
+          <Loader />
+        </Center>
+      );
+    }
 
-  if (isError) {
+    if (!isSearching && isPagedLoading) {
+      return (
+        <Center h={200}>
+          <Loader />
+        </Center>
+      );
+    }
+
+    if ((isSearching && isSearchError) || (!isSearching && isPagedError)) {
+      return (
+        <Center h={200}>
+          <Text c="red">Ошибка загрузки данных</Text>
+        </Center>
+      );
+    }
+
+    if (isSearching) {
+      if (!searchData || searchData.length === 0) {
+        return (
+          <Center h={200}>
+            <Text c="dimmed">Ничего не найдено</Text>
+          </Center>
+        );
+      }
+
+      return searchData.map((item) => (
+        <NotificationCard
+          key={item.notificationId}
+          item={item as searchNotificationDto}
+        />
+      ));
+    }
+
     return (
-      <Center h="100vh">
-        <Text c="red">Ошибка загрузки данных</Text>
-      </Center>
+      <>
+        {pagedData?.pages.map((page) =>
+          page.items.map((item) => (
+            <NotificationCard key={item.notificationId} item={item} />
+          )),
+        )}
+
+        <InView
+          as="div"
+          rootMargin="100px"
+          onChange={(inView) => {
+            if (inView && hasNextPage && !isFetchingNextPage) {
+              fetchNextPage();
+            }
+          }}
+        >
+          <div style={{ height: 10, width: "100%" }} />
+        </InView>
+      </>
     );
-  }
+  };
 
   return (
     <Stack gap="lg">
@@ -69,25 +136,18 @@ export function NotificationPage() {
           </Center>
         </Group>
       </Group>
-      <Stack gap="md">
-        {data?.pages.map((page) =>
-          page.items.map((item) => (
-            <NotificationCard key={item.notificationId} item={item} />
-          )),
-        )}
-      </Stack>
 
-      {hasNextPage && (
-        <Center mt="md">
-          <Button
-            variant="light"
-            onClick={() => fetchNextPage()}
-            loading={isFetchingNextPage}
-          >
-            Загрузить еще
-          </Button>
-        </Center>
-      )}
+      <TextInput
+        placeholder="Поиск по имени, телефону или коду визита..."
+        leftSection={<IconSearch size={18} />}
+        value={search}
+        onChange={(e) => setSearch(e.currentTarget.value)}
+        size="md"
+        radius="md"
+        // clearable
+      />
+
+      <Stack gap="md">{renderContent()}</Stack>
     </Stack>
   );
 }

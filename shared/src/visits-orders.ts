@@ -71,6 +71,10 @@ export type visitIssuedRepsonseDto = z.infer<
   typeof schemas.Visits_GetIssuedResponse
 >;
 
+export type searchNotificationDto = z.infer<
+  typeof schemas.Visits_NotificationItem
+>;
+
 export type visitNotificationResponseDto = z.infer<
   typeof schemas.Visits_GetNotificationResponse
 >;

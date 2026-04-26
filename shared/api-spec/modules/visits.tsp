@@ -426,6 +426,13 @@ getReserved(
     @body body: GetNotificationResponse;
   } | Common.Error;
 
+  @get
+  @route("notification-search")
+  searchNotification(@query @minLength(2) q: string): {
+    @statusCode statusCode: 200;
+    @body body: NotificationItem[];
+  } | Common.Error;
+
   @doc("Отмена визита и всех связанных заказов")
   @post
   @route("{visitId}/cancel")

@@ -1,4 +1,9 @@
-import { useInfiniteQuery, useMutation } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+} from "@tanstack/react-query";
 import { visitsService } from "../services/visits.service";
 import { socket } from "src/services/socket.client";
 
@@ -13,7 +18,6 @@ const emitAsync = <T>(event: string, payload: T): Promise<SocketResponse> => {
       return;
     }
 
-    // Установим таймаут, чтобы лоадер не крутился вечно, если бэкенд молчит
     const timeout = setTimeout(() => {
       reject(new Error("Превышено время ожидания ответа от сервера"));
     }, 5000);
@@ -55,5 +59,14 @@ export function useShowNotification(enabled = true) {
     refetchInterval: 15000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
+  });
+}
+
+export function useSearchNotification(search: string) {
+  return useQuery({
+    queryKey: ["notifications", "search", search],
+    queryFn: () => visitsService.searchNotification(search),
+    enabled: search.trim().length >= 2,
+    placeholderData: keepPreviousData,
   });
 }
