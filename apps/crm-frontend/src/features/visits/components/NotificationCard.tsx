@@ -19,7 +19,6 @@ import {
   IconDotsVertical,
   IconRefresh,
   IconEdit,
-  IconBrandWhatsapp,
   IconCopy,
   IconCheck,
 } from "@tabler/icons-react";
@@ -31,6 +30,7 @@ import type { visitNotificationResponseDto } from "@costumes/shared";
 import { formatPhoneNumber } from "src/utills/formatters";
 import { IMaskInput } from "react-imask";
 import z from "zod";
+import { WhatsAppButton } from "src/components/WhatsAppButton";
 
 const statusColors: Record<string, string> = {
   pending: "orange",
@@ -64,7 +64,6 @@ export function NotificationCard({
   const [phoneInput, setPhoneInput] = useState(item.clientPhone);
   const [phoneError, setPhoneError] = useState<string | null>(null);
 
-  // Состояние для раскрытия блока ручной отправки
   const [isExpanded, setIsExpanded] = useState(false);
 
   const resendMutation = useResendNotification();
@@ -95,10 +94,6 @@ export function NotificationCard({
 
   const isPending = resendMutation.isPending || updatePhoneMutation.isPending;
 
-  // Подготавливаем чистый номер для ссылки wa.me (убираем все кроме цифр)
-  const waNumber = item.clientPhone.replace(/\D/g, "");
-  const waLink = `https://wa.me/${waNumber}`;
-
   return (
     <>
       <Paper shadow="sm" p="md" radius="md" withBorder>
@@ -114,7 +109,6 @@ export function NotificationCard({
 
             <Menu position="bottom-end" shadow="sm">
               <Menu.Target>
-                {/* Остановка всплытия события, чтобы при клике на меню не открывался блок ручной отправки */}
                 <ActionIcon
                   variant="subtle"
                   color="gray"
@@ -144,7 +138,6 @@ export function NotificationCard({
 
           <Divider my="sm" />
 
-          {/* Оборачиваем информацию о клиенте в кликабельный Box */}
           <Box
             onClick={() => setIsExpanded(!isExpanded)}
             style={{ cursor: "pointer" }}
@@ -200,19 +193,11 @@ export function NotificationCard({
                     </Button>
                   )}
                 </CopyButton>
-
-                <Button
-                  component="a"
-                  href={waLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  color="green"
+                <WhatsAppButton
+                  phone={item.clientPhone}
                   variant="light"
                   onClick={(e) => e.stopPropagation()}
-                  leftSection={<IconBrandWhatsapp size={18} />}
-                >
-                  WhatsApp
-                </Button>
+                />
               </Group>
             </Stack>
           </Collapse>
