@@ -7,9 +7,10 @@ import {
   Box,
   Text,
   Divider,
-  ActionIcon,
+  Button,
 } from "@mantine/core";
 import { IconArrowRight } from "@tabler/icons-react";
+import { WhatsAppButton } from "src/components/WhatsAppButton";
 import { formatPhoneNumber, formatStayDates } from "src/utills/formatters";
 
 export type VisitIssuedItemDto = visitIssuedRepsonseDto["items"][number];
@@ -21,13 +22,7 @@ interface ReturnCardProps {
 
 export function ReturnCard({ visit, onClick }: ReturnCardProps) {
   return (
-    <Paper
-      withBorder
-      p="md"
-      radius="md"
-      onClick={onClick}
-      style={{ cursor: "pointer" }}
-    >
+    <Paper withBorder p="md" radius="md" shadow="sm">
       <Stack gap="xs">
         <Group justify="space-between">
           <Badge variant="filled" color="blue" size="lg">
@@ -35,14 +30,26 @@ export function ReturnCard({ visit, onClick }: ReturnCardProps) {
           </Badge>
         </Group>
 
-        <Box>
-          <Text fw={700} size="lg">
-            {visit.clientName}
-          </Text>
-          <Text size="md" c="dimmed">
-            {formatPhoneNumber(visit.clientPhone)} | {visit.childrenNames}
-          </Text>
-        </Box>
+        <Group justify="space-between" wrap="nowrap" align="flex-start">
+          <Box>
+            <Text fw={700} size="lg">
+              {visit.clientName}
+            </Text>
+            <Text size="md" c="dimmed">
+              {formatPhoneNumber(visit.clientPhone)} | {visit.childrenNames}
+            </Text>
+          </Box>
+
+          <WhatsAppButton
+            phone={visit.clientPhone}
+            iconOnly
+            size="xl"
+            color="green"
+            variant="light"
+            radius="md"
+            iconSize={24}
+          />
+        </Group>
 
         <Group gap="xs" wrap="nowrap" align="flex-start">
           <Text size="lg" fw={500} c="dimmed" style={{ flex: 1 }}>
@@ -52,13 +59,19 @@ export function ReturnCard({ visit, onClick }: ReturnCardProps) {
 
         <Divider variant="dashed" />
 
-        <Group justify="space-between">
+        <Group justify="space-between" align="center">
           <Text size="lg" c="dimmed">
             {formatStayDates(visit.startDateTime, visit.endDateTime)}
           </Text>
-          <ActionIcon variant="subtle" color="blue">
-            <IconArrowRight size={18} />
-          </ActionIcon>
+
+          <Button
+            size="md"
+            variant="light"
+            rightSection={<IconArrowRight size={14} />}
+            onClick={onClick}
+          >
+            Оформить
+          </Button>
         </Group>
       </Stack>
     </Paper>
