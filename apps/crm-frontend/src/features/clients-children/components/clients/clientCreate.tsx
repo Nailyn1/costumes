@@ -24,6 +24,8 @@ export function ClientCreateForm({ onCreated }: ClientCreateFormProps) {
             id: createdClient.clientId.toString(),
             name: createdClient.name,
             phone: createdClient.phone,
+            children: [],
+            isBlacklisted: false,
           });
           form.reset();
         },

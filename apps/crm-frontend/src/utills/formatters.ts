@@ -57,3 +57,14 @@ export const formatPhoneNumberForCostumes = (phone: string) => {
 
   return phone;
 };
+
+export const ORDER_STATUS_MAP: Record<
+  string,
+  { label: string; color: string }
+> = {
+  reserved: { label: "Забронирован", color: "orange" },
+  issued: { label: "В прокате", color: "blue" },
+  completed: { label: "Вернули", color: "green" },
+  returned: { label: "Вернули", color: "green" },
+  cancelled: { label: "Отмена", color: "red" },
+};

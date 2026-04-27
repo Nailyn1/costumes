@@ -19,6 +19,7 @@ import {
   IconUserCircle,
   IconMessage2,
   IconShirt,
+  IconUsers,
 } from "@tabler/icons-react";
 import { useNotWrittenCostumes } from "src/features/visits/hooks/useVisits";
 
@@ -56,6 +57,11 @@ export function MainLayout() {
       link: "/bookings/costumes",
       label: "Костюмы",
       icon: IconShirt,
+    },
+    {
+      link: "/bookings/clients",
+      label: "Клиенты",
+      icon: IconUsers,
     },
     { link: "/profile", label: "Профиль", icon: IconUserCircle },
   ];

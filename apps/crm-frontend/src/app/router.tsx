@@ -9,6 +9,7 @@ import { ProfilePage } from "src/pages/ProfilePage";
 import { PrivateRoute } from "./providers/PrivateRoute";
 import { MainLayout } from "src/components/MainLayout";
 import { NotificationPage } from "src/pages/NotificationPage";
+import { ClientsPage } from "src/pages/ClientsPage";
 
 export const router = createBrowserRouter([
   {
@@ -52,6 +53,10 @@ export const router = createBrowserRouter([
               {
                 path: "costumes",
                 element: <CostumesPage />,
+              },
+              {
+                path: "clients",
+                element: <ClientsPage />,
               },
             ],
           },

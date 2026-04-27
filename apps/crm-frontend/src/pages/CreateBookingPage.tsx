@@ -58,13 +58,11 @@ export function CreateBookingPage() {
         values={form.values}
         errors={form.errors}
         onChange={(newValues) => {
-          // Проверяем, изменились ли даты
           const isDateChanged =
             newValues.startDateTime !== form.values.startDateTime ||
             newValues.endDateTime !== form.values.endDateTime;
 
           if (isDateChanged) {
-            // Если дата изменилась -> обновляем даты И обнуляем costumeId во всех заказах
             form.setValues({
               ...form.values,
               ...newValues,
@@ -79,7 +77,6 @@ export function CreateBookingPage() {
               ],
             });
           } else {
-            // Если изменилось только время — просто обновляем значения
             form.setValues({ ...form.values, ...newValues });
           }
         }}

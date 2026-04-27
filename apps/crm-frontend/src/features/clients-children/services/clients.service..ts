@@ -1,9 +1,11 @@
 import {
+  type AddClientInBlackListRequestDto,
   type CreateChildRequestDto,
   type CreateClientRequestDto,
   type UpdateChildRequestDto,
   type UpdateClientRequestDto,
 } from "@costumes/shared";
+import type { GetParams } from "src/features/visits/services/visits.service";
 import { apiClient } from "src/services/apiClient";
 
 export const clientsService = {
@@ -29,5 +31,21 @@ export const clientsService = {
   },
   deleteChild(childId: number) {
     return apiClient.ChildOperations_delete(undefined, { params: { childId } });
+  },
+  addClientInBlacklist(clientId: number, data: AddClientInBlackListRequestDto) {
+    return apiClient.ClientOperations_addClientInBlackList(data, {
+      params: { clientId },
+    });
+  },
+  removeClientFromBlacklist(clientId: number) {
+    return apiClient.ClientOperations_removeClientFromBlackList(undefined, {
+      params: { clientId },
+    });
+  },
+  getClientsList(params?: GetParams) {
+    return apiClient.ClientOperations_getClientList({ queries: params });
+  },
+  getDetaileClient(clientId: number) {
+    return apiClient.ClientOperations_getClientDetail({ params: { clientId } });
   },
 };

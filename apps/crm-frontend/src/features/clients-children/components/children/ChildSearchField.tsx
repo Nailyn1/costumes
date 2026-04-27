@@ -1,7 +1,7 @@
 import { Select, Loader } from "@mantine/core";
 import { useMemo } from "react";
 import type { SelectedChild } from "../../types/clientTypes";
-import { useClient } from "../../hooks/useChild";
+import { useClient } from "../../hooks/useClients";
 
 interface ChildSearchFieldProps {
   clientId: number | null;
