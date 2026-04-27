@@ -7,6 +7,7 @@ export interface SelectedClientData {
   name: string;
   phone: string;
   children?: SelectedChild[];
+  isBlacklisted?: boolean;
 }
 
 export interface ClientSearchFieldProps {

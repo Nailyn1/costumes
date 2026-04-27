@@ -87,7 +87,6 @@ export function CostumeAvailabilityModal({
       <Modal
         opened={opened}
         onClose={handleClose}
-        // fullScreen={isMobile}
         size="lg"
         title={
           <Group gap="xs">

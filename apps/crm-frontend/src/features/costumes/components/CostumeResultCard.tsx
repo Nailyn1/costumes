@@ -1,5 +1,5 @@
-import { UnstyledButton, Group, ThemeIcon, Box, Text } from "@mantine/core";
-import { IconShirt, IconChevronRight } from "@tabler/icons-react";
+import { UnstyledButton, Group, Box, Text } from "@mantine/core";
+import { IconChevronRight } from "@tabler/icons-react";
 
 interface CostumeResultCardProps {
   name: string;
@@ -25,14 +25,6 @@ export function CostumeResultCard({
           align="flex-start"
           style={{ flex: 1, minWidth: 0 }}
         >
-          <ThemeIcon
-            variant="light"
-            color="blue"
-            size="lg"
-            style={{ flexShrink: 0 }}
-          >
-            <IconShirt size={20} />
-          </ThemeIcon>
           <Box style={{ flex: 1, minWidth: 0 }}>
             <Text fw={600} size="lg">
               {name}

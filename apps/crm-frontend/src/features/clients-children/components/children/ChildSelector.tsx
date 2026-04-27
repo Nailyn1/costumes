@@ -2,10 +2,13 @@ import { memo, useCallback, useMemo } from "react";
 import { IconBabyCarriage } from "@tabler/icons-react";
 import { Stack, Text, Paper, Group } from "@mantine/core";
 import { SelectionManager } from "src/components/selection/SelectionManager";
-import { useClient } from "../../hooks/useClients";
+import { clientKeys, useClient } from "../../hooks/useClients";
 import { ChildSearchField } from "./ChildSearchField";
 import { SelectedChildCard } from "./SelectedChildCard";
-import type { SelectedChild } from "../../types/clientTypes";
+import type {
+  SelectedChild,
+  SelectedClientData,
+} from "../../types/clientTypes";
 import { ChildCreateForm } from "./ChildCreateForm";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -35,15 +38,9 @@ export const ChildSelector = memo(function ChildSelector({
 
   const handleSelect = useCallback(
     (child: SelectedChild | null) => {
-      if (child) {
-        queryClient.setQueryData(
-          ["children", "detail", child.childId.toString()],
-          child,
-        );
-      }
       onChange(child?.childId || null);
     },
-    [onChange, queryClient],
+    [onChange],
   );
 
   const handleClear = useCallback(() => {
@@ -106,6 +103,19 @@ export const ChildSelector = memo(function ChildSelector({
         <ChildCreateForm
           clientId={clientId}
           onCreated={(newChild) => {
+            const formKey = clientKeys.formState(clientId.toString());
+
+            queryClient.setQueryData<SelectedClientData>(formKey, (oldData) => {
+              if (!oldData) return oldData;
+              return {
+                ...oldData,
+                children: oldData.children
+                  ? [...oldData.children, newChild]
+                  : [newChild],
+              };
+            });
+
+            // ПЕРЕДАЕМ ВЕСЬ ОБЪЕКТ!
             handleSelect(newChild);
           }}
         />

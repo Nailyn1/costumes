@@ -1,6 +1,12 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { clientsService } from "../services/clients.service.";
 import type {
+  AddClientInBlackListRequestDto,
   CreateClientRequestDto,
   UpdateClientRequestDto,
 } from "@costumes/shared";
@@ -10,8 +16,9 @@ export const clientKeys = {
   all: ["clients"] as const,
   lists: () => [...clientKeys.all, "list"] as const,
   search: (query: string) => [...clientKeys.lists(), "search", query] as const,
-  detail: (id: number | string) =>
-    [...clientKeys.all, "detail", id.toString()] as const,
+  formState: (id: string) => [...clientKeys.all, "formState", id] as const,
+  detail: (id: number | string | null) =>
+    [...clientKeys.all, "detail", id ? id.toString() : "empty"] as const,
 };
 
 export function useSearchClients(searchQuery: string) {
@@ -30,12 +37,8 @@ export function useCreateClient() {
   return useMutation({
     mutationFn: (data: CreateClientRequestDto) =>
       clientsService.createClient(data),
-    onSuccess: (newClient) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: clientKeys.lists() });
-      queryClient.setQueryData(
-        clientKeys.detail(newClient.clientId),
-        newClient,
-      );
     },
   });
 }
@@ -51,12 +54,12 @@ export function useUpdateClient() {
       clientId: number;
       data: UpdateClientRequestDto;
     }) => clientsService.updateClient(data, clientId),
-    onSuccess: (updatedClient) => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: clientKeys.lists() });
-      queryClient.setQueryData(
-        clientKeys.detail(updatedClient.clientId),
-        updatedClient,
-      );
+
+      queryClient.invalidateQueries({
+        queryKey: clientKeys.detail(variables.clientId),
+      });
     },
   });
 }
@@ -70,16 +73,82 @@ export function useDeleteClient() {
     onSuccess: (_, clientId) => {
       queryClient.invalidateQueries({ queryKey: clientKeys.lists() });
 
-      queryClient.removeQueries({ queryKey: clientKeys.detail(clientId) });
+      queryClient.setQueryData(clientKeys.detail(clientId), null);
+
+      queryClient.removeQueries({
+        queryKey: clientKeys.formState(clientId.toString()),
+      });
     },
   });
 }
 
 export function useClient(clientId: number | string | null) {
   return useQuery<SelectedClientData | null>({
-    queryKey: clientKeys.detail(clientId?.toString() || ""),
+    queryKey: clientKeys.formState(clientId?.toString() || ""),
     enabled: !!clientId,
     staleTime: Infinity,
     queryFn: () => null,
+  });
+}
+
+export function useClientsList(enabled = true) {
+  return useInfiniteQuery({
+    queryKey: [...clientKeys.lists()],
+    queryFn: ({ pageParam }) =>
+      clientsService.getClientsList({ page: pageParam }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => {
+      if (lastPage.hasMore) {
+        return lastPage.page + 1;
+      }
+      return undefined;
+    },
+    enabled,
+    refetchInterval: 15000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+  });
+}
+
+export function useDetailedClient(clientId: number) {
+  return useQuery({
+    queryKey: clientKeys.detail(clientId),
+    queryFn: () => clientsService.getDetaileClient(clientId),
+    enabled: !!clientId,
+  });
+}
+
+export function useAddClientToBlacklist() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      clientId,
+      data,
+    }: {
+      clientId: number;
+      data: AddClientInBlackListRequestDto;
+    }) => clientsService.addClientInBlacklist(clientId, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: clientKeys.lists() });
+      queryClient.invalidateQueries({
+        queryKey: clientKeys.detail(variables.clientId),
+      });
+    },
+  });
+}
+
+export function useRemoveClientFromBlacklist() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (clientId: number) =>
+      clientsService.removeClientFromBlacklist(clientId),
+    onSuccess: (_, clientId) => {
+      queryClient.invalidateQueries({ queryKey: clientKeys.lists() });
+      queryClient.invalidateQueries({
+        queryKey: clientKeys.detail(clientId),
+      });
+    },
   });
 }

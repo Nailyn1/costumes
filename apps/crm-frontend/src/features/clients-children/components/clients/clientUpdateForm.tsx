@@ -17,7 +17,7 @@ export function ClientUpdateForm({
   const form = useForm({
     initialValues: {
       name: client.name,
-      phone: client.phone, // Ожидается формат "+7..."
+      phone: client.phone,
     },
     validate: zodResolver(UpdateClientRequestSchema),
   });
@@ -31,7 +31,7 @@ export function ClientUpdateForm({
       {
         onSuccess: (res) => {
           onSuccess({
-            id: res.clientId.toString(),
+            ...client,
             name: res.name,
             phone: res.phone,
           });

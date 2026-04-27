@@ -25,7 +25,7 @@ export const ClientSelector = memo(function ClientSelector({
   const handleSelect = useCallback(
     (client: SelectedClientData | null) => {
       if (client) {
-        queryClient.setQueryData(clientKeys.detail(client.id), client);
+        queryClient.setQueryData(clientKeys.formState(client.id), client);
       }
       setSelectedClient(client);
       onChange(client?.id || null);
@@ -45,7 +45,6 @@ export const ClientSelector = memo(function ClientSelector({
       isSelected={!!selectedClient}
       createTitle="Создать нового клиента"
       createIcon={<IconUserPlus size="1.2rem" />}
-      // Рендерим карточку выбранного клиента
       renderSelected={
         <SelectedClientCard
           client={selectedClient!}
@@ -53,7 +52,6 @@ export const ClientSelector = memo(function ClientSelector({
           onUpdate={handleSelect}
         />
       }
-      // Рендерим поле поиска
       renderSearch={
         <ClientSearchField
           value={value}
@@ -61,12 +59,10 @@ export const ClientSelector = memo(function ClientSelector({
           error={error}
         />
       }
-      // Рендерим форму создания
       renderCreate={
         <ClientCreateForm
           onCreated={(newClient) => {
             handleSelect(newClient);
-            // Закрытие формы произойдет автоматически, так как isSelected станет true
           }}
         />
       }

@@ -1,5 +1,4 @@
 import {
-  Title,
   Text,
   Paper,
   Stack,
@@ -7,18 +6,12 @@ import {
   TextInput,
   Loader,
   Center,
-  Group,
-  Button,
-  Modal,
 } from "@mantine/core";
-import {
-  useDebouncedValue,
-  useDisclosure,
-  useMediaQuery,
-} from "@mantine/hooks";
-import { IconSearch, IconPlus } from "@tabler/icons-react";
+import { useDebouncedValue, useDisclosure } from "@mantine/hooks";
+import { IconSearch } from "@tabler/icons-react";
 import React, { useState } from "react";
 import { InView } from "react-intersection-observer";
+import { AddButton } from "src/components/AddButtonWithModal";
 
 import { CostumeAvailabilityModal } from "src/features/costumes/components/CostumeAvailabilityModal";
 import { CostumeResultCard } from "src/features/costumes/components/CostumeResultCard";
@@ -29,8 +22,6 @@ import {
 } from "src/features/costumes/hooks/useCostumes";
 
 export function CostumesPage() {
-  const isMobile = useMediaQuery("(max-width: 768px)") ?? false;
-
   const [query, setQuery] = useState("");
   const [debouncedQuery] = useDebouncedValue(query, 400);
 
@@ -39,9 +30,6 @@ export function CostumesPage() {
   const [selectedCostumeId, setSelectedCostumeId] = useState<number | null>(
     null,
   );
-
-  const [createOpened, { open: openCreate, close: closeCreate }] =
-    useDisclosure(false);
 
   const { data: searchResults, isFetching: isSearchFetching } =
     useSearchCostume(debouncedQuery);
@@ -58,28 +46,22 @@ export function CostumesPage() {
     openDetails();
   };
 
-  const handleCostumeCreated = () => {
-    closeCreate();
-    setQuery("");
-  };
-
   return (
     <Stack gap="lg">
-      <Group justify="space-between" align="flex-start">
-        <Box>
-          <Title order={isMobile ? 3 : 2}>Костюмы</Title>
-          <Text size="sm" c="dimmed">
-            Управление каталогом и поиск
-          </Text>
-        </Box>
-        <Button
-          leftSection={<IconPlus size={18} />}
-          onClick={openCreate}
-          size={isMobile ? "sm" : "md"}
-        >
-          Добавить
-        </Button>
-      </Group>
+      <AddButton
+        title="Костюмы"
+        description="Управление каталогом и поиск"
+        modalTitle="Новый костюм"
+        renderCreateForm={(close) => (
+          <CostumeCreateForm
+            onCreated={() => {
+              close();
+              setQuery("");
+            }}
+            buttonText="Создать"
+          />
+        )}
+      />
 
       <Paper withBorder p="md" radius="md" shadow="sm">
         <TextInput
@@ -155,18 +137,6 @@ export function CostumesPage() {
           </>
         )}
       </Stack>
-
-      <Modal
-        opened={createOpened}
-        onClose={closeCreate}
-        title="Новый костюм"
-        radius="md"
-      >
-        <CostumeCreateForm
-          onCreated={handleCostumeCreated}
-          buttonText="Создать"
-        />
-      </Modal>
 
       {selectedCostumeId && (
         <CostumeAvailabilityModal
