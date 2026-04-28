@@ -15,10 +15,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { costumesKeys } from "src/features/costumes/hooks/useCostumes";
 import type { UseFormReturnType } from "@mantine/form";
 import type { BookingFormValues } from "../types/visitTypes";
-import type { SelectedChild } from "src/features/clients-children/types/clientTypes";
+import type { SelectedClientData } from "src/features/clients-children/types/clientTypes";
 import type { SelectedCostumeData } from "src/features/costumes/types/costumeTypes";
 import { formatHumanDate } from "src/utills/formatters";
 import { useState } from "react";
+import { clientKeys } from "src/features/clients-children/hooks/useClients";
 
 interface VisitPreviewModalProps {
   opened: boolean;
@@ -104,11 +105,14 @@ export function VisitPreviewModal({
         />
 
         {values.orders.map((order, index) => {
-          const child = queryClient.getQueryData<SelectedChild>([
-            "children",
-            "detail",
-            order.childId?.toString(),
-          ]);
+          const clientData = queryClient.getQueryData<SelectedClientData>(
+            clientKeys.formState(values.clientId?.toString() || ""),
+          );
+
+          const child = clientData?.children?.find(
+            (c) => Number(c.childId) === Number(order.childId),
+          );
+
           const costume = queryClient.getQueryData<SelectedCostumeData>(
             costumesKeys.detail(order.costumeId || 0),
           );
