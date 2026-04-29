@@ -262,6 +262,7 @@ model GetIssuedItem{
   endDateTime: plainDate;
   childrenNames: string;
   costumesNames: string;
+  deposit: VisitDepositInfo;
 }
 model GetIssuedResponse{
   items: GetIssuedItem[];

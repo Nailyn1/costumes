@@ -306,6 +306,10 @@ const Visits_Visit = z
     orders: z.array(Visits_VisitOrder),
   })
   .passthrough();
+const Visits_DepositType = z.enum(["cash", "document", "none"]);
+const Visits_VisitDepositInfo = z
+  .object({ type: Visits_DepositType, amount: z.number().int().optional() })
+  .passthrough();
 const Visits_GetIssuedItem = z
   .object({
     visitId: z.number().int(),
@@ -318,6 +322,7 @@ const Visits_GetIssuedItem = z
     endDateTime: z.string(),
     childrenNames: z.string(),
     costumesNames: z.string(),
+    deposit: Visits_VisitDepositInfo,
   })
   .passthrough();
 const Visits_GetIssuedResponse = z
@@ -448,10 +453,6 @@ const Visits_VisitsSearchResponse = z
     childrenNames: z.string(),
     costumesNames: z.string(),
   })
-  .passthrough();
-const Visits_DepositType = z.enum(["cash", "document", "none"]);
-const Visits_VisitDepositInfo = z
-  .object({ type: Visits_DepositType, amount: z.number().int().optional() })
   .passthrough();
 const Visits_GetUnreturnedResponse = z
   .object({
@@ -612,6 +613,8 @@ export const schemas = {
   Visits_TagStatus,
   Visits_VisitOrder,
   Visits_Visit,
+  Visits_DepositType,
+  Visits_VisitDepositInfo,
   Visits_GetIssuedItem,
   Visits_GetIssuedResponse,
   Visits_IssuedForReturnResponse,
@@ -623,8 +626,6 @@ export const schemas = {
   Visits_PaginatedReservedResponse,
   Visits_VisitReturnSearchResponse,
   Visits_VisitsSearchResponse,
-  Visits_DepositType,
-  Visits_VisitDepositInfo,
   Visits_GetUnreturnedResponse,
   Visits_GetUnreturnedDepositsResponse,
   Visits_VisitCancelRequest,

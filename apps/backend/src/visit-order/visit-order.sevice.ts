@@ -987,6 +987,7 @@ export class VisitOrderService {
         },
         include: {
           client: true,
+          deposit: true,
           orders: {
             include: {
               child: true,
@@ -1015,6 +1016,10 @@ export class VisitOrderService {
         endDateTime: visit.endDateTime.toISOString().split('T')[0],
         clientPhone: visit.client.phone,
         clientName: visit.client.name,
+        deposit: {
+          type: (visit.deposit?.type as 'cash' | 'document' | 'none') || 'none',
+          amount: visit.deposit?.amount ? visit.deposit.amount : undefined,
+        },
       };
     });
 

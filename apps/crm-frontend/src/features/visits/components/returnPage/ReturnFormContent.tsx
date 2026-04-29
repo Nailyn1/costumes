@@ -9,9 +9,15 @@ import {
   Checkbox,
   Textarea,
   Button,
+  Badge,
 } from "@mantine/core";
 import { useForm } from "@mantine/form";
-import { IconArrowBack, IconCheck } from "@tabler/icons-react";
+import {
+  IconArrowBack,
+  IconCash,
+  IconCheck,
+  IconFileDescription,
+} from "@tabler/icons-react";
 import { useCompleteReturnVisit, useUnissueVisit } from "../../hooks/useVisits";
 import { formatPhoneNumber } from "src/utills/formatters";
 import { useState } from "react";
@@ -73,14 +79,39 @@ export function ReturnFormContent({
   return (
     <form onSubmit={handleSubmit}>
       <Stack gap="md">
-        <Box>
-          <Text size="lg" fw={600}>
-            {data.client.name}
-          </Text>
-          <Text size="md" c="dimmed">
-            {formatPhoneNumber(data.client.phone)}
-          </Text>
-        </Box>
+        <Group justify="space-between" align="flex-start" wrap="nowrap">
+          <Box>
+            <Text size="lg" fw={600}>
+              {data.client.name}
+            </Text>
+            <Text size="md" c="dimmed">
+              {formatPhoneNumber(data.client.phone)}
+            </Text>
+          </Box>
+
+          {!data.deposit?.type || data.deposit.type === "none" ? (
+            <Badge variant="light" size="lg" color="gray">
+              Без залога
+            </Badge>
+          ) : (
+            <Badge
+              variant="light"
+              size="lg"
+              color={data.deposit.type === "cash" ? "green" : "blue"}
+              leftSection={
+                data.deposit.type === "cash" ? (
+                  <IconCash size={14} />
+                ) : (
+                  <IconFileDescription size={14} />
+                )
+              }
+            >
+              {data.deposit.type === "cash"
+                ? `${data.deposit.amount} ₸`
+                : "Документ"}
+            </Badge>
+          )}
+        </Group>
 
         <Divider
           label={<Text size="md">Возвращенные костюмы</Text>}
