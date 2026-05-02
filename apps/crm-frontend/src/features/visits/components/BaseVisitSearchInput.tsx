@@ -8,6 +8,7 @@ import {
   Group,
   Box,
   Badge,
+  ScrollAreaAutosize,
 } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
 import { IconSearch } from "@tabler/icons-react";
@@ -85,7 +86,8 @@ export function BaseVisitSearchInput({
     <Combobox
       onOptionSubmit={handleOptionSubmit}
       store={combobox}
-      withinPortal={false}
+      withinPortal={true}
+      zIndex={1000}
     >
       <Combobox.Target>
         <TextInput
@@ -101,13 +103,15 @@ export function BaseVisitSearchInput({
         />
       </Combobox.Target>
       <Combobox.Dropdown>
-        <Combobox.Options>
-          {options.length > 0 ? (
-            options
-          ) : (
-            <Combobox.Empty>Ничего не найдено</Combobox.Empty>
-          )}
-        </Combobox.Options>
+        <ScrollAreaAutosize mah={300} type="scroll">
+          <Combobox.Options>
+            {options.length > 0 ? (
+              options
+            ) : (
+              <Combobox.Empty>Ничего не найдено</Combobox.Empty>
+            )}
+          </Combobox.Options>
+        </ScrollAreaAutosize>
       </Combobox.Dropdown>
     </Combobox>
   );
