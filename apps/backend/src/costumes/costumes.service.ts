@@ -13,6 +13,17 @@ import {
   CreateUpdateCostumesResponseDto,
   UpdateCostumesRequestDto,
 } from '@costumes/shared';
+import { Prisma } from '../prisma/generated/client';
+import {
+  buildIdentifierFilters,
+  buildWordStartFilters,
+  isSearchQueryReady,
+  maxScore,
+  normalizeSearchQuery,
+  scoreIdentifierMatch,
+  scoreTextMatch,
+  sortBySearchScore,
+} from '../common/utils/search.utils';
 
 @Injectable()
 export class CostumesService {
@@ -68,30 +79,62 @@ export class CostumesService {
   }
 
   async searchCostume(q: string): Promise<CostumesSearchResponseDto[]> {
+    const search = normalizeSearchQuery(q);
+    if (!isSearchQueryReady(search)) return [];
+
+    const nameFilters = buildWordStartFilters(search);
+    const identifierFilters = buildIdentifierFilters(search);
+
+    const searchFilters: Prisma.CostumeWhereInput[] = [
+      ...nameFilters.map((filter) => ({ name: filter })),
+      ...identifierFilters.map((filter) => ({ inventoryCode: filter })),
+      ...nameFilters.map((filter) => ({
+        orders: {
+          some: {
+            deletedAt: null,
+            child: { name: filter },
+          },
+        },
+      })),
+      ...identifierFilters.map((filter) => ({
+        orders: {
+          some: {
+            deletedAt: null,
+            visit: { visitCode: filter },
+          },
+        },
+      })),
+    ];
+
     const costumes = await this.prisma.costume.findMany({
       where: {
-        OR: [
-          { name: { contains: q, mode: 'insensitive' } },
-          { inventoryCode: { contains: q, mode: 'insensitive' } },
-          {
-            orders: {
-              some: {
-                OR: [
-                  { child: { name: { contains: q, mode: 'insensitive' } } },
-                  {
-                    visit: { visitCode: { contains: q, mode: 'insensitive' } },
-                  },
-                ],
-              },
-            },
-          },
-        ],
+        OR: searchFilters,
         deletedAt: null,
+      },
+      include: {
+        orders: {
+          where: { deletedAt: null },
+          include: {
+            child: true,
+            visit: true,
+          },
+        },
       },
       take: 20,
     });
 
-    return costumes.map((c) => ({
+    return sortBySearchScore(costumes, (costume) =>
+      maxScore([
+        scoreTextMatch(costume.name, search),
+        scoreIdentifierMatch(costume.inventoryCode, search),
+        ...costume.orders.map((order) =>
+          maxScore([
+            scoreTextMatch(order.child.name, search),
+            scoreIdentifierMatch(order.visit.visitCode, search),
+          ]),
+        ),
+      ]),
+    ).map((c) => ({
       costumeId: c.id,
       name: c.name,
       inventoryCode: c.inventoryCode,
@@ -104,6 +147,9 @@ export class CostumesService {
     startStr: string,
     endStr: string,
   ): Promise<CostumesSearchAvailableResponseDto[]> {
+    const search = normalizeSearchQuery(q);
+    if (!isSearchQueryReady(search)) return [];
+
     const requestedStart = new Date(startStr);
     const requestedEnd = new Date(endStr);
 
@@ -119,12 +165,16 @@ export class CostumesService {
       );
     }
 
+    const searchFilters: Prisma.CostumeWhereInput[] = [
+      ...buildWordStartFilters(search).map((filter) => ({ name: filter })),
+      ...buildIdentifierFilters(search).map((filter) => ({
+        inventoryCode: filter,
+      })),
+    ];
+
     const costumes = await this.prisma.costume.findMany({
       where: {
-        OR: [
-          { name: { contains: q, mode: 'insensitive' } },
-          { inventoryCode: { contains: q, mode: 'insensitive' } },
-        ],
+        OR: searchFilters,
         deletedAt: null,
       },
       include: {
@@ -147,7 +197,12 @@ export class CostumesService {
       take: 30,
     });
 
-    return costumes.map((c) => ({
+    return sortBySearchScore(costumes, (costume) =>
+      maxScore([
+        scoreTextMatch(costume.name, search),
+        scoreIdentifierMatch(costume.inventoryCode, search),
+      ]),
+    ).map((c) => ({
       costumeId: c.id,
       name: c.name,
       inventoryCode: c.inventoryCode,
