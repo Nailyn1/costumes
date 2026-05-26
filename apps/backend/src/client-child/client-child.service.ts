@@ -17,6 +17,17 @@ import {
   GetDetailedClientResponseDto,
   AddClientInBlackListRequestDto,
 } from '@costumes/shared';
+import { Prisma } from '../prisma/generated/client';
+import {
+  buildPhoneFilters,
+  buildWordStartFilters,
+  isSearchQueryReady,
+  maxScore,
+  normalizeSearchQuery,
+  scorePhoneMatch,
+  scoreTextMatch,
+  sortBySearchScore,
+} from '../common/utils/search.utils';
 
 @Injectable()
 export class ClientChildService {
@@ -148,52 +159,61 @@ export class ClientChildService {
   }
 
   async searchClients(query: string): Promise<CreateClientResponseDto[]> {
-    if (!query || query.length < 2) return [];
+    const search = normalizeSearchQuery(query);
+    if (!isSearchQueryReady(search)) return [];
 
-    let normalizedQuery = query;
-    if (query.startsWith(' ') && /^\d/.test(query.trim())) {
-      normalizedQuery = '+' + query.trim();
-    } else {
-      normalizedQuery = query.trim();
-    }
+    const nameFilters = buildWordStartFilters(search);
+    const phoneFilters = buildPhoneFilters(search);
 
-    const onlyDigits = normalizedQuery.replace(/\D/g, '');
+    const searchFilters: Prisma.ClientWhereInput[] = [
+      ...nameFilters.map((filter) => ({ name: filter })),
+      ...phoneFilters.map((filter) => ({ phone: filter })),
+      ...nameFilters.map((filter) => ({
+        children: {
+          some: {
+            deletedAt: null,
+            name: filter,
+          },
+        },
+      })),
+    ];
 
     const clients = await this.prisma.client.findMany({
       where: {
         deletedAt: null,
-        OR: [
-          { name: { contains: normalizedQuery, mode: 'insensitive' } },
-
-          { phone: { contains: normalizedQuery } },
-
-          ...(onlyDigits.length >= 2
-            ? [{ phone: { contains: onlyDigits } }]
-            : []),
-        ],
+        OR: searchFilters,
       },
       select: {
         id: true,
         name: true,
         phone: true,
         children: {
+          where: { deletedAt: null },
           select: { name: true, id: true },
         },
         isBlacklisted: true,
       },
-      take: 10,
+      take: 30,
     });
 
-    return clients.map((client) => ({
-      clientId: client.id,
-      name: client.name,
-      phone: client.phone,
-      children: client.children?.map((child) => ({
-        childId: child.id,
-        name: child.name,
-      })),
-      isBlacklisted: client.isBlacklisted,
-    }));
+    return sortBySearchScore(clients, (client) =>
+      maxScore([
+        scoreTextMatch(client.name, search),
+        scorePhoneMatch(client.phone, search),
+        ...client.children.map((child) => scoreTextMatch(child.name, search)),
+      ]),
+    )
+      .slice(0, 10)
+      .map((client) => ({
+        clientId: client.id,
+        name: client.name,
+        phone: client.phone,
+        children: client.children?.map((child) => ({
+          childId: child.id,
+          name: child.name,
+        })),
+        isBlacklisted: client.isBlacklisted,
+      }));
   }
 
   async listClients(

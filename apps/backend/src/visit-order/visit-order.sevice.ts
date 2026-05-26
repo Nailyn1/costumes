@@ -36,6 +36,18 @@ import { DepositType, OrderStatus, Prisma } from '../prisma/generated/client';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { buildVisitMessage } from '../common/utils/visit-message.utils';
 import { VisitWithDetails } from '../notification/notification.service';
+import {
+  buildIdentifierFilters,
+  buildPhoneFilters,
+  buildWordStartFilters,
+  isSearchQueryReady,
+  maxScore,
+  normalizeSearchQuery,
+  scoreIdentifierMatch,
+  scorePhoneMatch,
+  scoreTextMatch,
+  sortBySearchScore,
+} from '../common/utils/search.utils';
 
 interface PinoLoggerWithId {
   id?: string;
@@ -542,28 +554,40 @@ export class VisitOrderService {
   }
 
   async visitSearch(q: string): Promise<GetVisitSearchDto[]> {
+    const search = normalizeSearchQuery(q);
+    if (!isSearchQueryReady(search)) return [];
+
+    const wordFilters = buildWordStartFilters(search);
+    const identifierFilters = buildIdentifierFilters(search);
+    const phoneFilters = buildPhoneFilters(search);
+
+    const searchFilters: Prisma.VisitWhereInput[] = [
+      ...identifierFilters.map((filter) => ({ visitCode: filter })),
+      ...wordFilters.map((filter) => ({ client: { name: filter } })),
+      ...phoneFilters.map((filter) => ({ client: { phone: filter } })),
+      ...wordFilters.map((filter) => ({
+        orders: {
+          some: {
+            deletedAt: null,
+            OR: [{ child: { name: filter } }, { costume: { name: filter } }],
+          },
+        },
+      })),
+      ...identifierFilters.map((filter) => ({
+        orders: {
+          some: {
+            deletedAt: null,
+            costume: { inventoryCode: filter },
+          },
+        },
+      })),
+    ];
+
     const visits = await this.prisma.visit.findMany({
       where: {
         status: 'reserved',
-        OR: [
-          { visitCode: { contains: q, mode: 'insensitive' } },
-          {
-            orders: {
-              some: {
-                OR: [
-                  { child: { name: { contains: q, mode: 'insensitive' } } },
-                  { client: { phone: { contains: q, mode: 'insensitive' } } },
-                  { costume: { name: { contains: q, mode: 'insensitive' } } },
-                  {
-                    costume: {
-                      inventoryCode: { contains: q, mode: 'insensitive' },
-                    },
-                  },
-                ],
-              },
-            },
-          },
-        ],
+        deletedAt: null,
+        OR: searchFilters,
       },
       include: {
         client: true,
@@ -577,7 +601,20 @@ export class VisitOrderService {
       take: 50,
     });
 
-    return visits.map((visit) => ({
+    return sortBySearchScore(visits, (visit) =>
+      maxScore([
+        scoreIdentifierMatch(visit.visitCode, search),
+        scoreTextMatch(visit.client.name, search),
+        scorePhoneMatch(visit.client.phone, search),
+        ...visit.orders.map((order) =>
+          maxScore([
+            scoreTextMatch(order.child.name, search),
+            scoreTextMatch(order.costume.name, search),
+            scoreIdentifierMatch(order.costume.inventoryCode, search),
+          ]),
+        ),
+      ]),
+    ).map((visit) => ({
       visitId: visit.id,
       visitCode: visit.visitCode,
       clientName: visit.client.name,
@@ -683,30 +720,40 @@ export class VisitOrderService {
   }
 
   async visitsReturnSearch(q: string): Promise<GetVisitReturnSearchDto[]> {
+    const search = normalizeSearchQuery(q);
+    if (!isSearchQueryReady(search)) return [];
+
+    const wordFilters = buildWordStartFilters(search);
+    const identifierFilters = buildIdentifierFilters(search);
+    const phoneFilters = buildPhoneFilters(search);
+
+    const searchFilters: Prisma.VisitWhereInput[] = [
+      ...identifierFilters.map((filter) => ({ visitCode: filter })),
+      ...phoneFilters.map((filter) => ({ client: { phone: filter } })),
+      ...wordFilters.map((filter) => ({ client: { name: filter } })),
+      ...wordFilters.map((filter) => ({
+        orders: {
+          some: {
+            deletedAt: null,
+            OR: [{ child: { name: filter } }, { costume: { name: filter } }],
+          },
+        },
+      })),
+      ...identifierFilters.map((filter) => ({
+        orders: {
+          some: {
+            deletedAt: null,
+            costume: { inventoryCode: filter },
+          },
+        },
+      })),
+    ];
+
     const visits = await this.prisma.visit.findMany({
       where: {
         status: 'issued',
         deletedAt: null,
-        OR: [
-          { visitCode: { contains: q, mode: 'insensitive' } },
-          { client: { phone: { contains: q, mode: 'insensitive' } } },
-          { client: { name: { contains: q, mode: 'insensitive' } } },
-          {
-            orders: {
-              some: {
-                OR: [
-                  { child: { name: { contains: q, mode: 'insensitive' } } },
-                  { costume: { name: { contains: q, mode: 'insensitive' } } },
-                  {
-                    costume: {
-                      inventoryCode: { contains: q, mode: 'insensitive' },
-                    },
-                  },
-                ],
-              },
-            },
-          },
-        ],
+        OR: searchFilters,
       },
       include: {
         client: true,
@@ -721,7 +768,20 @@ export class VisitOrderService {
       take: 50,
     });
 
-    return visits.map((visit) => {
+    return sortBySearchScore(visits, (visit) =>
+      maxScore([
+        scoreIdentifierMatch(visit.visitCode, search),
+        scoreTextMatch(visit.client.name, search),
+        scorePhoneMatch(visit.client.phone, search),
+        ...visit.orders.map((order) =>
+          maxScore([
+            scoreTextMatch(order.child.name, search),
+            scoreTextMatch(order.costume.name, search),
+            scoreIdentifierMatch(order.costume.inventoryCode, search),
+          ]),
+        ),
+      ]),
+    ).map((visit) => {
       const childrenSet = new Set(visit.orders.map((o) => o.child.name));
       const costumesSet = new Set(visit.orders.map((o) => o.costume.name));
       return {
@@ -1143,34 +1203,35 @@ export class VisitOrderService {
   }
 
   async searchNotification(search: string): Promise<searchNotificationDto[]> {
+    const normalizedSearch = normalizeSearchQuery(search);
+    if (!isSearchQueryReady(normalizedSearch)) return [];
+
+    const wordFilters = buildWordStartFilters(normalizedSearch);
+    const identifierFilters = buildIdentifierFilters(normalizedSearch);
+    const phoneFilters = buildPhoneFilters(normalizedSearch);
+
+    const searchFilters: Prisma.VisitWhereInput[] = [
+      ...identifierFilters.map((filter) => ({ visitCode: filter })),
+      ...wordFilters.map((filter) => ({ client: { name: filter } })),
+      ...phoneFilters.map((filter) => ({ client: { phone: filter } })),
+      ...wordFilters.map((filter) => ({
+        orders: {
+          some: {
+            deletedAt: null,
+            child: {
+              name: filter,
+            },
+          },
+        },
+      })),
+    ];
+
     const notifications = await this.prisma.notification.findMany({
       take: 20,
       where: {
         visit: {
-          OR: [
-            {
-              visitCode: { contains: search, mode: 'insensitive' },
-            },
-            {
-              client: {
-                name: { contains: search, mode: 'insensitive' },
-              },
-            },
-            {
-              client: {
-                phone: { contains: search },
-              },
-            },
-            {
-              orders: {
-                some: {
-                  child: {
-                    name: { contains: search, mode: 'insensitive' },
-                  },
-                },
-              },
-            },
-          ],
+          deletedAt: null,
+          OR: searchFilters,
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -1189,7 +1250,18 @@ export class VisitOrderService {
       },
     });
 
-    return notifications.map((notif) => {
+    return sortBySearchScore(notifications, (notification) => {
+      const visit = notification.visit;
+
+      return maxScore([
+        scoreIdentifierMatch(visit.visitCode, normalizedSearch),
+        scoreTextMatch(visit.client.name, normalizedSearch),
+        scorePhoneMatch(visit.client.phone, normalizedSearch),
+        ...visit.orders.map((order) =>
+          scoreTextMatch(order.child.name, normalizedSearch),
+        ),
+      ]);
+    }).map((notif) => {
       const visit = notif.visit;
       const childrenNames = Array.from(
         new Set(visit.orders.map((o) => o.child.name)),

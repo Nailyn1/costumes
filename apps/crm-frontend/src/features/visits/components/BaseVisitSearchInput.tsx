@@ -8,9 +8,14 @@ import {
   Group,
   Box,
   Badge,
+  ScrollAreaAutosize,
 } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
 import { IconSearch } from "@tabler/icons-react";
+import {
+  SEARCH_COMBOBOX_MAX_HEIGHT,
+  SEARCH_COMBOBOX_Z_INDEX,
+} from "src/components/searchComboboxSettings";
 import { formatPhoneNumber } from "src/utills/formatters";
 
 interface UnifiedSearchItem {
@@ -85,7 +90,8 @@ export function BaseVisitSearchInput({
     <Combobox
       onOptionSubmit={handleOptionSubmit}
       store={combobox}
-      withinPortal={false}
+      withinPortal={true}
+      zIndex={SEARCH_COMBOBOX_Z_INDEX}
     >
       <Combobox.Target>
         <TextInput
@@ -101,13 +107,15 @@ export function BaseVisitSearchInput({
         />
       </Combobox.Target>
       <Combobox.Dropdown>
-        <Combobox.Options>
-          {options.length > 0 ? (
-            options
-          ) : (
-            <Combobox.Empty>Ничего не найдено</Combobox.Empty>
-          )}
-        </Combobox.Options>
+        <ScrollAreaAutosize mah={SEARCH_COMBOBOX_MAX_HEIGHT} type="scroll">
+          <Combobox.Options>
+            {options.length > 0 ? (
+              options
+            ) : (
+              <Combobox.Empty>Ничего не найдено</Combobox.Empty>
+            )}
+          </Combobox.Options>
+        </ScrollAreaAutosize>
       </Combobox.Dropdown>
     </Combobox>
   );
