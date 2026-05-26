@@ -47,3 +47,35 @@
     Запуск Backend: в корне проекта costumes [npm run dev:backend]
     Запуск Frontend: в корне проекта costumes [npm run dev:frontend]
 ```
+
+## Git & Commit Rules
+
+- Do not commit unless the user explicitly asks.
+- Before committing, run relevant checks when practical.
+- Use Conventional Commits.
+- Commit messages must be in English.
+- Format: `<type>(<scope>): <summary>`
+
+Allowed types:
+
+- `feat` - new feature
+- `fix` - bug fix
+- `refactor` - code restructuring without behavior change
+- `chore` - tooling/config/maintenance
+- `docs` - documentation only
+- `test` - tests only
+- `style` - formatting only
+
+Scopes:
+
+- `front`
+- `back`
+- `shared`
+- `root`
+- `infra`
+
+Examples:
+
+- `fix(front): keep search combobox above app header`
+- `feat(back): add visit return endpoint`
+- `docs(root): document local development workflow`
