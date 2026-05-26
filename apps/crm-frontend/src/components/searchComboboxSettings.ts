@@ -1,0 +1,2 @@
+export const SEARCH_COMBOBOX_Z_INDEX = 4000;
+export const SEARCH_COMBOBOX_MAX_HEIGHT = 300;
