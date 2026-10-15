@@ -1,4 +1,4 @@
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 RUN apk add --no-cache openssl
 RUN corepack enable
@@ -18,7 +18,7 @@ RUN pnpm build
 WORKDIR /app
 RUN pnpm --filter @costumes/backend --config.inject-workspace-packages=true deploy --prod /prod/backend
 
-FROM node:20-alpine AS production
+FROM node:22-alpine AS production
 
 RUN apk add --no-cache openssl
 

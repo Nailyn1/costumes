@@ -2,7 +2,7 @@
 
 ## 1. Требования
 
-- Node.js 22 LTS (локально сейчас 22.16; в Dockerfile пока `node:20-alpine` — к обновлению, [T-007](../tasks/backlog/T-007-node-20-22-24-lts.md)).
+- Node.js 22 LTS (`.nvmrc`, `engines.node` в корневом `package.json`, `node:22-alpine` в обоих Dockerfile; локально сейчас 22.16).
 - pnpm 10 (версия зафиксирована в `packageManager` корневого `package.json`; включается через `corepack enable`). Менеджер пакетов — только pnpm, `npm install` не использовать.
 - Docker Desktop — для Postgres и Redis.
 - ОС разработки — Windows (PowerShell / Git Bash). Учитывай CRLF/LF (задача [T-003](../tasks/backlog/T-003-okonchaniya-strok.md)).
