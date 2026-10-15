@@ -1,11 +1,9 @@
 # Локальный запуск и команды
 
-> ⚠️ Сейчас проект на **npm workspaces**. Запланирован переход на **pnpm** (задача [T-002](../tasks/backlog/T-002-perehod-na-pnpm.md)) — после него этот файл обновляется в той же задаче.
-
 ## 1. Требования
 
-- Node.js 22 LTS (локально сейчас 22.16; в Dockerfile пока `node:20-alpine` — к обновлению).
-- npm 11 (будет pnpm 10).
+- Node.js 22 LTS (локально сейчас 22.16; в Dockerfile пока `node:20-alpine` — к обновлению, [T-007](../tasks/backlog/T-007-node-20-22-24-lts.md)).
+- pnpm 10 (версия зафиксирована в `packageManager` корневого `package.json`; включается через `corepack enable`). Менеджер пакетов — только pnpm, `npm install` не использовать.
 - Docker Desktop — для Postgres и Redis.
 - ОС разработки — Windows (PowerShell / Git Bash). Учитывай CRLF/LF (задача [T-003](../tasks/backlog/T-003-okonchaniya-strok.md)).
 
@@ -37,23 +35,23 @@
 
 ```bash
 # 1. зависимости (из корня)
-npm install
+pnpm install
 
 # 2. инфраструктура: Postgres 15 + Redis 7
 docker compose -f docker-compose.dev.yml up -d
 
 # 3. shared
-cd shared && npm run build && cd ..
+pnpm --filter @costumes/shared build
 
 # 4. БД
 cd apps/backend
-npx prisma migrate dev        # применит миграции и сгенерирует клиент в src/prisma/generated
-npm run db:seed               # создаст пользователей из USER*_ переменных
+pnpm exec prisma migrate dev # применит миграции и сгенерирует клиент в src/prisma/generated
+pnpm db:seed                  # создаст пользователей из USER*_ переменных
 cd ../..
 
 # 5. запуск (два терминала, из корня)
-npm run dev:backend           # nest start backend --watch → http://localhost:5000
-npm run dev:frontend          # vite → http://localhost:5173
+pnpm dev:backend              # nest start backend --watch → http://localhost:5000
+pnpm dev:frontend             # vite → http://localhost:5173
 ```
 
 `docker-compose.dev.yml` сейчас в `.gitignore` (содержит dev-пароль) — если файла нет, он такой:
@@ -79,39 +77,39 @@ volumes:
 ### Корень
 | Команда | Что делает |
 |---|---|
-| `npm run dev:backend` | backend в watch-режиме |
-| `npm run dev:frontend` | frontend dev-сервер |
-| `npm run dev:shared` | `tsc -b shared --watch` |
-| `npm run start:dev` | shared watch + backend вместе |
-| `npm run build` | сборка backend |
+| `pnpm dev:backend` | backend в watch-режиме |
+| `pnpm dev:frontend` | frontend dev-сервер |
+| `pnpm dev:shared` | `tsc -b --watch` в shared |
+| `pnpm start:dev` | shared watch + backend вместе |
+| `pnpm build` | сборка backend |
 
 ### shared (`cd shared`)
-| `npm run gen:api` | TypeSpec → OpenAPI → `src/openapi-client.ts` |
+| `pnpm gen:api` | TypeSpec → OpenAPI → `src/openapi-client.ts` |
 |---|---|
-| `npm run build` | `tsc --build --force` → `dist/` |
+| `pnpm build` | `tsc --build --force` → `dist/` |
 
 ### backend (`cd apps/backend`)
 | Команда | Что делает |
 |---|---|
-| `npx prisma migrate dev --name <name>` | новая миграция + generate |
-| `npx prisma generate` | только перегенерировать клиент |
-| `npx prisma studio` | GUI для БД |
-| `npm run db:seed` | пользователи |
-| `npm run lint` | ESLint с `--fix` |
-| `npx tsc --noEmit -p tsconfig.json` | typecheck |
-| `npm run test` / `test:e2e` | Jest (тестов пока нет) |
+| `pnpm exec prisma migrate dev --name <name>` | новая миграция + generate |
+| `pnpm exec prisma generate` | только перегенерировать клиент |
+| `pnpm exec prisma studio` | GUI для БД |
+| `pnpm db:seed` | пользователи |
+| `pnpm lint` | ESLint с `--fix` |
+| `pnpm exec tsc --noEmit -p tsconfig.json` | typecheck |
+| `pnpm test` / `pnpm test:e2e` | Jest (тестов пока нет) |
 
 ### frontend (`cd apps/crm-frontend`)
-| `npx tsc -b` | typecheck |
+| `pnpm exec tsc -b` | typecheck |
 |---|---|
-| `npm run lint` | ESLint |
-| `npm run build` | `tsc -b && vite build` |
-| `npm run preview` | предпросмотр прод-сборки |
+| `pnpm lint` | ESLint |
+| `pnpm build` | `tsc -b && vite build` |
+| `pnpm preview` | предпросмотр прод-сборки |
 
 ## 5. Частые проблемы
 
-- **Backend не видит новые типы shared** → не выполнен `npm run build` в `shared`.
-- **`Cannot find module '../prisma/generated/client'`** → `npx prisma generate` в `apps/backend`.
+- **Backend не видит новые типы shared** → не выполнен `pnpm --filter @costumes/shared build`.
+- **`Cannot find module '../prisma/generated/client'`** → `pnpm exec prisma generate` в `apps/backend`.
 - **ESLint backend: сотни ошибок `Insert ␍`/`Delete ␍`** → проблема окончаний строк на Windows ([T-003](../tasks/backlog/T-003-okonchaniya-strok.md)), к логике отношения не имеет.
 - **WhatsApp не отправляется локально** → нет тестового инстанса Green-API; job уйдёт в ретраи — это ожидаемо.
 - **409 «Request already in progress»** → сработал `IdempotencyInterceptor` (повтор запроса с тем же `X-Idempotency-Key`).
@@ -127,9 +125,9 @@ volumes:
    - `apps/crm-frontend/.env.development`
    - `.env` (корневой, если нужен)
    - `docker-compose.dev.yml` (если ещё не в git — T-006)
-2. `npm install` (после T-002 — `pnpm install`).
-3. `cd shared && npm run build`.
-4. `cd apps/backend && npx prisma generate`.
+2. `pnpm install`.
+3. `pnpm --filter @costumes/shared build`.
+4. `cd apps/backend && pnpm exec prisma generate`.
 
 **Общие ресурсы — одни на все worktree:**
 - **Dev-база и Redis одни** (контейнеры из `docker-compose.dev.yml`). Не поднимай второй экземпляр. Миграции (`prisma migrate dev`) — только в одной сессии одновременно; если задача требует миграции, а другая сессия тоже меняет схему — согласовать с владельцем.

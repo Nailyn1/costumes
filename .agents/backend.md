@@ -65,7 +65,7 @@ src/
 - **Время:** `TZ=UTC`, местное время хранится как UTC «как есть» (см. [domain.md](./domain.md#время-и-даты-важно)). Склеивание даты и времени — `new Date(\`${date}T${time}:00Z\`)`. Даты наружу — `toISOString().split('T')[0]`.
 - **Миграции:**
   1. правишь `prisma/schema.prisma`;
-  2. `npx prisma migrate dev --name <snake_case_описание>` (из `apps/backend`, БД из `docker-compose.dev.yml` должна быть запущена);
+  2. `pnpm exec prisma migrate dev --name <snake_case_описание>` (из `apps/backend`, БД из `docker-compose.dev.yml` должна быть запущена);
   3. проверяешь SQL в `prisma/migrations/<ts>_<name>/migration.sql` — миграции уходят в прод через `prisma migrate deploy` при деплое;
   4. **никогда** не редактируй уже применённые миграции.
   Деструктивные миграции (drop column, смена типа, NOT NULL без default) — только с явного согласия владельца: в проде живые данные сезона.
@@ -103,9 +103,9 @@ src/
 ## 11. Проверки перед завершением задачи
 
 ```bash
-npm run build -w shared          # если менялся shared
-npx tsc --noEmit -p apps/backend/tsconfig.json
-npm run lint -w @costumes/backend
-npm run test -w @costumes/backend   # когда появятся тесты
+pnpm --filter @costumes/shared build        # если менялся shared
+pnpm --filter @costumes/backend exec tsc --noEmit -p tsconfig.json
+pnpm --filter @costumes/backend lint
+pnpm --filter @costumes/backend test  # когда появятся тесты
 ```
-(Команды поменяются после перехода на pnpm — актуальные в [setup.md](./setup.md).)
+

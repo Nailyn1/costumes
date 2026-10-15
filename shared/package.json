@@ -9,7 +9,7 @@
   ],
   "license": "MIT",
   "scripts": {
-    "gen:api": "tsp compile api-spec/main.tsp --emit @typespec/openapi3 --output-dir api-spec/tsp-output && npx openapi-zod-client api-spec/tsp-output/schema/openapi.yaml --output src/openapi-client.ts",
+    "gen:api": "tsp compile api-spec/main.tsp --emit @typespec/openapi3 --output-dir api-spec/tsp-output && openapi-zod-client api-spec/tsp-output/schema/openapi.yaml --output src/openapi-client.ts",
     "build": "tsc --build --force"
   },
   "devDependencies": {
@@ -19,9 +19,10 @@
     "@typespec/openapi3": "1.9.0",
     "@typespec/rest": "0.79.0",
     "openapi-zod-client": "^1.18.3",
-    "typescript": "5.9.3"
+    "typescript": "catalog:"
   },
   "dependencies": {
-    "@zodios/core": "^10.9.6"
+    "@zodios/core": "^10.9.6",
+    "zod": "catalog:"
   }
 }

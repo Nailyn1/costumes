@@ -42,7 +42,7 @@ shared/
 2. **Генерация.**
    ```bash
    cd shared
-   npm run gen:api
+   pnpm gen:api
    ```
    Перегенерирует `api-spec/tsp-output` и `src/openapi-client.ts`. Посмотри `git diff src/openapi-client.ts` — изменения должны быть только ожидаемыми.
 3. **Ручной экспорт** в `shared/src/<domain>.ts` (только то, что реально используется):
@@ -53,9 +53,9 @@ shared/
    Соглашение: типы — `<Что><Request|Response>Dto`, схемы — `<Что><Request|Response>Schema`, PascalCase. (В `visits-orders.ts` есть старые имена с маленькой буквы — новые так не называй.)
 4. **Сборка** (нужна бэкенду, фронт читает `src` напрямую):
    ```bash
-   npm run build   # в shared
+   pnpm build   # в shared
    ```
-   В режиме разработки можно держать `npm run dev:shared` (tsc --watch) из корня.
+   В режиме разработки можно держать `pnpm dev:shared` (tsc --watch) из корня.
 5. **Реализация**: backend (DTO через `createZodDto`, контроллер, сервис) → frontend (service → hook → компонент).
 6. **Проверка**: typecheck всех трёх пакетов (см. [workflow.md](./workflow.md#3-definition-of-done)).
 

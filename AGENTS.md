@@ -2,7 +2,7 @@
 
 Внутренняя CRM точки проката детских костюмов: клиенты и дети, костюмы, бронирование (визиты и заказы), бирки, выдача, возврат, залоги, WhatsApp-уведомления клиентам. Одна точка, несколько сотрудников без ролей, работа с ПК и телефона. Пиковый сезон — новогодние праздники; система в проде с прошлого сезона (~500 аренд).
 
-Монорепозиторий (npm workspaces → переезд на pnpm):
+Монорепозиторий (pnpm workspaces):
 - `apps/backend` — NestJS 11, Prisma 7, PostgreSQL 15, Redis 7, BullMQ, Socket.IO
 - `apps/crm-frontend` — React 19, Vite 7, Mantine 8, TanStack Query 5, Zustand 5
 - `shared` — контракт API: TypeSpec → OpenAPI → Zod-схемы + Zodios-клиент
@@ -23,17 +23,17 @@
 ## Быстрый старт
 
 ```bash
-npm install
+pnpm install
 docker compose -f docker-compose.dev.yml up -d
-cd shared && npm run build && cd ..
-cd apps/backend && npx prisma migrate dev && npm run db:seed && cd ../..
-npm run dev:backend    # http://localhost:5000
-npm run dev:frontend   # http://localhost:5173
+pnpm --filter @costumes/shared build
+cd apps/backend && pnpm exec prisma migrate dev && pnpm db:seed && cd ../..
+pnpm dev:backend    # http://localhost:5000
+pnpm dev:frontend   # http://localhost:5173
 ```
 
 ## Главные правила
 
-1. **API меняется только через `shared`**: TypeSpec (`shared/api-spec/modules/*.tsp`) → `npm run gen:api` → ручной экспорт в `shared/src/*.ts` → `npm run build`. Никаких локальных API-типов в apps. Подробно — [shared-api.md](.agents/shared-api.md).
+1. **API меняется только через `shared`**: TypeSpec (`shared/api-spec/modules/*.tsp`) → `pnpm gen:api` (в `shared`) → ручной экспорт в `shared/src/*.ts` → `pnpm build` (в `shared`). Никаких локальных API-типов в apps. Подробно — [shared-api.md](.agents/shared-api.md).
 2. **Backend:** Controller → Service → Prisma, без репозиториев; валидация через `createZodDto(Schema)`; транзакции для многотабличных операций; **soft delete** (`deletedAt`) и фильтр `deletedAt: null` во всех выборках; ошибки — Nest-исключения с русским текстом.
 3. **Время:** сервер в `TZ=UTC`, местное время хранится как UTC «как есть» — никаких конвертаций часовых поясов.
 4. **Frontend:** component → React Query hook → service → `apiClient`; только Mantine без своих CSS; формы — `@mantine/form` + `zodResolver`; каждый экран обязан работать на мобильном.

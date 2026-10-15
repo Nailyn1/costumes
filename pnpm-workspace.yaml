@@ -1,0 +1,29 @@
+packages:
+  - apps/*
+  - shared
+
+catalog:
+  '@eslint/js': ^9.39.1
+  eslint: ^9.39.1
+  globals: ^16.5.0
+  typescript: 5.9.3
+  typescript-eslint: ^8.46.4
+  zod: ^3.24.2
+
+overrides:
+  zod: ^3.24.2
+
+# Нативные пакеты, которым нужны postinstall-скрипты (pnpm 10 блокирует остальные)
+onlyBuiltDependencies:
+  - '@nestjs/core'
+  - '@prisma/client'
+  - '@prisma/engines'
+  - '@sentry-internal/node-cpu-profiler'
+  - argon2
+  - esbuild
+  - msgpackr-extract
+  - prisma
+  - protobufjs
+  - unrs-resolver
+
+forceLegacyDeploy: true

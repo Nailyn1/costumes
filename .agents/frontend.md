@@ -105,9 +105,8 @@ export function useCreateCostume() {
 
 ```bash
 cd apps/crm-frontend
-npx tsc -b
-npm run lint
-npm run build   # перед крупными изменениями
+pnpm exec tsc -b
+pnpm lint
+pnpm build   # перед крупными изменениями
 ```
 UI-изменения проверяй в браузере на десктопной и мобильной ширине (375px).
-(Команды поменяются после перехода на pnpm — актуальные в [setup.md](./setup.md).)

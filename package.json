@@ -1,26 +1,17 @@
 {
   "name": "costumes",
   "version": "1.0.0",
-  "workspaces": [
-    "apps/*",
-    "shared"
-  ],
-  "overrides": {
-    "zod": "^3.24.2"
-  },
   "scripts": {
-    "dev:shared": "tsc -b shared --watch",
+    "dev:shared": "pnpm --filter @costumes/shared exec tsc -b --watch",
     "dev:backend": "nest start backend --watch",
-    "dev:frontend": "npm run dev -w crm-frontend",
-    "start:dev": "concurrently \"npm run dev:shared\" \"npm run dev:backend\"",
+    "dev:frontend": "pnpm --filter crm-frontend dev",
+    "start:dev": "concurrently \"pnpm dev:shared\" \"pnpm dev:backend\"",
     "build": "nest build backend"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",
-    "typescript": "5.9.3",
-    "typescript-eslint": "^8.46.4"
+    "typescript": "catalog:"
   },
-  "dependencies": {
-    "zod": "^3.24.2"
-  }
+  "private": true,
+  "packageManager": "pnpm@10.18.3"
 }

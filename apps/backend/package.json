@@ -21,7 +21,7 @@
     "db:seed": "tsx src/prisma/seed.ts"
   },
   "dependencies": {
-    "@costumes/shared": "0.1.0",
+    "@costumes/shared": "workspace:*",
     "@nestjs/axios": "^4.0.1",
     "@nestjs/bullmq": "^11.0.4",
     "@nestjs/common": "^11.1.12",
@@ -42,6 +42,7 @@
     "axios": "^1.13.4",
     "bullmq": "^5.67.2",
     "cookie-parser": "^1.4.7",
+    "dotenv": "^17.2.3",
     "ioredis": "^5.9.2",
     "nestjs-pino": "^4.6.0",
     "passport": "^0.7.0",
@@ -49,13 +50,15 @@
     "pino": "^10.3.1",
     "pino-pretty": "^13.1.3",
     "pino-roll": "^4.0.0",
+    "prisma": "^7.2.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "socket.io": "^4.8.3"
+    "socket.io": "^4.8.3",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
-    "@eslint/js": "^9.18.0",
+    "@eslint/js": "catalog:",
     "@nestjs/cli": "^11.0.16",
     "@nestjs/schematics": "^11.0.0",
     "@nestjs/testing": "^11.1.12",
@@ -68,13 +71,12 @@
     "@types/supertest": "^6.0.2",
     "@typescript-eslint/eslint-plugin": "^8.53.1",
     "@typescript-eslint/parser": "^8.53.1",
-    "eslint": "^9.18.0",
+    "eslint": "catalog:",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",
-    "globals": "^16.0.0",
+    "globals": "catalog:",
     "jest": "^30.0.0",
     "prettier": "^3.4.2",
-    "prisma": "^7.2.0",
     "source-map-support": "^0.5.21",
     "supertest": "^7.0.0",
     "ts-jest": "^29.4.6",
@@ -82,8 +84,8 @@
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "tsx": "^4.21.0",
-    "typescript": "^5.7.3",
-    "typescript-eslint": "^8.20.0"
+    "typescript": "catalog:",
+    "typescript-eslint": "catalog:"
   },
   "jest": {
     "moduleFileExtensions": [
