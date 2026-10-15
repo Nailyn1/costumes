@@ -11,7 +11,7 @@
 
 ## 2. Переменные окружения
 
-Файлы `.env` в git **не коммитятся**. Шаблона `.env.example` пока нет ([T-004](../tasks/backlog/T-004-env-example.md)) — список ниже.
+Файлы `.env` в git **не коммитятся**. Шаблоны с плейсхолдерами лежат рядом: `apps/backend/.env.example`, корневой `.env.example`, `apps/crm-frontend/.env.development.example` — скопируй в `.env` / `.env.development` и заполни. Список переменных ниже.
 
 **`apps/backend/.env`** (backend читает `.env` из cwd и `apps/backend/.env`; Prisma CLI — из `apps/backend`):
 
