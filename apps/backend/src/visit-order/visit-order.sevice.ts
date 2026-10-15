@@ -334,8 +334,15 @@ export class VisitOrderService {
     const orders = await this.prisma.order.findMany({
       where: {
         tagStatus: 'not_written',
+        deletedAt: null,
         status: {
-          not: 'cancelled',
+          notIn: ['cancelled', 'returned'],
+        },
+        visit: {
+          deletedAt: null,
+          status: {
+            notIn: ['completed', 'cancelled'],
+          },
         },
       },
       orderBy: {

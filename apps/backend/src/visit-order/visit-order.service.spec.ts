@@ -123,4 +123,27 @@ describe('VisitOrderService', () => {
       expect(txMock.visit.create).not.toHaveBeenCalled();
     });
   });
+
+  describe('findOrdersNotWritten', () => {
+    it('selects only active orders of open visits with unwritten tags', async () => {
+      prismaMock.order.findMany.mockResolvedValue([]);
+
+      const result = await service.findOrdersNotWritten();
+
+      expect(prismaMock.order.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            tagStatus: 'not_written',
+            deletedAt: null,
+            status: { notIn: ['cancelled', 'returned'] },
+            visit: {
+              deletedAt: null,
+              status: { notIn: ['completed', 'cancelled'] },
+            },
+          },
+        }),
+      );
+      expect(result.items).toEqual([]);
+    });
+  });
 });
