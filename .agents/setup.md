@@ -115,3 +115,28 @@ volumes:
 - **ESLint backend: сотни ошибок `Insert ␍`/`Delete ␍`** → проблема окончаний строк на Windows ([T-003](../tasks/backlog/T-003-okonchaniya-strok.md)), к логике отношения не имеет.
 - **WhatsApp не отправляется локально** → нет тестового инстанса Green-API; job уйдёт в ретраи — это ожидаемо.
 - **409 «Request already in progress»** → сработал `IdempotencyInterceptor` (повтор запроса с тем же `X-Idempotency-Key`).
+
+## 6. Работа в git worktree (параллельные сессии агентов)
+
+Параллельные сессии Claude Desktop работают каждая в своём worktree (создаётся автоматически). Основная папка проекта — `C:\JavaScript\costumes`.
+
+**Подготовка нового worktree** (один раз, из корня worktree):
+
+1. Скопировать файлы из gitignore из основной папки — в worktree их нет:
+   - `apps/backend/.env`
+   - `apps/crm-frontend/.env.development`
+   - `.env` (корневой, если нужен)
+   - `docker-compose.dev.yml` (если ещё не в git — T-006)
+2. `npm install` (после T-002 — `pnpm install`).
+3. `cd shared && npm run build`.
+4. `cd apps/backend && npx prisma generate`.
+
+**Общие ресурсы — одни на все worktree:**
+- **Dev-база и Redis одни** (контейнеры из `docker-compose.dev.yml`). Не поднимай второй экземпляр. Миграции (`prisma migrate dev`) — только в одной сессии одновременно; если задача требует миграции, а другая сессия тоже меняет схему — согласовать с владельцем.
+- **Порты 5000 (backend) и 5173 (frontend)** — dev-серверы одновременно может держать только одна сессия. Закончил ручную проверку — останови свои серверы.
+
+**Правила веток и коммитов в сессиях** (согласовано владельцем):
+- Каждая сессия работает в своей ветке `<type>/<short-description>`, базовая ветка указывается в задании сессии.
+- **Одна задача = один коммит** в своей ветке (Conventional Commits), файл задачи переносится в `tasks/done/` в том же коммите.
+- **Без push и без merge** — владелец смотрит коммиты и сам решает, что вливать.
+- Сессии с пересекающимися файлами одновременно не запускаются (особенно `package.json`/lock-файл, `visit-order.sevice.ts`, `shared/api-spec`).
