@@ -8,19 +8,21 @@ jest.mock('../prisma/generated/client', () => ({
 }));
 jest.mock('../prisma/prisma.service', () => ({ PrismaService: class {} }));
 
+const redisMock = { get: jest.fn() };
 const prismaMock = {
   $transaction: jest.fn(),
   order: { findMany: jest.fn() },
 };
 const txMock = {
-  visit: { findUnique: jest.fn(), update: jest.fn() },
+  client: { findUnique: jest.fn() },
+  visit: { findUnique: jest.fn(), update: jest.fn(), create: jest.fn() },
   order: { update: jest.fn() },
   deposit: { create: jest.fn() },
 };
 
 const createService = () =>
   new VisitOrderService(
-    {} as never,
+    redisMock as never,
     {} as never,
     prismaMock as never,
     {} as never,
@@ -68,6 +70,57 @@ describe('VisitOrderService', () => {
       await service.visitIssue(issueData, 1);
 
       expect(txMock.visit.update).toHaveBeenCalled();
+    });
+  });
+
+  describe('createVisit', () => {
+    const createData = {
+      clientId: 7,
+      visitCode: '1234',
+      startDateTime: '2026-12-20',
+      endDateTime: '2026-12-21',
+      issueTimeFrom: '10:00',
+      issueTimeTo: '19:00',
+      returnTimeUntil: '19:00',
+      orders: [
+        { childId: 1, costumeId: 1, rentPrice: 5000, prepaymentAmount: 1000 },
+      ],
+    } as never;
+
+    beforeEach(() => {
+      redisMock.get.mockResolvedValue('1');
+      prismaMock.order.findMany.mockResolvedValue([]);
+    });
+
+    it('rejects a blacklisted client and mentions the reason', async () => {
+      txMock.client.findUnique.mockResolvedValue({
+        id: 7,
+        name: 'Алия',
+        isBlacklisted: true,
+        blacklistReason: 'не вернула костюм',
+      });
+
+      const promise = service.createVisit(createData, false);
+
+      await expect(promise).rejects.toBeInstanceOf(BadRequestException);
+      await expect(promise).rejects.toThrow(/не вернула костюм/);
+      await expect(promise).rejects.toThrow(/«Клиенты»/);
+      expect(txMock.visit.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects a blacklisted client without a reason', async () => {
+      txMock.client.findUnique.mockResolvedValue({
+        id: 7,
+        name: 'Алия',
+        isBlacklisted: true,
+        blacklistReason: null,
+      });
+
+      const promise = service.createVisit(createData, false);
+
+      await expect(promise).rejects.toBeInstanceOf(BadRequestException);
+      await expect(promise).rejects.not.toThrow(/Причина/);
+      expect(txMock.visit.create).not.toHaveBeenCalled();
     });
   });
 });

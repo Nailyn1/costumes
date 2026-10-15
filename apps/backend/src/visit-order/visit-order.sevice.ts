@@ -172,6 +172,14 @@ export class VisitOrderService {
         });
         if (!client)
           throw new NotFoundException(`Клиент с ID ${data.clientId} не найден`);
+        if (client.isBlacklisted) {
+          const reason = client.blacklistReason
+            ? ` Причина: ${client.blacklistReason}.`
+            : '';
+          throw new BadRequestException(
+            `Клиент «${client.name}» в чёрном списке — бронирование невозможно.${reason} Чтобы забронировать, снимите запрет на странице «Клиенты».`,
+          );
+        }
         const traceId =
           (this.logger.logger as unknown as PinoLoggerWithId).id ??
           crypto.randomUUID();
