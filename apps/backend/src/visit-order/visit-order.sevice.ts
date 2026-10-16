@@ -32,7 +32,12 @@ import {
   VisitIssueRequestDto,
   visitNotificationResponseDto,
 } from '@costumes/shared';
-import { DepositType, OrderStatus, Prisma } from '../prisma/generated/client';
+import {
+  DepositType,
+  OrderStatus,
+  Prisma,
+  VisitStatus,
+} from '../prisma/generated/client';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { buildVisitMessage } from '../common/utils/visit-message.utils';
 import { VisitWithDetails } from '../notification/notification.service';
@@ -48,6 +53,15 @@ import {
   scoreTextMatch,
   sortBySearchScore,
 } from '../common/utils/search.utils';
+
+const VISIT_ISSUE_REJECT_MESSAGES: Record<
+  Exclude<VisitStatus, 'reserved'>,
+  string
+> = {
+  issued: 'Визит уже выдан — повторно выдать костюмы нельзя',
+  completed: 'Визит уже завершён, костюмы возвращены — выдать их нельзя',
+  cancelled: 'Бронь отменена — выдать костюмы по отменённому визиту нельзя',
+};
 
 interface PinoLoggerWithId {
   id?: string;
@@ -158,6 +172,14 @@ export class VisitOrderService {
         });
         if (!client)
           throw new NotFoundException(`Клиент с ID ${data.clientId} не найден`);
+        if (client.isBlacklisted) {
+          const reason = client.blacklistReason
+            ? ` Причина: ${client.blacklistReason}.`
+            : '';
+          throw new BadRequestException(
+            `Клиент «${client.name}» в чёрном списке — бронирование невозможно.${reason} Чтобы забронировать, снимите запрет на странице «Клиенты».`,
+          );
+        }
         const traceId =
           (this.logger.logger as unknown as PinoLoggerWithId).id ??
           crypto.randomUUID();
@@ -312,8 +334,15 @@ export class VisitOrderService {
     const orders = await this.prisma.order.findMany({
       where: {
         tagStatus: 'not_written',
+        deletedAt: null,
         status: {
-          not: 'cancelled',
+          notIn: ['cancelled', 'returned'],
+        },
+        visit: {
+          deletedAt: null,
+          status: {
+            notIn: ['completed', 'cancelled'],
+          },
         },
       },
       orderBy: {
@@ -380,8 +409,10 @@ export class VisitOrderService {
         throw new NotFoundException(`Визит с ID ${visitId} не найден`);
       }
 
-      if (visit.status === 'issued') {
-        throw new BadRequestException('Визит уже имеет статус "Выдан"');
+      if (visit.status !== 'reserved') {
+        throw new BadRequestException(
+          VISIT_ISSUE_REJECT_MESSAGES[visit.status],
+        );
       }
 
       let remainingPayment = additionalPayment;
