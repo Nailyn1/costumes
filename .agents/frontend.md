@@ -107,6 +107,7 @@ export function useCreateCostume() {
 cd apps/crm-frontend
 pnpm exec tsc -b
 pnpm lint
+pnpm test
 pnpm build   # перед крупными изменениями
 ```
 UI-изменения проверяй в браузере на десктопной и мобильной ширине (375px).
