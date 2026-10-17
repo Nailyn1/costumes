@@ -72,11 +72,11 @@ Feature-based структура (`features/{auth,clients-children,costumes,visi
 
 **Прод** — один VPS, `docker-compose.yaml`: `postgres`, `redis`, `redis-insight`, `backend` (порт 5000 внутри сети), `frontend` (Nginx, 80/443, сертификаты из `./certs`). Домен `costumes.duckdns.org`. Nginx раздаёт SPA, проксирует `/api/` → `backend:5000/` (префикс `/api` срезается) и `/socket.io/`.
 
-**CI/CD** — `.github/workflows/deploy.yaml`, на push в `main`:
-1. `docker compose build` + `push` образов `nailyn1/costumes-backend:latest`, `nailyn1/costumes-frontend:latest` в Docker Hub;
-2. по SSH на сервере: `git pull` → `docker compose pull` → `up -d` → `prisma migrate deploy`.
+**CI/CD** — `.github/workflows/deploy.yaml`. На pull request в `main` и на push в `main` сначала job `check` (pnpm install --frozen-lockfile, сборка shared, `prisma generate`, typecheck backend и frontend, lint backend (`src/`) и frontend, `pnpm --filter @costumes/backend test`). Дальше — только на push в `main`:
+1. `build-and-push`, `needs: check`: `docker compose build` + `push` образов `nailyn1/costumes-backend:latest`, `nailyn1/costumes-frontend:latest` в Docker Hub;
+2. `deploy`: по SSH на сервере `git pull` → `docker compose pull` → `up -d` → `prisma migrate deploy`.
 
-Проверок (lint/typecheck/test) перед деплоем нет. `main` = прод.
+Упавший `check` блокирует сборку и деплой. `main` = прод.
 
 **Вне сезона сервер выключен.** Бэкапы: раньше cron на сервере ежедневно отправлял дамп БД в Telegram-чат; планируется перевод на S3 (задача [T-012](../tasks/backlog/T-012-bekapy-bd-v-s3.md)).
 
