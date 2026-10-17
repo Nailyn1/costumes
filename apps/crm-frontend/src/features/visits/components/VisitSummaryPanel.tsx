@@ -6,6 +6,7 @@ import { useCreateVisit, useVisitPreviewCode } from "../hooks/useVisits";
 import { VisitPreviewModal } from "./VisitPreviewModal";
 import type { UseFormReturnType } from "@mantine/form";
 import type { BookingFormValues } from "../types/visitTypes";
+import { buildCreateVisitPayload } from "../utils/bookingForm";
 import { calcOrderTotals } from "../utils/orderTotals";
 
 interface VisitSummaryPanelProps {
@@ -40,24 +41,7 @@ export function VisitSummaryPanel({
   };
 
   const handleFinalSubmit = (sendNotification: boolean) => {
-    const { values } = form;
-    const payload = {
-      visitCode: values.visitCode || "",
-      startDateTime: values.startDateTime || "",
-      endDateTime: values.endDateTime || "",
-      issueTimeFrom: values.issueTimeFrom || "",
-      issueTimeTo: values.issueTimeTo || "",
-      returnTimeUntil: values.returnTimeUntil || "",
-      clientId: Number(values.clientId),
-      notes: values.notes || "",
-      orders: values.orders.map((order) => ({
-        childId: Number(order.childId),
-        costumeId: Number(order.costumeId),
-        rentPrice: Number(order.rentPrice) || 0,
-        prepaymentAmount: Number(order.prepaymentAmount) || 0,
-        notes: order.notes || "",
-      })),
-    };
+    const payload = buildCreateVisitPayload(form.values);
 
     createVisit(
       { data: payload, sendNotification: sendNotification },

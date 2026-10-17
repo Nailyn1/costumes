@@ -3,6 +3,7 @@ import { TextInput, ActionIcon, Popover, Box } from "@mantine/core";
 import { DatePicker } from "@mantine/dates";
 import { IconCalendar } from "@tabler/icons-react";
 import dayjs from "dayjs";
+import { parseSmartDate } from "../utils/bookingForm";
 
 interface SmartDateInputProps {
   label: string;
@@ -35,34 +36,9 @@ export function SmartDateInput({
       return;
     }
 
-    const dayMatch = rawVal.match(/^\d{1,2}$/);
-    if (dayMatch) {
-      const day = parseInt(dayMatch[0], 10);
-      if (day >= 1 && day <= 31) {
-        const now = dayjs();
-        let smartDate = now.date(day).startOf("day");
-
-        if (smartDate.isBefore(now, "day")) {
-          smartDate = smartDate.add(1, "month");
-        }
-
-        if (smartDate.isValid()) {
-          onChange(smartDate.format("YYYY-MM-DD"));
-        }
-        return;
-      }
-    }
-
-    // Если введено DD.MM (например 15.05)
-    const fullMatch = rawVal.match(/^(\d{1,2})\.(\d{1,2})$/);
-    if (fullMatch) {
-      const day = parseInt(fullMatch[1], 10);
-      const month = parseInt(fullMatch[2], 10) - 1; // в JS месяцы 0-11
-      const smartDate = dayjs().month(month).date(day).startOf("day");
-
-      if (smartDate.isValid()) {
-        onChange(smartDate.format("YYYY-MM-DD"));
-      }
+    const parsed = parseSmartDate(rawVal);
+    if (parsed) {
+      onChange(parsed);
       return;
     }
 

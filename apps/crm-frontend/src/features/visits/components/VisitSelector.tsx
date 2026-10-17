@@ -4,6 +4,7 @@ import { VisitStartBlock } from "./VisitStartBlock";
 import { VisitEndBlock } from "./VisitEndBlock";
 import type { VisitData, VisitSelectorProps } from "../types/visitTypes";
 import { useQueryClient } from "@tanstack/react-query";
+import { nextDayISO, toISODateString } from "../utils/bookingForm";
 
 export const VisitSelector = memo(function VisitSelector({
   values,
@@ -28,13 +29,6 @@ export const VisitSelector = memo(function VisitSelector({
 
   const combinedErrors = { ...externalErrors, ...validationErrors };
 
-  const toISODateString = (date: Date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const day = String(date.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
-
   const handleFieldChange = useCallback(
     <K extends keyof VisitData>(key: K, value: VisitData[K]) => {
       let stringValue: string | null = null;
@@ -48,12 +42,10 @@ export const VisitSelector = memo(function VisitSelector({
       const newValues: VisitData = { ...values, [key]: stringValue };
 
       if (key === "startDateTime" && stringValue) {
-        const dateObj = new Date(stringValue);
+        const nextDay = nextDayISO(stringValue);
 
-        if (!isNaN(dateObj.getTime())) {
-          const nextDay = new Date(dateObj);
-          nextDay.setDate(nextDay.getDate() + 1);
-          newValues.endDateTime = toISODateString(nextDay);
+        if (nextDay) {
+          newValues.endDateTime = nextDay;
         }
       }
 

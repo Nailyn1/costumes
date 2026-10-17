@@ -13,6 +13,7 @@ import { ChildSelector } from "src/features/clients-children/components/children
 import { CostumeSelector } from "src/features/costumes/components/costumeSelector";
 import type { BookingFormValues } from "../types/visitTypes";
 import { MoneyInput } from "src/components/MoneyInput";
+import { clampPrepayment } from "../utils/bookingForm";
 
 interface OrderBlockProps {
   index: number;
@@ -67,7 +68,10 @@ export function OrderBlock({
               form.setFieldValue(`orders.${index}.rentPrice`, numericValue);
 
               if (typeof val === "number" && prepaymentValue > val) {
-                form.setFieldValue(`orders.${index}.prepaymentAmount`, val);
+                form.setFieldValue(
+                  `orders.${index}.prepaymentAmount`,
+                  clampPrepayment(val, prepaymentValue),
+                );
               }
             }}
           />

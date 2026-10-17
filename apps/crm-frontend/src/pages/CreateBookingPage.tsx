@@ -5,6 +5,7 @@ import { ClientSelector } from "src/features/clients-children/components/clients
 import { OrderList } from "src/features/visits/components/OrderList";
 import { VisitSelector } from "src/features/visits/components/VisitSelector";
 import { VisitSummaryPanel } from "src/features/visits/components/VisitSummaryPanel";
+import { createEmptyOrder } from "src/features/visits/utils/bookingForm";
 import type { BookingFormValues } from "src/features/visits/types/visitTypes";
 
 export function CreateBookingPage() {
@@ -19,15 +20,7 @@ export function CreateBookingPage() {
       issueTimeTo: "19:30",
       returnTimeUntil: "18:00",
       notes: "",
-      orders: [
-        {
-          childId: null,
-          costumeId: null,
-          rentPrice: undefined,
-          prepaymentAmount: undefined,
-          notes: "",
-        },
-      ],
+      orders: [createEmptyOrder()],
     },
     validate: {
       clientId: (value) => (!value ? "Выберите клиента" : null),
@@ -66,15 +59,7 @@ export function CreateBookingPage() {
             form.setValues({
               ...form.values,
               ...newValues,
-              orders: [
-                {
-                  childId: null,
-                  costumeId: null,
-                  rentPrice: undefined,
-                  prepaymentAmount: undefined,
-                  notes: "",
-                },
-              ],
+              orders: [createEmptyOrder()],
             });
           } else {
             form.setValues({ ...form.values, ...newValues });

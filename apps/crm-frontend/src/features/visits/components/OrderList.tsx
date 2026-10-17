@@ -3,6 +3,7 @@ import { IconPlus } from "@tabler/icons-react";
 import { OrderBlock } from "./OrderBlock";
 import type { UseFormReturnType } from "@mantine/form";
 import type { BookingFormValues } from "../types/visitTypes";
+import { createEmptyOrder } from "../utils/bookingForm";
 
 interface OrderListProps {
   form: UseFormReturnType<BookingFormValues>;
@@ -11,26 +12,14 @@ interface OrderListProps {
 
 export function OrderList({ form, clientId }: OrderListProps) {
   const addOrder = () => {
-    form.insertListItem("orders", {
-      childId: null,
-      costumeId: null,
-      rentPrice: undefined,
-      prepaymentAmount: undefined,
-      notes: "",
-    });
+    form.insertListItem("orders", createEmptyOrder());
   };
 
   const removeOrder = (index: number) => {
     if (form.values.orders.length > 1) {
       form.removeListItem("orders", index);
     } else {
-      form.setFieldValue("orders.0", {
-        childId: null,
-        costumeId: null,
-        rentPrice: undefined,
-        prepaymentAmount: undefined,
-        notes: "",
-      });
+      form.setFieldValue("orders.0", createEmptyOrder());
     }
   };
 
