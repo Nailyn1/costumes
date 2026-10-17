@@ -73,10 +73,23 @@ Feature-based структура (`features/{auth,clients-children,costumes,visi
 **Прод** — один VPS, `docker-compose.yaml`: `postgres`, `redis`, `redis-insight`, `backend` (порт 5000 внутри сети), `frontend` (Nginx, 80/443, сертификаты из `./certs`). Домен `costumes.duckdns.org`. Nginx раздаёт SPA, проксирует `/api/` → `backend:5000/` (префикс `/api` срезается) и `/socket.io/`.
 
 **CI/CD** — `.github/workflows/deploy.yaml`. На pull request в `main` и на push в `main` сначала job `check` (pnpm install --frozen-lockfile, сборка shared, `prisma generate`, typecheck backend и frontend, lint backend (`src/`) и frontend, `pnpm --filter @costumes/backend test`). Дальше — только на push в `main`:
-1. `build-and-push`, `needs: check`: `docker compose build` + `push` образов `nailyn1/costumes-backend:latest`, `nailyn1/costumes-frontend:latest` в Docker Hub;
-2. `deploy`: по SSH на сервере `git pull` → `docker compose pull` → `up -d` → `prisma migrate deploy`.
+1. `build-and-push`, `needs: check`: сборка и push образов `nailyn1/costumes-backend` и `nailyn1/costumes-frontend` в Docker Hub с двумя тегами: `<git SHA коммита>` и `latest`;
+2. `deploy`: по SSH на сервере `git pull` → `export IMAGE_TAG=<SHA>` → `docker compose pull` → `up -d` → `prisma migrate deploy`.
 
 Упавший `check` блокирует сборку и деплой. `main` = прод.
+
+**Версии образов.** В `docker-compose.yaml` тег образов — `${IMAGE_TAG:-latest}`; деплой ставит `IMAGE_TAG` равным SHA пушнутого коммита, так что на сервере всегда запущена конкретная версия.
+
+**Откат на предыдущий SHA** (SHA — из истории `main`/Actions; образ с этим тегом должен быть в Docker Hub). На сервере:
+
+```bash
+cd ~/costumes
+export IMAGE_TAG=<sha предыдущего рабочего коммита>
+docker compose pull backend frontend
+docker compose up -d backend frontend
+```
+
+Миграции БД автоматически не откатываются: если откатываемая версия несовместима со схемой — решать с владельцем. Следующий успешный деплой снова выставит `IMAGE_TAG` на новый SHA. Если откат нужно закрепить — не мержить в `main` новые коммиты, пока не исправлено (или сделать `git revert`).
 
 **Вне сезона сервер выключен.** Бэкапы: раньше cron на сервере ежедневно отправлял дамп БД в Telegram-чат; планируется перевод на S3 (задача [T-012](../tasks/backlog/T-012-bekapy-bd-v-s3.md)).
 

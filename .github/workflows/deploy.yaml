@@ -69,12 +69,20 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build and Push Docker Images
+        env:
+          IMAGE_TAG: ${{ github.sha }}
         run: |
 
           touch .env
           docker compose build
 
+          # Тег по SHA (для отката) и плавающий latest
           docker compose push
+
+          docker tag nailyn1/costumes-backend:"$IMAGE_TAG" nailyn1/costumes-backend:latest
+          docker tag nailyn1/costumes-frontend:"$IMAGE_TAG" nailyn1/costumes-frontend:latest
+          docker push nailyn1/costumes-backend:latest
+          docker push nailyn1/costumes-frontend:latest
 
   deploy:
     needs: build-and-push
@@ -90,6 +98,8 @@ jobs:
             cd ~/costumes
 
             git pull origin main
+
+            export IMAGE_TAG=${{ github.sha }}
 
             docker compose pull
 

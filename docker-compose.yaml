@@ -38,7 +38,7 @@ services:
       dockerfile: ./apps/backend/Dockerfile
     container_name: nest-backend
     restart: always
-    image: nailyn1/costumes-backend:latest
+    image: nailyn1/costumes-backend:${IMAGE_TAG:-latest}
     env_file:
       - .env
     environment:
@@ -58,7 +58,7 @@ services:
       dockerfile: ./apps/crm-frontend/Dockerfile
     container_name: crm-frontend
     restart: always
-    image: nailyn1/costumes-frontend:latest
+    image: nailyn1/costumes-frontend:${IMAGE_TAG:-latest}
     ports:
       - "80:80"
       - "443:443"
