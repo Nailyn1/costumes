@@ -19,7 +19,7 @@
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | `postgres` / `123456` / `costumes` | контейнер Postgres (прод-compose) |
 | `REDIS_HOST` / `REDIS_PORT` / `REDIS_URL` | `localhost` / `6379` / `redis://localhost:6379` | Redis и BullMQ |
 | `PORT` | `5000` | порт API |
-| `CLIENT_URL` | `http://localhost:5173` | CORS |
+| `CLIENT_URL` | `http://localhost:5173` | CORS: HTTP и Socket.IO используют один список origin (`src/config/cors.config.ts`: `CLIENT_URL` + localhost) |
 | `SERVER_URL`, `SERVER_DOMAIN` | | URL сервера |
 | `JWT_SECRET` | любая длинная строка | подпись JWT |
 | `GREEN_API_URL`, `GREEN_API_ID_INSTANCE`, `GREEN_API_TOKEN` | | WhatsApp (Green-API); ID инстанса — только `GREEN_API_ID_INSTANCE` (по нему же ключ статуса в Redis; старая `INSTANCE_ID` удалена, на сервере её можно убрать из `.env`). Тестового инстанса пока нет — локально отправка падает, это нормально |

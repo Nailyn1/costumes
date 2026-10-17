@@ -22,7 +22,7 @@ src/
 │   ├── filters/prisma-client-exception.filter.ts
 │   ├── interceptors/sentry.interceptor.ts
 │   └── utils/              # search.utils.ts (поиск+ранжирование), visit-message.utils.ts
-└── config/                 # jwt.config.ts, logger.config.ts
+└── config/                 # jwt.config.ts, logger.config.ts, cors.config.ts (список origin для HTTP и Socket.IO)
 ```
 
 Новый домен = новый модуль `src/<domain>/` с `<domain>.module.ts`, `<domain>.controller.ts`, `<domain>.service.ts`, `dto/<domain>.dto.ts`.

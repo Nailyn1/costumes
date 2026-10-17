@@ -7,6 +7,7 @@ import cookieParser from 'cookie-parser';
 import { ZodValidationPipe } from './common/pipes/zod-validation.pipe';
 import { PrismaClientExceptionFilter } from './common/filters/prisma-client-exception.filter';
 import { Logger } from 'nestjs-pino';
+import { getAllowedOrigins } from './config/cors.config';
 import { SentryInterceptor } from './common/interceptors/sentry.interceptor';
 
 async function bootstrap() {
@@ -16,13 +17,7 @@ async function bootstrap() {
 
   app.use(cookieParser());
   app.enableCors({
-    origin: [
-      process.env.CLIENT_URL,
-      'http://localhost',
-      'http://127.0.0.1',
-      'http://localhost:80',
-      'http://localhost:5173',
-    ],
+    origin: getAllowedOrigins(),
     credentials: true,
     exposedHeaders: 'set-cookie',
   });
