@@ -13,7 +13,7 @@ costumes/
 ├── .agents/              # правила и знания для AI-агентов
 ├── tasks/                # учёт задач: backlog/ · in-progress/ · done/
 ├── docker-compose.yaml   # прод-стек
-├── docker-compose.dev.yml # локальные Postgres + Redis (не в git, см. setup.md)
+├── docker-compose.dev.yml # локальные Postgres + Redis (см. setup.md)
 ├── nest-cli.json         # Nest monorepo-конфиг (проект `backend`)
 └── tsconfig.base.json
 ```

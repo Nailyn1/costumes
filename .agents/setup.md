@@ -54,23 +54,7 @@ pnpm dev:backend              # nest start backend --watch → http://localhost:
 pnpm dev:frontend             # vite → http://localhost:5173
 ```
 
-`docker-compose.dev.yml` сейчас в `.gitignore` (содержит dev-пароль) — если файла нет, он такой:
-
-```yaml
-services:
-  postgres:
-    image: postgres:15-alpine
-    container_name: dev-postgres
-    ports: ["5432:5432"]
-    environment: [POSTGRES_USER=postgres, POSTGRES_PASSWORD=123456, POSTGRES_DB=costumes]
-    volumes: [dev_postgres_data:/var/lib/postgresql/data]
-  redis:
-    image: redis:7-alpine
-    container_name: dev-redis
-    ports: ["6379:6379"]
-volumes:
-  dev_postgres_data:
-```
+`docker-compose.dev.yml` лежит в git. Пользователь, пароль и имя БД берутся из `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` (корневой `.env`), по умолчанию `postgres` / `123456` / `costumes`. Имена контейнеров `dev-postgres` / `dev-redis` и volume `dev_postgres_data` не менять — на них живут dev-данные.
 
 ## 4. Команды
 
@@ -124,7 +108,6 @@ volumes:
    - `apps/backend/.env`
    - `apps/crm-frontend/.env.development`
    - `.env` (корневой, если нужен)
-   - `docker-compose.dev.yml` (если ещё не в git — T-006)
 2. `pnpm install`.
 3. `pnpm --filter @costumes/shared build`.
 4. `cd apps/backend && pnpm exec prisma generate`.
