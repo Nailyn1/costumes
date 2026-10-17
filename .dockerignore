@@ -10,3 +10,8 @@ apps/*/dist
 shared/dist
 *.tsbuildinfo
 apps/*/node_modules
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.*.example
+!apps/crm-frontend/.env.production
