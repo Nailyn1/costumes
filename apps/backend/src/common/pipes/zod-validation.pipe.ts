@@ -31,7 +31,7 @@ export class ZodValidationPipe implements PipeTransform {
     }
 
     // Возвращаем чистый провалидированный объект
-    return result.data;
+    return result.data as unknown;
   }
 
   private hasSchema(metatype: unknown): metatype is ZodMetatype {
