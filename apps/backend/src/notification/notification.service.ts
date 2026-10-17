@@ -441,7 +441,7 @@ export class NotificationService {
   }
 
   async isInstanceAuthorized(): Promise<boolean> {
-    const instanceId = this.configService.get<string>('INSTANCE_ID');
+    const instanceId = this.configService.get<string>('GREEN_API_ID_INSTANCE');
     const statusKey = `whatsapp:instance:${instanceId}:status`;
 
     const status = await this.redis.get(statusKey);

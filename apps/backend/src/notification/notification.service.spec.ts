@@ -261,6 +261,24 @@ describe('NotificationService', () => {
       redis.get.mockResolvedValue(null);
       await expect(service.isInstanceAuthorized()).resolves.toBe(false);
     });
+
+    // Регрессия T-013: статус пишется по GREEN_API_ID_INSTANCE
+    // (syncWhatsappStatus, вебхук stateInstanceChanged), а читался по INSTANCE_ID.
+    it('reads the status from the key written by syncWhatsappStatus', async () => {
+      const store = new Map<string, string>();
+      redis.get.mockImplementation((k: string) =>
+        Promise.resolve(store.get(k) ?? null),
+      );
+      redis.set.mockImplementation((k: string, v: string) => {
+        store.set(k, String(v));
+        return Promise.resolve('OK');
+      });
+      whatsapp.getStateInstance.mockResolvedValue('authorized');
+
+      await service.syncWhatsappStatus();
+
+      await expect(service.isInstanceAuthorized()).resolves.toBe(true);
+    });
   });
 
   describe('syncWhatsappStatus', () => {
