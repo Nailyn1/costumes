@@ -142,21 +142,6 @@ export class VisitOrderService {
       );
     }
 
-    const costumeIds = data.orders.map((o) => o.costumeId);
-    const busyCostumes = await this.isSuitAvailability(
-      costumeIds,
-      fullStartDt,
-      fullEndDt,
-    );
-
-    if (busyCostumes.length > 0) {
-      const names = busyCostumes.map((c) => `"${c.name}"`).join(', ');
-
-      throw new BadRequestException(
-        `Бронирование невозможно. Костюмы: ${names} уже заняты в этот промежуток времени.`,
-      );
-    }
-
     for (const order of data.orders) {
       if (order.rentPrice < order.prepaymentAmount) {
         throw new BadRequestException(
@@ -167,8 +152,8 @@ export class VisitOrderService {
 
     try {
       const result = await this.prisma.$transaction(async (tx) => {
-        const client = await tx.client.findUnique({
-          where: { id: data.clientId },
+        const client = await tx.client.findFirst({
+          where: { id: data.clientId, deletedAt: null },
         });
         if (!client)
           throw new NotFoundException(`Клиент с ID ${data.clientId} не найден`);
@@ -178,6 +163,65 @@ export class VisitOrderService {
             : '';
           throw new BadRequestException(
             `Клиент «${client.name}» в чёрном списке — бронирование невозможно.${reason} Чтобы забронировать, снимите запрет на странице «Клиенты».`,
+          );
+        }
+        const [children, costumes] = await Promise.all([
+          tx.child.findMany({
+            where: {
+              id: { in: data.orders.map((order) => order.childId) },
+              deletedAt: null,
+            },
+            select: { id: true, clientId: true },
+          }),
+          tx.costume.findMany({
+            where: {
+              id: { in: data.orders.map((order) => order.costumeId) },
+              deletedAt: null,
+            },
+            select: { id: true },
+          }),
+        ]);
+        const childrenById = new Map(
+          children.map((child) => [child.id, child]),
+        );
+        const costumeIds = new Set(costumes.map((costume) => costume.id));
+        const invalidOrders = data.orders.flatMap((order, index) => {
+          const errors: string[] = [];
+          const child = childrenById.get(order.childId);
+          if (!child) {
+            errors.push(
+              `заказ ${index + 1}: ребёнок ID ${order.childId} не найден или удалён`,
+            );
+          } else if (child.clientId !== data.clientId) {
+            errors.push(
+              `заказ ${index + 1}: ребёнок ID ${order.childId} не принадлежит клиенту`,
+            );
+          }
+          if (!costumeIds.has(order.costumeId)) {
+            errors.push(
+              `заказ ${index + 1}: костюм ID ${order.costumeId} не найден или удалён`,
+            );
+          }
+          return errors;
+        });
+        if (invalidOrders.length > 0) {
+          throw new BadRequestException(
+            `Бронирование невозможно: ${invalidOrders.join('; ')}`,
+          );
+        }
+
+        const busyCostumes = await this.isSuitAvailability(
+          data.orders.map((order) => order.costumeId),
+          fullStartDt,
+          fullEndDt,
+          tx,
+        );
+        if (busyCostumes.length > 0) {
+          const names = busyCostumes
+            .map((costume) => `"${costume.name}"`)
+            .join(', ');
+          throw new BadRequestException(
+            `Бронирование невозможно. Костюмы: ${names} уже заняты в этот промежуток времени.`,
           );
         }
         const traceId =
@@ -303,10 +347,12 @@ export class VisitOrderService {
     costumeIds: number[],
     startDateTime: Date,
     endDateTime: Date,
+    db: Prisma.TransactionClient = this.prisma,
   ): Promise<{ id: number; name: string }[]> {
-    const conflicts = await this.prisma.order.findMany({
+    const conflicts = await db.order.findMany({
       where: {
         costumeId: { in: costumeIds },
+        deletedAt: null,
         status: {
           not: 'cancelled',
         },
@@ -400,8 +446,8 @@ export class VisitOrderService {
     const { deposit, additionalPayment } = data;
 
     await this.prisma.$transaction(async (tx) => {
-      const visit = await tx.visit.findUnique({
-        where: { id: visitId },
+      const visit = await tx.visit.findFirst({
+        where: { id: visitId, deletedAt: null },
         include: { orders: true },
       });
 
@@ -466,8 +512,8 @@ export class VisitOrderService {
 
   async visitUnissue(visitId: number): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
-      const visit = await tx.visit.findUnique({
-        where: { id: visitId },
+      const visit = await tx.visit.findFirst({
+        where: { id: visitId, deletedAt: null },
       });
 
       if (!visit) {
@@ -884,8 +930,8 @@ export class VisitOrderService {
     visitId: number,
     notes?: string,
   ): Promise<MarkDepositReturnedDto> {
-    const visit = await this.prisma.visit.findUnique({
-      where: { id: visitId },
+    const visit = await this.prisma.visit.findFirst({
+      where: { id: visitId, deletedAt: null },
       include: { deposit: true },
     });
 
@@ -932,8 +978,8 @@ export class VisitOrderService {
       notes?: string;
     };
 
-    const visit = await this.prisma.visit.findUnique({
-      where: { id: visitId },
+    const visit = await this.prisma.visit.findFirst({
+      where: { id: visitId, deletedAt: null },
       include: { orders: true, deposit: true },
     });
 
@@ -1128,8 +1174,8 @@ export class VisitOrderService {
       reason?: string;
     };
 
-    const visit = await this.prisma.visit.findUnique({
-      where: { id: visitId },
+    const visit = await this.prisma.visit.findFirst({
+      where: { id: visitId, deletedAt: null },
     });
 
     if (!visit) {
