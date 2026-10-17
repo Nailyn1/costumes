@@ -1,4 +1,6 @@
+import 'reflect-metadata';
 import { NotificationController } from './notification.controller';
+import { WebhookTokenGuard } from './webhook-token.guard';
 
 describe('NotificationController webhook', () => {
   let service: {
@@ -109,6 +111,10 @@ describe('NotificationController webhook', () => {
     ).rejects.toThrow('db');
   });
 
-  // Текущее поведение «как есть»: вебхук принимает любой запрос без проверки токена.
-  it.todo('rejects a webhook without a valid Authorization token (T-030)');
+  it('protects the webhook with WebhookTokenGuard', () => {
+    // eslint-disable-next-line @typescript-eslint/unbound-method -- нужен сам метод как ключ метаданных
+    const handler = NotificationController.prototype.handleWebHook;
+    const guards = Reflect.getMetadata('__guards__', handler) as unknown[];
+    expect(guards).toContain(WebhookTokenGuard);
+  });
 });

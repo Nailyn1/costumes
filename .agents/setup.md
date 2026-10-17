@@ -23,6 +23,7 @@
 | `SERVER_URL`, `SERVER_DOMAIN` | | URL сервера |
 | `JWT_SECRET` | любая длинная строка | подпись JWT |
 | `GREEN_API_URL`, `GREEN_API_ID_INSTANCE`, `GREEN_API_TOKEN` | | WhatsApp (Green-API); ID инстанса — только `GREEN_API_ID_INSTANCE` (по нему же ключ статуса в Redis; старая `INSTANCE_ID` удалена, на сервере её можно убрать из `.env`). Тестового инстанса пока нет — локально отправка падает, это нормально |
+| `GREEN_API_WEBHOOK_TOKEN` | длинная случайная строка | токен вебхука `POST /webhooks/whatsapp` (`Authorization: Bearer`). Не задан: в `production` вебхук отвечает 401, в остальных окружениях пропускается с warning в логе. Настройка в Green-API — [domain.md §5](./domain.md#5-whatsapp-уведомления-green-api) |
 | `SENTRY_DSN` | пусто | Sentry backend |
 | `NODE_ENV` | `development` | `production` включает secure-cookie и файловые логи без pretty |
 | `USER{1..5}_LOGIN/NAME/PASSWORD` | | пользователи для seed (login ≥ 6 символов, пароль ≥ 12) |

@@ -128,7 +128,7 @@
 1. Создание визита с `sendNotification=true` → Notification `pending` → job `send-whatsapp` (`jobId = notification-{id}`) в очередь `notifications`.
 2. `NotificationProcessor` проверяет, авторизован ли инстанс WhatsApp (статус хранится в Redis `whatsapp:instance:{id}:status`); если нет — job падает и ретраится.
 3. `WhatsappProvider.sendMessage` → Green-API → `externalId`, статус `sent` (или `failed` с `errorText`).
-4. Green-API шлёт вебхуки на `POST /webhooks/whatsapp`:
+4. Green-API шлёт вебхуки на `POST /webhooks/whatsapp`. Запрос проверяет `WebhookTokenGuard`: заголовок `Authorization: Bearer <токен>` должен совпасть с `GREEN_API_WEBHOOK_TOKEN` (сравнение в постоянное время), иначе 401 без разбора тела. Токен не задан → в `production` 401, в остальных окружениях запрос пропускается с warning в логе. **Настройка:** сгенерировать длинную случайную строку, записать в `.env` сервера как `GREEN_API_WEBHOOK_TOKEN` и ту же строку указать в кабинете Green-API в настройках инстанса, поле «Токен вебхука» (`webhookUrlToken`; то же через метод `setSettings`). Вебхуки:
    - `outgoingMessageStatus` → обновление статуса по `externalId` (только если приоритет выше);
    - `incomingMessageReceived` → клиент ответил → последнее уведомление этого телефона за 48 ч → `isConfirmed`;
    - `stateInstanceChanged` → статус инстанса в Redis.
