@@ -6,6 +6,7 @@ import { useCreateVisit, useVisitPreviewCode } from "../hooks/useVisits";
 import { VisitPreviewModal } from "./VisitPreviewModal";
 import type { UseFormReturnType } from "@mantine/form";
 import type { BookingFormValues } from "../types/visitTypes";
+import { calcOrderTotals } from "../utils/orderTotals";
 
 interface VisitSummaryPanelProps {
   form: UseFormReturnType<BookingFormValues>;
@@ -20,15 +21,10 @@ export function VisitSummaryPanel({
   const { mutate: getCode, isPending } = useVisitPreviewCode();
   const { mutate: createVisit, isPending: isCreating } = useCreateVisit();
 
-  const totals = useMemo(() => {
-    return form.values.orders.reduce(
-      (acc, order) => ({
-        rent: acc.rent + (Number(order.rentPrice) || 0),
-        prepayment: acc.prepayment + (Number(order.prepaymentAmount) || 0),
-      }),
-      { rent: 0, prepayment: 0 },
-    );
-  }, [form.values.orders]);
+  const totals = useMemo(
+    () => calcOrderTotals(form.values.orders),
+    [form.values.orders],
+  );
 
   const handleCheck = () => {
     const validation = form.validate();

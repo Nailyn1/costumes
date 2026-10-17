@@ -1,27 +1,10 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { VisitOrderService } from './visit-order.sevice';
 
-// Сгенерированный Prisma-клиент импортирует `./x.js`, что jest без
-// moduleNameMapper не резолвит, поэтому заменяем его и PrismaService заглушками.
-jest.mock('../prisma/generated/client', () => ({
-  Prisma: { PrismaClientKnownRequestError: class extends Error {} },
-}));
-jest.mock('../prisma/prisma.service', () => ({ PrismaService: class {} }));
+import { createPrismaMock, makeCreateVisitRequest } from '../test-utils';
 
 const redisMock = { get: jest.fn() };
-const prismaMock = {
-  $transaction: jest.fn(),
-  order: { findMany: jest.fn() },
-  visit: { findFirst: jest.fn() },
-};
-const txMock = {
-  client: { findFirst: jest.fn() },
-  child: { findMany: jest.fn() },
-  costume: { findMany: jest.fn() },
-  visit: { findFirst: jest.fn(), update: jest.fn(), create: jest.fn() },
-  order: { findMany: jest.fn(), update: jest.fn() },
-  deposit: { create: jest.fn() },
-};
+const { prisma: prismaMock, tx: txMock, reset } = createPrismaMock();
 
 const createService = () =>
   new VisitOrderService(
@@ -35,10 +18,7 @@ describe('VisitOrderService', () => {
   let service: VisitOrderService;
 
   beforeEach(() => {
-    jest.resetAllMocks();
-    prismaMock.$transaction.mockImplementation((fn: (tx: unknown) => unknown) =>
-      fn(txMock),
-    );
+    reset();
     service = createService();
   });
 
@@ -90,18 +70,7 @@ describe('VisitOrderService', () => {
   });
 
   describe('createVisit', () => {
-    const createData = {
-      clientId: 7,
-      visitCode: '1234',
-      startDateTime: '2026-12-20',
-      endDateTime: '2026-12-21',
-      issueTimeFrom: '10:00',
-      issueTimeTo: '19:00',
-      returnTimeUntil: '19:00',
-      orders: [
-        { childId: 1, costumeId: 1, rentPrice: 5000, prepaymentAmount: 1000 },
-      ],
-    } as never;
+    const createData = makeCreateVisitRequest() as never;
 
     beforeEach(() => {
       redisMock.get.mockResolvedValue('1');
@@ -207,19 +176,12 @@ describe('VisitOrderService', () => {
       });
       txMock.child.findMany.mockResolvedValue([{ id: 1, clientId: 7 }]);
       txMock.costume.findMany.mockResolvedValue([{ id: 1 }]);
-      const data = {
-        clientId: 7,
-        visitCode: '1234',
-        startDateTime: '2026-12-20',
-        endDateTime: '2026-12-21',
-        issueTimeFrom: '10:00',
-        issueTimeTo: '19:00',
-        returnTimeUntil: '19:00',
+      const data = makeCreateVisitRequest({
         orders: [
           { childId: 2, costumeId: 1, rentPrice: 5000, prepaymentAmount: 0 },
           { childId: 1, costumeId: 3, rentPrice: 5000, prepaymentAmount: 0 },
         ],
-      } as never;
+      }) as never;
 
       await expect(service.createVisit(data, false)).rejects.toThrow(
         /заказ 1: ребёнок ID 2 не найден или удалён; заказ 2: костюм ID 3 не найден или удалён/,

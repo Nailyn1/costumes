@@ -104,8 +104,9 @@ src/
 
 ```bash
 pnpm --filter @costumes/shared build        # если менялся shared
-pnpm --filter @costumes/backend exec tsc --noEmit -p tsconfig.json
+pnpm --filter @costumes/backend typecheck   # tsc --noEmit, включая test/
 pnpm --filter @costumes/backend lint
-pnpm --filter @costumes/backend test  # когда появятся тесты
+pnpm --filter @costumes/backend test       # unit
+pnpm --filter @costumes/backend test:int   # integration (если задача трогает backend)
 ```
 

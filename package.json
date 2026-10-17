@@ -6,7 +6,9 @@
     "dev:backend": "nest start backend --watch",
     "dev:frontend": "pnpm --filter crm-frontend dev",
     "start:dev": "concurrently \"pnpm dev:shared\" \"pnpm dev:backend\"",
-    "build": "nest build backend"
+    "build": "nest build backend",
+    "test": "pnpm -r --if-present test",
+    "test:int": "pnpm --filter @costumes/backend test:int"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

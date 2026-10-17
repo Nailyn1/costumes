@@ -29,6 +29,8 @@
 
 Корневой `.env` используется прод-`docker-compose.yaml` (те же переменные).
 
+**`apps/backend/.env.test`** (для `pnpm test:int`, не коммитится): шаблон — `apps/backend/.env.test.example` (`DATABASE_URL` на БД `costumes_test`, `REDIS_DB=15`, тестовый сотрудник). Подробно — [testing.md §3.3](./testing.md#33-настройка-окружения-для-integration).
+
 **`apps/crm-frontend/.env.development`**: `VITE_API_URL=http://localhost:5000`, `VITE_SOCKET_URL=http://localhost:5000`. Прод — `.env.production` (`/api`, `/`), в git.
 
 ## 3. Первый запуск
@@ -66,6 +68,8 @@ pnpm dev:frontend             # vite → http://localhost:5173
 | `pnpm dev:shared` | `tsc -b --watch` в shared |
 | `pnpm start:dev` | shared watch + backend вместе |
 | `pnpm build` | сборка backend |
+| `pnpm test` | unit-тесты backend + frontend |
+| `pnpm test:int` | integration-тесты backend (нужны dev Postgres/Redis, см. [testing.md §3.3](./testing.md#33-настройка-окружения-для-integration)) |
 
 ### shared (`cd shared`)
 | `pnpm gen:api` | TypeSpec → OpenAPI → `src/openapi-client.ts` |
@@ -81,7 +85,10 @@ pnpm dev:frontend             # vite → http://localhost:5173
 | `pnpm db:seed` | пользователи |
 | `pnpm lint` | ESLint с `--fix` |
 | `pnpm exec tsc --noEmit -p tsconfig.json` | typecheck |
-| `pnpm test` / `pnpm test:e2e` | Jest (тестов пока нет) |
+| `pnpm typecheck` | `tsc --noEmit` вместе с `test/` |
+| `pnpm test` | Jest unit (`src/**/*.spec.ts`) |
+| `pnpm test:int` | Jest integration (`test/*.int-spec.ts`, БД `costumes_test`) |
+| `pnpm test:db:reset` | пересоздать `costumes_test` с нуля (вручную) |
 
 ### frontend (`cd apps/crm-frontend`)
 | `pnpm exec tsc -b` | typecheck |
@@ -89,6 +96,7 @@ pnpm dev:frontend             # vite → http://localhost:5173
 | `pnpm lint` | ESLint |
 | `pnpm build` | `tsc -b && vite build` |
 | `pnpm preview` | предпросмотр прод-сборки |
+| `pnpm test` / `pnpm test:watch` | Vitest |
 
 ## 5. Частые проблемы
 
@@ -106,6 +114,7 @@ pnpm dev:frontend             # vite → http://localhost:5173
 
 1. Скопировать файлы из gitignore из основной папки — в worktree их нет:
    - `apps/backend/.env`
+   - `apps/backend/.env.test` (только если нужны integration-тесты; иначе берётся `.env.test.example`)
    - `apps/crm-frontend/.env.development`
    - `.env` (корневой, если нужен)
 2. `pnpm install`.

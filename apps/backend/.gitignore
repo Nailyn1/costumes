@@ -63,3 +63,5 @@ src/prisma/generated
 tsconfig.build.tsbuildinfo
 
 src/prisma/seed.ts
+# integration tests
+.env.test

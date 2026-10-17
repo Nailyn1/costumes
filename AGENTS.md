@@ -18,6 +18,7 @@
 | [.agents/shared-api.md](.agents/shared-api.md) | **Любое** изменение API (эндпоинт, параметр, тип) |
 | [.agents/setup.md](.agents/setup.md) | Запуск, env, команды |
 | [.agents/workflow.md](.agents/workflow.md) | Цикл задачи, Definition of Done, правила коммитов |
+| [.agents/testing.md](.agents/testing.md) | Тесты: стратегия, структура, команды (`pnpm test`, `pnpm test:int`); читай при любом изменении логики и баг-фиксе |
 | [tasks/](tasks/README.md) | Задачи: `backlog/` · `in-progress/` · `done/` (один файл = одна задача) |
 
 ## Быстрый старт
@@ -39,7 +40,8 @@ pnpm dev:frontend   # http://localhost:5173
 4. **Frontend:** component → React Query hook → service → `apiClient`; только Mantine без своих CSS; формы — `@mantine/form` + `zodResolver`; каждый экран обязан работать на мобильном.
 5. `any` запрещён в обоих приложениях.
 6. Неясное бизнес-правило — **спроси владельца**, не угадывай. Новые найденные проблемы — задачей в [`tasks/backlog/`](tasks/README.md), не чинить молча.
-7. Миграции Prisma — только новые через `prisma migrate dev`; применённые не редактировать; деструктивные — только с согласия владельца (в проде живые данные).
+7. **Тесты:** новая бизнес-логика и баг-фиксы — вместе с тестами ([testing.md](.agents/testing.md)); `pnpm test` и `pnpm test:int` зелёные до коммита.
+8. Миграции Prisma — только новые через `prisma migrate dev`; применённые не редактировать; деструктивные — только с согласия владельца (в проде живые данные).
 
 ## Git
 
