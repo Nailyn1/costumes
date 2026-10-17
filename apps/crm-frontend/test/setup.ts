@@ -24,6 +24,17 @@ class ResizeObserverStub {
   disconnect() {}
 }
 globalThis.ResizeObserver = ResizeObserverStub;
+// react-intersection-observer (бесконечные списки) требует IntersectionObserver
+class IntersectionObserverStub {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+  takeRecords() {
+    return [];
+  }
+}
+globalThis.IntersectionObserver =
+  IntersectionObserverStub as unknown as typeof IntersectionObserver;
 window.HTMLElement.prototype.scrollIntoView = vi.fn();
 
 beforeAll(() => server.listen({ onUnhandledFrame: "error" }));
