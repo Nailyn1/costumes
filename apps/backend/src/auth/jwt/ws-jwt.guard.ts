@@ -19,7 +19,7 @@ export class WsJwtGuard implements CanActivate {
     const token = this.extractTokenFromClient(client);
 
     if (!token) {
-      throw new WsException('Unauthorized: No token provided');
+      throw new WsException('Токен авторизации не предоставлен');
     }
 
     try {
@@ -28,7 +28,7 @@ export class WsJwtGuard implements CanActivate {
       });
       (client as SocketWithAuth).user = payload;
     } catch {
-      throw new WsException('Unauthorized: Invalid token');
+      throw new WsException('Недействительный токен авторизации');
     }
 
     return true;

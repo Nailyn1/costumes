@@ -15,7 +15,6 @@ const contextFor = (client: {
 });
 
 describe('WsJwtGuard', () => {
-  it.todo('T-085: return Russian WS authentication errors');
   let guard: WsJwtGuard;
 
   beforeEach(() => {
@@ -28,7 +27,7 @@ describe('WsJwtGuard', () => {
     const client = { handshake: { auth: {}, headers: {} } };
     await expect(
       guard.canActivate(contextFor(client) as never),
-    ).rejects.toThrow(new WsException('Unauthorized: No token provided'));
+    ).rejects.toThrow(new WsException('Токен авторизации не предоставлен'));
     expect(jwt.verifyAsync).not.toHaveBeenCalled();
   });
 
@@ -37,7 +36,7 @@ describe('WsJwtGuard', () => {
     jwt.verifyAsync.mockRejectedValue(new Error('invalid'));
     await expect(
       guard.canActivate(contextFor(client) as never),
-    ).rejects.toThrow(new WsException('Unauthorized: Invalid token'));
+    ).rejects.toThrow(new WsException('Недействительный токен авторизации'));
   });
 
   it('accepts a handshake token and attaches the verified user', async () => {

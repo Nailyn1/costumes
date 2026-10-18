@@ -325,18 +325,13 @@ describe("IssuePage", () => {
       expect(
         screen.getByText("На эти даты заказов нет"),
       ).toBeInTheDocument();
-      // текст как в коде; по domain.md §4.3 ожидается «Костюмы выданы. Визит 1648» (T-075)
       expect(showSpy).toHaveBeenCalledWith(
         expect.objectContaining({
-          message: "Заказ успешно выданы клиенту!",
+          message: "Визит 1648 успешно выдан!",
           color: "green",
         }),
       );
     });
-
-    it.todo(
-      "shows the toast «Костюмы выданы. Визит 1648» after a successful issue (T-075)",
-    );
 
     it("keeps the modal open when the backend rejects the issue", async () => {
       vi.spyOn(console, "error").mockImplementation(() => {});

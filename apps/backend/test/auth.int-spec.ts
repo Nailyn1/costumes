@@ -63,10 +63,14 @@ describe('auth HTTP flow (integration)', () => {
       .set('Cookie', cookie2)
       .expect(204);
     expect(cookieFrom(logout)).toMatch(/Expires=Thu, 01 Jan 1970|Max-Age=0/i);
-    await request(server)
+    const revoked = await request(server)
       .post('/auth/refresh')
       .set('Cookie', cookie2)
       .expect(401);
+    expect((revoked.body as { message: string }).message).toBe(
+      'Недействительный токен обновления',
+    );
+    expect(revoked.headers['set-cookie']).toBeUndefined();
   });
 
   it('rotates refresh cookies immediately and keeps only the latest JWT in Redis', async () => {
@@ -83,10 +87,14 @@ describe('auth HTTP flow (integration)', () => {
     const newCookie = cookieFrom(refreshed);
 
     expect(newCookie).not.toBe(oldCookie);
-    await request(server)
+    const rotated = await request(server)
       .post('/auth/refresh')
       .set('Cookie', oldCookie)
       .expect(401);
+    expect((rotated.body as { message: string }).message).toBe(
+      'Недействительный токен обновления',
+    );
+    expect(rotated.headers['set-cookie']).toBeUndefined();
 
     const user = await t.prisma.user.findUniqueOrThrow({
       where: { login: t.user.login },
@@ -105,8 +113,8 @@ describe('auth HTTP flow (integration)', () => {
 
   it('rejects absent, malformed and expired refresh cookies', async () => {
     const server = httpServer(t.app);
-    await request(server).post('/auth/refresh').expect(401);
-    await request(server)
+    const absent = await request(server).post('/auth/refresh').expect(401);
+    const malformed = await request(server)
       .post('/auth/refresh')
       .set('Cookie', 'refreshToken=not-a-jwt')
       .expect(401);
@@ -118,10 +126,16 @@ describe('auth HTTP flow (integration)', () => {
       { id: user.id, login: user.login },
       { expiresIn: -1 },
     );
-    await request(server)
+    const expiredResponse = await request(server)
       .post('/auth/refresh')
       .set('Cookie', `refreshToken=${expired}`)
       .expect(401);
+    for (const response of [absent, malformed, expiredResponse]) {
+      expect((response.body as { message: string }).message).toBe(
+        'Недействительный токен обновления',
+      );
+      expect(response.headers['set-cookie']).toBeUndefined();
+    }
   });
 
   it('rejects expired access and unauthenticated protected routes', async () => {

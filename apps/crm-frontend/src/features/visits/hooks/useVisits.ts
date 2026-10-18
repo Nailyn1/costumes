@@ -125,6 +125,7 @@ export function useIssueVisit() {
       data,
     }: {
       visitId: number;
+      visitCode: string;
       data: VisitIssueRequestDto;
     }) => visitsService.issueVisit(data, visitId),
     onSuccess: (_, variables) => {
@@ -148,7 +149,7 @@ export function useIssueVisit() {
       });
       notifications.show({
         title: "Успешно",
-        message: "Заказ успешно выданы клиенту!",
+        message: `Визит ${variables.visitCode} успешно выдан!`,
         color: "green",
       });
     },

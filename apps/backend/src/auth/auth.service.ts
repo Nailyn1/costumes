@@ -63,7 +63,7 @@ export class AuthService {
     const savedToken = await this.redis.get(`rf:${userId}`);
 
     if (!savedToken || savedToken !== oldRefreshToken) {
-      throw new UnauthorizedException('Invalid or expired refresh token');
+      throw new UnauthorizedException('Недействительный токен обновления');
     }
 
     const user = await this.prisma.user.findUnique({
@@ -71,7 +71,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('User no longer exists');
+      throw new UnauthorizedException('Недействительный токен обновления');
     }
 
     const { accessToken, refreshToken } = await this.issueTokens(

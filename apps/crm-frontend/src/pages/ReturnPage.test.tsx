@@ -125,6 +125,11 @@ async function openReturnModal(user: User) {
 const returnButton = (dialog: HTMLElement) =>
   within(dialog).getByRole("button", { name: "Костюмы возвращены" });
 
+async function selectAllCostumes(user: User, dialog: HTMLElement) {
+  await user.click(within(dialog).getByText("Эльза"));
+  await user.click(within(dialog).getByText("Анна"));
+}
+
 describe("ReturnPage: awaiting list", () => {
   it("lists issued visits and shows a hint when there are none", async () => {
     mockBackend();
@@ -176,29 +181,38 @@ describe("ReturnPage: awaiting list", () => {
 });
 
 describe("ReturnPage: return modal", () => {
-  // По domain.md §4.4 костюмы отмечают вручную; в коде все чекбоксы отмечены сразу (T-073).
-  it("starts with every costume checked, so the button is enabled (current behaviour)", async () => {
-    mockBackend();
+  it("starts with no costume checked and enables return only after all are checked (T-073)", async () => {
+    const { completed } = mockBackend();
     const user = userEvent.setup();
     const dialog = await openReturnModal(user);
 
-    for (const checkbox of within(dialog).getAllByRole("checkbox", {
+    const costumeCheckboxes = within(dialog).getAllByRole("checkbox", {
       name: "",
-    })) {
-      expect(checkbox).toBeChecked();
+    });
+    expect(costumeCheckboxes).toHaveLength(2);
+    for (const checkbox of costumeCheckboxes) {
+      expect(checkbox).not.toBeChecked();
     }
-    expect(returnButton(dialog)).toBeEnabled();
-  });
+    expect(returnButton(dialog)).toBeDisabled();
 
-  it.todo(
-    "starts with no costume checked and enables «Костюмы возвращены» only after all are checked (T-073)",
-  );
+    await user.click(within(dialog).getByText("Эльза"));
+    expect(costumeCheckboxes[0]).toBeChecked();
+    expect(costumeCheckboxes[1]).not.toBeChecked();
+    expect(returnButton(dialog)).toBeDisabled();
+
+    await user.click(within(dialog).getByText("Анна"));
+    expect(costumeCheckboxes[1]).toBeChecked();
+    expect(returnButton(dialog)).toBeEnabled();
+    expect(completed).toHaveLength(0);
+  });
 
   it("disables «Костюмы возвращены» while any costume is unchecked and enables it again when all are checked", async () => {
     const { completed } = mockBackend();
     const user = userEvent.setup();
     const dialog = await openReturnModal(user);
 
+    await selectAllCostumes(user, dialog);
+    expect(returnButton(dialog)).toBeEnabled();
     await user.click(within(dialog).getByText("Эльза"));
 
     expect(returnButton(dialog)).toBeDisabled();
@@ -224,6 +238,7 @@ describe("ReturnPage: return modal", () => {
       within(dialog).getByLabelText("Комментарий при возврате"),
       "сдали вовремя",
     );
+    await selectAllCostumes(user, dialog);
     await user.click(returnButton(dialog));
 
     await waitFor(() => expect(completed).toHaveLength(1));
@@ -243,6 +258,7 @@ describe("ReturnPage: return modal", () => {
     const dialog = await openReturnModal(user);
 
     await user.click(within(dialog).getByLabelText("Залог возвращён клиенту"));
+    await selectAllCostumes(user, dialog);
     await user.click(returnButton(dialog));
 
     await waitFor(() => expect(completed).toHaveLength(1));
@@ -259,6 +275,7 @@ describe("ReturnPage: return modal", () => {
       within(dialog).queryByLabelText("Залог возвращён клиенту"),
     ).not.toBeInTheDocument();
 
+    await selectAllCostumes(user, dialog);
     await user.click(returnButton(dialog));
     await waitFor(() => expect(completed).toHaveLength(1));
     expect(completed[0]).toMatchObject({ depositReturned: false });
@@ -284,6 +301,7 @@ describe("ReturnPage: return modal", () => {
     const user = userEvent.setup();
     const dialog = await openReturnModal(user);
 
+    await selectAllCostumes(user, dialog);
     await user.click(returnButton(dialog));
 
     await waitFor(() => expect(completed).toHaveLength(1));

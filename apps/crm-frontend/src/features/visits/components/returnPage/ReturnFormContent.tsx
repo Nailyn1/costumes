@@ -42,7 +42,7 @@ export function ReturnFormContent({
     initialValues: {
       depositReturned: data.deposit?.type !== "none",
       notes: "",
-      returnedItems: data.orders.map((order) => order.orderId),
+      returnedItems: [] as number[],
     },
   });
 

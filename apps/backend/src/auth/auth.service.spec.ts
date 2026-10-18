@@ -12,7 +12,6 @@ const jwt = { signAsync: jest.fn() };
 const verify = jest.mocked(argon2.verify);
 
 describe('AuthService', () => {
-  it.todo('T-085: return Russian refresh error messages');
   let service: AuthService;
   let storedToken: string | undefined;
 
@@ -92,8 +91,8 @@ describe('AuthService', () => {
       refreshToken: 'refresh-2',
     });
     expect(redis.set).toHaveBeenCalledWith('rf:7', 'refresh-2', 'EX', 604800);
-    await expect(service.refreshTokens(7, 'refresh-1')).rejects.toBeInstanceOf(
-      UnauthorizedException,
+    await expect(service.refreshTokens(7, 'refresh-1')).rejects.toThrow(
+      new UnauthorizedException('Недействительный токен обновления'),
     );
   });
 
@@ -134,7 +133,9 @@ describe('AuthService', () => {
       expect(decoded.exp - decoded.iat).toBe(604800);
       await expect(
         realService.refreshTokens(7, first.refreshToken),
-      ).rejects.toBeInstanceOf(UnauthorizedException);
+      ).rejects.toThrow(
+        new UnauthorizedException('Недействительный токен обновления'),
+      );
       expect(storedToken).toBe(second.refreshToken);
       expect(redis.set).toHaveBeenLastCalledWith(
         'rf:7',
@@ -156,7 +157,9 @@ describe('AuthService', () => {
           7,
           caseName === 'tampered' ? 'other-token' : 'revoked-token',
         ),
-      ).rejects.toBeInstanceOf(UnauthorizedException);
+      ).rejects.toThrow(
+        new UnauthorizedException('Недействительный токен обновления'),
+      );
       expect(jwt.signAsync).not.toHaveBeenCalled();
     },
   );
@@ -164,8 +167,8 @@ describe('AuthService', () => {
   it('rejects refresh when its user no longer exists', async () => {
     storedToken = 'refresh-1';
     prisma.user.findUnique.mockResolvedValue(null);
-    await expect(service.refreshTokens(7, 'refresh-1')).rejects.toBeInstanceOf(
-      UnauthorizedException,
+    await expect(service.refreshTokens(7, 'refresh-1')).rejects.toThrow(
+      new UnauthorizedException('Недействительный токен обновления'),
     );
   });
 
@@ -173,8 +176,8 @@ describe('AuthService', () => {
     storedToken = 'refresh-1';
     await service.logout(7);
     expect(redis.del).toHaveBeenCalledWith('rf:7');
-    await expect(service.refreshTokens(7, 'refresh-1')).rejects.toBeInstanceOf(
-      UnauthorizedException,
+    await expect(service.refreshTokens(7, 'refresh-1')).rejects.toThrow(
+      new UnauthorizedException('Недействительный токен обновления'),
     );
   });
 

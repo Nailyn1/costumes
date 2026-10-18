@@ -103,7 +103,7 @@ export function IssueModal({
     };
 
     issueMutation.mutate(
-      { visitId: visitId, data: payload },
+      { visitId, visitCode: data.visitCode, data: payload },
       {
         onSuccess: () => {
           handleClose();
