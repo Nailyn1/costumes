@@ -34,7 +34,7 @@ export function DepositCard({ visit, onMarkReturned }: DepositCardProps) {
               <IconFileDescription size={16} color="blue" />
             )}
             <Text fw={700} c={isCash ? "green" : "blue"}>
-              {isCash ? `${visit.deposit.amount} ₽` : "Документ"}
+              {isCash ? `${visit.deposit.amount} ₸` : "Документ"}
             </Text>
           </Group>
         </Group>

@@ -359,8 +359,15 @@ describe("ReturnPage: forgotten deposits", () => {
     expect(screen.getByText(/Костюм: Эльза, Анна/)).toBeInTheDocument();
   });
 
-  // DepositCard показывает сумму наличного залога в «₽», а не в «₸».
-  it.todo("shows the cash deposit amount in tenge (₸) on the deposit card (T-074)");
+  it("shows the cash deposit amount in tenge on the deposit card", async () => {
+    mockDeposits();
+    const user = userEvent.setup();
+    renderWithProviders(<ReturnPage />);
+
+    await user.click(screen.getByText("Забытые залоги"));
+
+    expect(await screen.findByText("5000 ₸")).toBeInTheDocument();
+  });
 
   it("asks for confirmation, then marks the deposit as returned and removes the card", async () => {
     const { marked } = mockDeposits();
