@@ -283,4 +283,125 @@ describe('VisitOrderService', () => {
       expect(result.items).toEqual([]);
     });
   });
+
+  describe('visit list soft delete filters', () => {
+    it('filters deleted visits and orders from reserved visits', async () => {
+      prismaMock.visit.findMany.mockResolvedValue([]);
+      prismaMock.visit.count.mockResolvedValue(0);
+
+      await service.visitReserved();
+
+      expect(prismaMock.visit.findMany).toHaveBeenCalledWith({
+        where: { status: 'reserved', deletedAt: null },
+        include: {
+          client: true,
+          orders: {
+            where: { deletedAt: null },
+            include: { child: true, costume: true },
+          },
+        },
+        orderBy: { startDateTime: 'asc' },
+        take: 20,
+        skip: 0,
+      });
+      expect(prismaMock.visit.count).toHaveBeenCalledWith({
+        where: { status: 'reserved', deletedAt: null },
+      });
+    });
+
+    it('does not find a deleted visit for issue', async () => {
+      prismaMock.visit.findUnique.mockResolvedValue({
+        id: 1,
+        visitCode: '0001',
+        client: { name: 'Алия', phone: '+77001234567' },
+        startDateTime: new Date('2026-12-20T10:00:00Z'),
+        endDateTime: new Date('2026-12-21T10:00:00Z'),
+        issueTimeFrom: '10:00',
+        issueTimeTo: '11:00',
+        returnTimeUntil: '10:00',
+        orders: [],
+        notes: null,
+        deletedAt: new Date('2026-12-01T00:00:00Z'),
+      } as never);
+      prismaMock.visit.findFirst.mockResolvedValue(null);
+
+      await expect(service.visitForIssue(1)).rejects.toThrow(
+        new NotFoundException('Визит с ID 1 не найден'),
+      );
+      expect(prismaMock.visit.findFirst).toHaveBeenCalledWith({
+        where: { id: 1, deletedAt: null },
+        include: {
+          client: true,
+          orders: {
+            where: { deletedAt: null },
+            include: { child: true, costume: true },
+          },
+        },
+      });
+    });
+
+    it('filters deleted visits and orders from unreturned deposits', async () => {
+      prismaMock.$transaction.mockImplementation(
+        (operations: Promise<unknown>[]) => Promise.all(operations),
+      );
+      prismaMock.visit.count.mockResolvedValue(0);
+      prismaMock.visit.findMany.mockResolvedValue([]);
+
+      await service.visitUnreturnedDeposits();
+
+      expect(prismaMock.visit.findMany).toHaveBeenCalledWith({
+        where: {
+          status: 'completed',
+          deletedAt: null,
+          deposit: { returned: false, type: { not: 'none' } },
+        },
+        skip: 0,
+        take: 20,
+        orderBy: { endDateTime: 'desc' },
+        include: {
+          client: true,
+          deposit: true,
+          orders: {
+            where: { deletedAt: null },
+            include: { child: true, costume: true },
+          },
+        },
+      });
+      expect(prismaMock.visit.count).toHaveBeenCalledWith({
+        where: {
+          status: 'completed',
+          deletedAt: null,
+          deposit: { returned: false, type: { not: 'none' } },
+        },
+      });
+    });
+
+    it('filters deleted visits and orders from issued visits', async () => {
+      prismaMock.$transaction.mockImplementation(
+        (operations: Promise<unknown>[]) => Promise.all(operations),
+      );
+      prismaMock.visit.count.mockResolvedValue(0);
+      prismaMock.visit.findMany.mockResolvedValue([]);
+
+      await service.visitIssued();
+
+      expect(prismaMock.visit.findMany).toHaveBeenCalledWith({
+        where: { status: 'issued', deletedAt: null },
+        skip: 0,
+        take: 20,
+        orderBy: { endDateTime: 'asc' },
+        include: {
+          client: true,
+          deposit: true,
+          orders: {
+            where: { deletedAt: null },
+            include: { child: true, costume: true },
+          },
+        },
+      });
+      expect(prismaMock.visit.count).toHaveBeenCalledWith({
+        where: { status: 'issued', deletedAt: null },
+      });
+    });
+  });
 });

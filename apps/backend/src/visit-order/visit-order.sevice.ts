@@ -563,6 +563,7 @@ export class VisitOrderService {
 
     const where: Prisma.VisitWhereInput = {
       status: 'reserved',
+      deletedAt: null,
     };
 
     if (startDate || endDate) {
@@ -589,6 +590,7 @@ export class VisitOrderService {
         include: {
           client: true,
           orders: {
+            where: { deletedAt: null },
             include: {
               child: true,
               costume: true,
@@ -705,11 +707,12 @@ export class VisitOrderService {
   }
 
   async visitForIssue(visitId: number): Promise<GetVisitForIssueDto> {
-    const visit = await this.prisma.visit.findUnique({
-      where: { id: visitId },
+    const visit = await this.prisma.visit.findFirst({
+      where: { id: visitId, deletedAt: null },
       include: {
         client: true,
         orders: {
+          where: { deletedAt: null },
           include: {
             child: true,
             costume: true,
@@ -1039,6 +1042,7 @@ export class VisitOrderService {
     const skip = (page - 1) * limit;
     const whereCondition = {
       status: 'completed' as const,
+      deletedAt: null,
       deposit: {
         returned: false,
         type: {
@@ -1060,6 +1064,7 @@ export class VisitOrderService {
           client: true,
           deposit: true,
           orders: {
+            where: { deletedAt: null },
             include: {
               child: true,
               costume: true,
@@ -1111,6 +1116,7 @@ export class VisitOrderService {
     const skip = (page - 1) * limit;
     const whereCondition = {
       status: 'issued' as const,
+      deletedAt: null,
     };
 
     const [total, visits] = await this.prisma.$transaction([
@@ -1126,6 +1132,7 @@ export class VisitOrderService {
           client: true,
           deposit: true,
           orders: {
+            where: { deletedAt: null },
             include: {
               child: true,
               costume: true,
