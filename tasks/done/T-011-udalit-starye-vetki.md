@@ -21,4 +21,6 @@
 
 ## Результат
 
+Коммит: `74bab1c`.
+
 Пять старых веток (`backend/children`, `backend/clients`, `backend/logger`, `backend/notifications`, `frontend/changes`) уже отсутствовали на сервере, хотя локальные remote-tracking refs были устаревшими. Удалены две оставшиеся ветки origin: `backend/visit-order` и `some_updates_for_production`; локально удалены `backend/notifications` и `some_updates_for_production`. На origin остались `main` и `set-agent`.

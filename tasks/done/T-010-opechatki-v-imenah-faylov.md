@@ -22,4 +22,6 @@
 
 ## Результат
 
+Коммит: `74bab1c`.
+
 Исправлены имена `visit-order.service.ts`, `search.dto.ts`, `clients.service.ts`, `IssueModal.tsx`, папка `utils/` и тип `visitIssuedResponseDto`. Импорты и активная документация обновлены; старых имён в `apps/`, `shared/`, `.agents/` больше нет. Проверки: shared build, backend/frontend typecheck и lint, backend unit 261 passed / 5 todo, frontend 118 passed / 1 todo, backend integration 33 passed.

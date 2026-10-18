@@ -22,4 +22,6 @@ unit-тесты `VisitOrderService` (создание, выдача, возвр�
 
 ## Результат
 
+Коммит: `74bab1c`.
+
 Исходный объём T-017 уже закрыт задачами T-040/T-041 и дальнейшими регрессиями: `visit-order.service.spec.ts`, `search.utils.spec.ts`, `visit-flow.int-spec.ts`. Последняя общая проверка: backend unit — 261 passed / 6 todo, integration — 33 passed. Остальные `todo` имеют отдельные задачи в backlog.
