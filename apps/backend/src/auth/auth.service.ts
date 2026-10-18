@@ -5,6 +5,7 @@ import * as argon2 from 'argon2';
 import { LoginRequestDto } from '@costumes/shared';
 import Redis from 'ioredis';
 import { REDIS_CLIENT } from '../redis/redis.constants';
+import { randomUUID } from 'node:crypto';
 
 @Injectable()
 export class AuthService {
@@ -104,6 +105,7 @@ export class AuthService {
       }),
       this.jwtService.signAsync(payload, {
         expiresIn: '7d',
+        jwtid: randomUUID(),
       }),
     ]);
 

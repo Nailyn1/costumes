@@ -5,9 +5,13 @@ export type CreateVisitRequestDto = z.infer<
   typeof schemas.Visits_CreateVisitRequest
 >;
 export type CreateVisitResponseDto = z.infer<typeof schemas.Visits_Visit>;
+export type PreviewVisitCodeResponseDto = z.infer<
+  typeof schemas.Costumes_VisitCode
+>;
 
 export const CreateVisitRequestSchema = schemas.Visits_CreateVisitRequest;
 export const CreateVisitResponseSchema = schemas.Visits_Visit;
+export const PreviewVisitCodeResponseSchema = schemas.Costumes_VisitCode;
 export const VisitCompleteReturnRequestSchema =
   schemas.Visits_CompleteReturnRequest;
 export const VisitCancelRequestSchema = schemas.Visits_VisitCancelRequest;

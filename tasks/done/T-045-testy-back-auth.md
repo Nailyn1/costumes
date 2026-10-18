@@ -3,6 +3,7 @@
 - **Приоритет:** medium
 - **Область:** Тесты
 - **Создана:** 2026-10-17
+- **Выполнена:** 2026-10-18
 
 ## Контекст
 
@@ -13,7 +14,7 @@
 ## Критерии готовности
 
 - [x] Unit `AuthService`: неверный логин / пароль → 401 с одинаковым текстом (без утечки, существует ли логин); успешный логин выдаёт пару токенов и сохраняет refresh в Redis с TTL; payload токена (`id`, `login`).
-- [ ] Refresh: валидный cookie → новая пара, старый refresh перестаёт работать (ротация); подменённый/истёкший/отозванный refresh → 401; отсутствие cookie → 401.
+- [x] Refresh: валидный cookie → новая пара, старый refresh перестаёт работать даже при выпуске в ту же секунду (T-086); подменённый/истёкший/отозванный refresh → 401; отсутствие cookie → 401.
 - [x] Logout: чистит cookie и ключ refresh в Redis; после logout refresh не работает.
 - [x] Integration: login → защищённый эндпоинт → refresh → logout, атрибуты cookie (`httpOnly`, `secure` только в production, `sameSite`); просроченный access → 401; защищённые контроллеры без токена → 401 (таблица маршрутов). `webhooks/whatsapp` защищён отдельным `WebhookTokenGuard` (T-030), его существующие тесты не ослаблять.
 - [x] Валидация DTO логина (login ≥ 6, password ≥ 12) → 400 с `Validation failed`.
@@ -28,4 +29,4 @@
 
 ## Результат
 
-Добавлены unit-тесты `AuthService` и `WsJwtGuard` (12 пройдено) и HTTP integration-сценарии в `auth.int-spec.ts` (4/4 прошли). Проверки всего рабочего дерева: backend unit — 249 passed / 11 todo, integration — 29 passed, frontend — 116 passed / 6 todo; typecheck и lint прошли. Найдены отдельные задачи: T-085 — английские сообщения auth/WS; T-086 — быстрый refresh может вернуть тот же JWT и не отозвать старый cookie. Для них оставлены `it.todo`; фактический HTTP-флоу проверен без ложного утверждения о ротации.
+Добавлены unit-тесты `AuthService` и `WsJwtGuard` и HTTP integration-сценарии в `auth.int-spec.ts`. Быстрая ротация исправлена в T-086 и проверена без задержек. T-085 (английские сообщения auth/WS) остаётся отдельной задачей и `it.todo`. Проверки всего рабочего дерева: backend unit — 258 passed / 8 todo, integration — 33 passed, frontend — 117 passed / 5 todo; typecheck и lint прошли.

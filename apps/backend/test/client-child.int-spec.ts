@@ -177,7 +177,7 @@ describe('clients and children (integration)', () => {
     });
 
     const codeResponse = await api.post('/visits/preview-code').expect(201);
-    const visitCode = codeResponse.text;
+    const visitCode = codeResponse.body as string;
     const visitBody = {
       clientId,
       visitCode,
@@ -204,11 +204,11 @@ describe('clients and children (integration)', () => {
     const nextCodeResponse = await api.post('/visits/preview-code').expect(201);
     await api
       .post('/visits?sendNotification=false')
-      .send({ ...visitBody, visitCode: nextCodeResponse.text })
+      .send({ ...visitBody, visitCode: nextCodeResponse.body as string })
       .expect(201);
     expect(
       await t.prisma.visit.count({
-        where: { visitCode: nextCodeResponse.text, clientId },
+        where: { visitCode: nextCodeResponse.body as string, clientId },
       }),
     ).toBe(1);
   });
@@ -232,7 +232,7 @@ describe('clients and children (integration)', () => {
       .post('/visits?sendNotification=false')
       .send({
         clientId,
-        visitCode: codeResponse.text,
+        visitCode: codeResponse.body as string,
         startDateTime: '2026-12-20',
         endDateTime: '2026-12-21',
         issueTimeFrom: '10:00',
@@ -258,7 +258,7 @@ describe('clients and children (integration)', () => {
     expect(deletedClient.deletedAt).toBeInstanceOf(Date);
     expect(
       await t.prisma.visit.findUniqueOrThrow({
-        where: { visitCode: codeResponse.text },
+        where: { visitCode: codeResponse.body as string },
       }),
     ).toMatchObject({ clientId, status: 'reserved' });
   });

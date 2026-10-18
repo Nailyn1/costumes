@@ -35,7 +35,7 @@ describe('early costume return (integration)', () => {
 
     const reserveVisitCode = async (): Promise<string> => {
       const response = await api.post('/visits/preview-code').expect(201);
-      return response.text;
+      return response.body as string;
     };
 
     const visitBody = (visitCode: string, endDateTime: string) => ({

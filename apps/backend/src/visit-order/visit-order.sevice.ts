@@ -134,6 +134,13 @@ export class VisitOrderService {
       );
     }
 
+    const costumeIds = data.orders.map((order) => order.costumeId);
+    if (new Set(costumeIds).size !== costumeIds.length) {
+      throw new BadRequestException(
+        'Бронирование невозможно: один костюм указан в нескольких заказах одного визита',
+      );
+    }
+
     const redisKey = `visit_code_lock:${data.visitCode}`;
     const isReserved = await this.redis.get(redisKey);
     if (!isReserved) {
@@ -947,10 +954,20 @@ export class VisitOrderService {
       throw new NotFoundException(`Визит с ID ${visitId} не найден`);
     }
 
+    if (visit.status !== VisitStatus.completed) {
+      throw new BadRequestException(
+        'Вернуть залог можно только после завершения визита',
+      );
+    }
+
     if (!visit.deposit) {
       throw new BadRequestException(
         `Для визита №${visitId} залог не зафиксирован`,
       );
+    }
+
+    if (visit.deposit.type === 'none') {
+      throw new BadRequestException('У визита нет залога для возврата');
     }
 
     await this.prisma.$transaction(async (tx) => {

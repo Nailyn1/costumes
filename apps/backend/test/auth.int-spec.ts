@@ -69,6 +69,40 @@ describe('auth HTTP flow (integration)', () => {
       .expect(401);
   });
 
+  it('rotates refresh cookies immediately and keeps only the latest JWT in Redis', async () => {
+    const server = httpServer(t.app);
+    const login = await request(server)
+      .post('/auth/login')
+      .send(t.user)
+      .expect(201);
+    const oldCookie = cookieFrom(login);
+    const refreshed = await request(server)
+      .post('/auth/refresh')
+      .set('Cookie', oldCookie)
+      .expect(201);
+    const newCookie = cookieFrom(refreshed);
+
+    expect(newCookie).not.toBe(oldCookie);
+    await request(server)
+      .post('/auth/refresh')
+      .set('Cookie', oldCookie)
+      .expect(401);
+
+    const user = await t.prisma.user.findUniqueOrThrow({
+      where: { login: t.user.login },
+    });
+    const token = newCookie.split(';')[0].slice('refreshToken='.length);
+    expect(await t.redis.get(`rf:${user.id}`)).toBe(token);
+    expect(await t.redis.ttl(`rf:${user.id}`)).toBeGreaterThanOrEqual(604799);
+    expect(await t.redis.ttl(`rf:${user.id}`)).toBeLessThanOrEqual(604800);
+
+    const next = await request(server)
+      .post('/auth/refresh')
+      .set('Cookie', newCookie)
+      .expect(201);
+    expect(cookieFrom(next)).not.toBe(newCookie);
+  });
+
   it('rejects absent, malformed and expired refresh cookies', async () => {
     const server = httpServer(t.app);
     await request(server).post('/auth/refresh').expect(401);

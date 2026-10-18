@@ -52,7 +52,9 @@ describe('visit flow (integration)', () => {
 
   async function reserveVisitCode(): Promise<string> {
     const res = await api.post('/visits/preview-code').expect(201);
-    return res.text;
+    expect(res.headers['content-type']).toMatch(/^application\/json/);
+    expect(res.body).toMatch(/^\d{4}$/);
+    return res.body as string;
   }
 
   const visitBody = (ids: Ids, visitCode: string) => ({

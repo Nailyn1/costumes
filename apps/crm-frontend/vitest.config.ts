@@ -10,6 +10,8 @@ export default mergeConfig(
       environmentOptions: { jsdom: { url: "http://api.test" } },
       setupFiles: ["./test/setup.ts"],
       include: ["src/**/*.test.{ts,tsx}"],
+      // UI-сценарии с debounce и userEvent могут превысить стандартные 5 с при полном прогоне.
+      testTimeout: 15000,
       env: { VITE_API_URL: "http://api.test" },
       restoreMocks: true,
     },

@@ -3,6 +3,7 @@ import {
   Controller,
   DefaultValuePipe,
   Get,
+  Header,
   HttpCode,
   HttpStatus,
   Param,
@@ -43,9 +44,10 @@ export class VisitController {
   constructor(private readonly visitOrderService: VisitOrderService) {}
 
   @Post('preview-code')
+  @Header('Content-Type', 'application/json')
   @UseGuards(JwtAuthGuard)
   async PreviewCode(): Promise<string> {
-    return await this.visitOrderService.generatePreviewCode();
+    return JSON.stringify(await this.visitOrderService.generatePreviewCode());
   }
 
   @Post()

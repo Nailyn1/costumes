@@ -1,4 +1,5 @@
 import { UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
 import { AuthService } from './auth.service';
 import { createPrismaMock } from '../test-utils';
@@ -12,7 +13,6 @@ const verify = jest.mocked(argon2.verify);
 
 describe('AuthService', () => {
   it.todo('T-085: return Russian refresh error messages');
-  it.todo('T-086: issue a distinct refresh JWT even within the same second');
   let service: AuthService;
   let storedToken: string | undefined;
 
@@ -73,11 +73,7 @@ describe('AuthService', () => {
       { id: 7, login: 'worker1' },
       { expiresIn: '15m' },
     );
-    expect(jwt.signAsync).toHaveBeenNthCalledWith(
-      2,
-      { id: 7, login: 'worker1' },
-      { expiresIn: '7d' },
-    );
+    expect(jwt.signAsync).toHaveBeenCalledTimes(2);
     expect(redis.set).toHaveBeenCalledWith('rf:7', 'refresh-1', 'EX', 604800);
   });
 
@@ -99,6 +95,56 @@ describe('AuthService', () => {
     await expect(service.refreshTokens(7, 'refresh-1')).rejects.toBeInstanceOf(
       UnauthorizedException,
     );
+  });
+
+  it('issues a distinct refresh JWT in the same second and revokes the old one', async () => {
+    const realJwt = new JwtService({ secret: 'test-secret' });
+    const realService = new AuthService(
+      redis as never,
+      realJwt,
+      prisma as never,
+    );
+    prisma.user.findUnique.mockResolvedValue({
+      id: 7,
+      login: 'worker1',
+      name: 'Сотрудник',
+    });
+    const now = jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000);
+
+    try {
+      storedToken = await realJwt.signAsync(
+        { id: 7, login: 'worker1' },
+        { expiresIn: '7d' },
+      );
+      const first = await realService.refreshTokens(7, storedToken);
+      const second = await realService.refreshTokens(7, first.refreshToken);
+
+      expect(first.refreshToken).not.toBe(storedToken);
+      expect(second.refreshToken).not.toBe(first.refreshToken);
+      const decoded = realJwt.decode<{
+        id: number;
+        login: string;
+        jti: string;
+        iat: number;
+        exp: number;
+      }>(first.refreshToken);
+      expect(decoded.id).toBe(7);
+      expect(decoded.login).toBe('worker1');
+      expect(decoded.jti).toHaveLength(36);
+      expect(decoded.exp - decoded.iat).toBe(604800);
+      await expect(
+        realService.refreshTokens(7, first.refreshToken),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+      expect(storedToken).toBe(second.refreshToken);
+      expect(redis.set).toHaveBeenLastCalledWith(
+        'rf:7',
+        second.refreshToken,
+        'EX',
+        604800,
+      );
+    } finally {
+      now.mockRestore();
+    }
   });
 
   it.each(['tampered', 'revoked'])(

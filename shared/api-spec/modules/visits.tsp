@@ -303,7 +303,8 @@ interface VisitOperation {
   @route("preview-code")
   previewCode(): {
     @statusCode statusCode: 201;
-    visitCode: VisitCode;
+    @header contentType: "application/json";
+    @body body: VisitCode;
   } | Common.Error;
 
   @post

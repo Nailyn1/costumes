@@ -8,6 +8,7 @@ import {
   makeClient,
   makeCostume,
   makeCreateVisitRequest,
+  makeDeposit,
   makeOrder,
   makeVisit,
 } from '../test-utils';
@@ -19,6 +20,7 @@ jest.mock('../prisma/generated/client', () => ({
     },
   },
   OrderStatus: { issued: 'issued', returned: 'returned' },
+  VisitStatus: { completed: 'completed' },
 }));
 
 const redisMock = { get: jest.fn(), set: jest.fn(), del: jest.fn() };
@@ -657,7 +659,6 @@ describe('VisitOrderService remaining business rules', () => {
   });
 
   describe('booking validation and code reservation', () => {
-    it.todo('T-084: reject two orders for the same costume in one booking');
     const prepareValidBooking = (
       notifications: Record<string, unknown>[] = [],
     ) => {
@@ -684,6 +685,58 @@ describe('VisitOrderService remaining business rules', () => {
         ],
       });
     };
+
+    it('rejects duplicate costumes in one booking before reading or writing', async () => {
+      const data = makeCreateVisitRequest({
+        orders: [
+          { childId: 1, costumeId: 1, rentPrice: 5000, prepaymentAmount: 1000 },
+          { childId: 2, costumeId: 1, rentPrice: 5000, prepaymentAmount: 1000 },
+        ],
+      });
+      await expect(service.createVisit(data as never, false)).rejects.toThrow(
+        'один костюм указан в нескольких заказах',
+      );
+      expect(redisMock.get).not.toHaveBeenCalled();
+      expect(txMock.visit.create).not.toHaveBeenCalled();
+    });
+
+    it('accepts different costumes in one booking', async () => {
+      prepareValidBooking();
+      txMock.child.findMany.mockResolvedValue([
+        makeChild(),
+        makeChild({ id: 2 }),
+      ]);
+      txMock.costume.findMany.mockResolvedValue([
+        makeCostume(),
+        makeCostume({ id: 2 }),
+      ]);
+      await service.createVisit(
+        makeCreateVisitRequest({
+          orders: [
+            {
+              childId: 1,
+              costumeId: 1,
+              rentPrice: 5000,
+              prepaymentAmount: 1000,
+            },
+            {
+              childId: 2,
+              costumeId: 2,
+              rentPrice: 5000,
+              prepaymentAmount: 1000,
+            },
+          ],
+        }) as never,
+        false,
+      );
+      expect(txMock.visit.create).toHaveBeenCalledTimes(1);
+      const createCalls = txMock.visit.create.mock.calls as unknown as Array<
+        [{ data: { orders: { create: { costumeId: number }[] } } }]
+      >;
+      expect(
+        createCalls[0][0].data.orders.create.map((o) => o.costumeId),
+      ).toEqual([1, 2]);
+    });
 
     it('accepts full prepayment, stores local time as UTC and releases the code lock', async () => {
       prepareValidBooking();
@@ -1032,7 +1085,53 @@ describe('VisitOrderService remaining business rules', () => {
 
   describe('return, cancellation and deposit', () => {
     it.todo('T-027: allow a partial return after business rules are defined');
-    it.todo('T-083: reject deposit return before completion or for type none');
+
+    it.each(['reserved', 'issued', 'cancelled'] as const)(
+      'rejects deposit return for %s visit',
+      async (status) => {
+        prismaMock.visit.findFirst.mockResolvedValue({
+          ...makeVisit({ status }),
+          deposit: makeDeposit({ type: 'cash' }),
+        });
+        await expect(service.MarkDepositReturned(1)).rejects.toThrow(
+          'Вернуть залог можно только после завершения визита',
+        );
+        expect(txMock.deposit.update).not.toHaveBeenCalled();
+      },
+    );
+
+    it('rejects a completed visit without a real deposit', async () => {
+      prismaMock.visit.findFirst.mockResolvedValue({
+        ...makeVisit({ status: 'completed' }),
+        deposit: makeDeposit({ type: 'none' }),
+      });
+      await expect(service.MarkDepositReturned(1)).rejects.toThrow(
+        'У визита нет залога для возврата',
+      );
+      expect(txMock.deposit.update).not.toHaveBeenCalled();
+    });
+
+    it('reports a missing visit as 404 before changing a deposit', async () => {
+      prismaMock.visit.findFirst.mockResolvedValue(null);
+      await expect(service.MarkDepositReturned(1)).rejects.toMatchObject({
+        status: 404,
+      });
+      expect(txMock.deposit.update).not.toHaveBeenCalled();
+    });
+
+    it('returns a document deposit after completion', async () => {
+      prismaMock.visit.findFirst.mockResolvedValue({
+        ...makeVisit({ status: 'completed' }),
+        deposit: makeDeposit({ type: 'document' }),
+      });
+      await expect(service.MarkDepositReturned(1)).resolves.toMatchObject({
+        depositReturned: true,
+      });
+      expect(txMock.deposit.update).toHaveBeenCalledWith({
+        where: { visitId: 1 },
+        data: { returned: true },
+      });
+    });
 
     it('allows an idempotent repeated deposit return and appends a note', async () => {
       prismaMock.visit.findFirst.mockResolvedValue({

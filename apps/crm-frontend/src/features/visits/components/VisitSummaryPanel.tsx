@@ -33,8 +33,7 @@ export function VisitSummaryPanel({
 
     getCode(undefined, {
       onSuccess: (code) => {
-        const formattedCode = String(code);
-        form.setFieldValue("visitCode", formattedCode);
+        form.setFieldValue("visitCode", code);
         open();
       },
     });

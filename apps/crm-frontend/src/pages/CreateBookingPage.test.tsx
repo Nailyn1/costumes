@@ -23,7 +23,8 @@ function renderPage(queryClient = createPageQueryClient()) {
   return renderWithProviders(<CreateBookingPage />, queryClient);
 }
 
-const SEARCH_TIMEOUT = { timeout: 3000 };
+// Debounced search and Mantine interactions can take longer under the full Vitest suite.
+const SEARCH_TIMEOUT = { timeout: 6000 };
 
 const aliya = {
   clientId: 1,
@@ -76,12 +77,9 @@ function mockBackend(
 ) {
   const created: CapturedVisit[] = [];
   const costumeQueries: URLSearchParams[] = [];
-  // Реальный бэкенд отдаёт код голым текстом, а не {visitCode} как в TypeSpec (T-070)
+  // Контракт preview-code возвращает JSON-строку, которую клиент разбирает как код.
   const previewCode = vi.fn(
-    () =>
-      new HttpResponse("1648", {
-        headers: { "Content-Type": "text/html; charset=utf-8" },
-      }),
+    () => HttpResponse.json("1648"),
   );
   server.use(
     http.get(`${API_URL}/clients/search`, () => HttpResponse.json([aliya])),
@@ -518,11 +516,20 @@ describe("CreateBookingPage", () => {
     expect(screen.getByLabelText("Вернуть до")).toHaveValue("18:00");
   });
 
-  // TypeSpec описывает ответ preview-code как { visitCode }, бэкенд отдаёт голую строку;
-  // форма работает только благодаря String(code). Контракт и код расходятся.
-  it.todo(
-    "reads the reserved visit code from the { visitCode } object described by the API contract (T-070)",
-  );
+  it("reads the preview code as a JSON string from the API contract (T-070)", async () => {
+    const { previewCode } = mockBackend();
+    const user = userEvent.setup();
+    renderPage();
+
+    await pickClient(user);
+    await fillDates(user, "20");
+    await fillFirstOrder(user, "8000", "3000");
+
+    const dialog = await openPreview(user);
+    expect(previewCode).toHaveBeenCalledOnce();
+    expect(within(dialog).getByText("1648")).toBeInTheDocument();
+    expect(within(dialog).queryByText("[object Object]")).not.toBeInTheDocument();
+  });
 
   it.todo(
     "defaults the times by weekday: weekend 10:00–19:00, return until 19:00 — T-050",

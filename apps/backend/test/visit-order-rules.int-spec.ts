@@ -31,7 +31,8 @@ describe('visit order rules (integration)', () => {
       .expect(201);
     const costumeId = (costume.body as { costumeId: number }).costumeId;
     const book = async (prepaymentAmount = 1000) => {
-      const code = (await api.post('/visits/preview-code').expect(201)).text;
+      const code = (await api.post('/visits/preview-code').expect(201))
+        .body as string;
       await api
         .post('/visits?sendNotification=false')
         .send({

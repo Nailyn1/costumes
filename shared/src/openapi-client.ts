@@ -1208,9 +1208,7 @@ const endpoints = makeApi([
     path: "/visits/preview-code",
     alias: "VisitOperation_previewCode",
     requestFormat: "json",
-    response: z
-      .object({ visitCode: Costumes_VisitCode.regex(/^\d{4}$/) })
-      .passthrough(),
+    response: z.string().regex(/^\d{4}$/),
   },
   {
     method: "get",
