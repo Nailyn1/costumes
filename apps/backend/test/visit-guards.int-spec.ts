@@ -100,8 +100,8 @@ describe('visit booking and deposit guards (integration)', () => {
     await api.post(endpoint).send({}).expect(400);
     expect(
       (
-        await t.prisma.deposit.findUniqueOrThrow({
-          where: { visitId: visit.id },
+        await t.prisma.deposit.findFirstOrThrow({
+          where: { visitId: visit.id, deletedAt: null },
         })
       ).returned,
     ).toBe(false);
@@ -113,8 +113,8 @@ describe('visit booking and deposit guards (integration)', () => {
     await api.post(endpoint).send({}).expect(201);
     expect(
       (
-        await t.prisma.deposit.findUniqueOrThrow({
-          where: { visitId: visit.id },
+        await t.prisma.deposit.findFirstOrThrow({
+          where: { visitId: visit.id, deletedAt: null },
         })
       ).returned,
     ).toBe(true);
@@ -141,8 +141,8 @@ describe('visit booking and deposit guards (integration)', () => {
       .expect(400);
     expect(
       (
-        await t.prisma.deposit.findUniqueOrThrow({
-          where: { visitId: visit.id },
+        await t.prisma.deposit.findFirstOrThrow({
+          where: { visitId: visit.id, deletedAt: null },
         })
       ).returned,
     ).toBe(false);

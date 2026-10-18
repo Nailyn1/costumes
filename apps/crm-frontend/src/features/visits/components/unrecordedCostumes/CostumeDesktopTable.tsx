@@ -5,7 +5,7 @@ import { IconCheck, IconInfoCircle, IconPhone } from "@tabler/icons-react";
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { formatPhoneNumber, formatStayDates } from "src/utills/formatters";
+import { formatPhoneNumber, formatStayDates } from "src/utils/formatters";
 
 const MotionTr = motion(Table.Tr);
 

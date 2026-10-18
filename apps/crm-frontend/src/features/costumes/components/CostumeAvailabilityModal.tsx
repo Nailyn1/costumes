@@ -31,7 +31,7 @@ import {
   useUpdateCostume,
   useDeleteCostume,
 } from "../hooks/useCostumes";
-import { formatPhoneNumber, formatStayDates } from "src/utills/formatters";
+import { formatPhoneNumber, formatStayDates } from "src/utils/formatters";
 import { CostumeUpdateForm } from "../components/costumeUpdateForm";
 
 interface CostumeAvailabilityModalProps {

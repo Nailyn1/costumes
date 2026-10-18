@@ -13,7 +13,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { VisitOrderService } from './visit-order.sevice';
+import { VisitOrderService } from './visit-order.service';
 import { JwtAuthGuard } from '../auth/jwt/jwt-auth.guard';
 import {
   CompleteReturnRequest,
@@ -34,7 +34,7 @@ import {
   OrdersNotWrittenResponseDto,
   searchNotificationDto,
   visitCompleteReturnResponseDto,
-  visitIssuedRepsonseDto,
+  visitIssuedResponseDto,
   visitNotificationResponseDto,
   visitUnreturnedDepositsResponseDto,
 } from '@costumes/shared';
@@ -197,7 +197,7 @@ export class VisitController {
   async getIssuedVisits(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number = 1,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number = 20,
-  ): Promise<visitIssuedRepsonseDto> {
+  ): Promise<visitIssuedResponseDto> {
     return await this.visitOrderService.visitIssued(page, limit);
   }
 

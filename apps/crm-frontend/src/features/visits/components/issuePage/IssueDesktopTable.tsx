@@ -1,7 +1,7 @@
 import { Table, Badge, Text, ActionIcon } from "@mantine/core";
 import { IconArrowRight } from "@tabler/icons-react";
 import type { IssueListProps } from "../../types/visitTypes";
-import { formatPhoneNumber } from "src/utills/formatters";
+import { formatPhoneNumber } from "src/utils/formatters";
 
 export function IssueDesktopTable({ items, onOpenVisit }: IssueListProps) {
   return (

@@ -1,4 +1,4 @@
-import { formatPhoneNumber } from "src/utills/formatters";
+import { formatPhoneNumber } from "src/utils/formatters";
 import { SelectedCard } from "src/components/selection/SelectedCard";
 import { ClientUpdateForm } from "./clientUpdateForm";
 import { clientKeys, useDeleteClient } from "../../hooks/useClients";

@@ -1,6 +1,6 @@
 import { QueryClient, QueryCache, MutationCache } from "@tanstack/react-query";
 import { notifications } from "@mantine/notifications";
-import { handleError } from "src/utills/handleError";
+import { handleError } from "src/utils/handleError";
 
 const QUERY_ERROR_TITLE = "Data upload error";
 const MUTATION_ERROR_TITLE = "Operation error";

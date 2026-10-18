@@ -106,12 +106,12 @@ describe('visit flow (integration)', () => {
 
     const visit = await t.prisma.visit.findUniqueOrThrow({
       where: { visitCode },
-      include: { orders: true, notifications: true, deposit: true },
+      include: { orders: true, notifications: true, deposits: true },
     });
     expect(visit.status).toBe('reserved');
     expect(visit.notifications).toHaveLength(0);
     expect(t.notificationQueue.add).not.toHaveBeenCalled();
-    expect(visit.deposit).toBeNull();
+    expect(visit.deposits).toHaveLength(0);
     // местное время хранится как UTC «как есть»
     expect(visit.startDateTime.toISOString()).toBe('2026-12-20T10:00:00.000Z');
     expect(visit.endDateTime.toISOString()).toBe('2026-12-21T19:00:00.000Z');
@@ -147,14 +147,14 @@ describe('visit flow (integration)', () => {
 
     const issued = await t.prisma.visit.findUniqueOrThrow({
       where: { id: visit.id },
-      include: { orders: true, deposit: true },
+      include: { orders: true, deposits: true },
     });
     expect(issued.status).toBe('issued');
     expect(issued.orders[0]).toMatchObject({
       status: 'issued',
       finalPayment: 4000,
     });
-    expect(issued.deposit).toMatchObject({
+    expect(issued.deposits[0]).toMatchObject({
       type: 'cash',
       amount: 5000,
       returned: false,
@@ -174,11 +174,11 @@ describe('visit flow (integration)', () => {
 
     const done = await t.prisma.visit.findUniqueOrThrow({
       where: { id: visit.id },
-      include: { orders: true, deposit: true },
+      include: { orders: true, deposits: true },
     });
     expect(done.status).toBe('completed');
     expect(done.orders[0].status).toBe('returned');
-    expect(done.deposit?.returned).toBe(true);
+    expect(done.deposits[0]?.returned).toBe(true);
     expect(done.notes).toContain('[Завершение]: всё цело');
   });
 

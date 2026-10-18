@@ -9,7 +9,7 @@ import {
   Divider,
 } from "@mantine/core";
 import { IconCash, IconFileDescription, IconCheck } from "@tabler/icons-react";
-import { formatPhoneNumber, formatStayDates } from "src/utills/formatters";
+import { formatPhoneNumber, formatStayDates } from "src/utils/formatters";
 import type { UnreturnedDepositItem } from "../../types/visitTypes";
 
 interface DepositCardProps {

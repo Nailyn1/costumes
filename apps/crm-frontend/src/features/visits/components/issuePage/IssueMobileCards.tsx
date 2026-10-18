@@ -10,7 +10,7 @@ import {
 } from "@mantine/core";
 import { IconUser, IconShirt, IconArrowRight } from "@tabler/icons-react";
 import type { IssueListProps } from "../../types/visitTypes";
-import { formatPhoneNumber } from "src/utills/formatters";
+import { formatPhoneNumber } from "src/utils/formatters";
 import { WhatsAppButton } from "src/components/WhatsAppButton";
 
 function MobileCard({

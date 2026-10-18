@@ -17,7 +17,7 @@ import type { UseFormReturnType } from "@mantine/form";
 import type { BookingFormValues } from "../types/visitTypes";
 import type { SelectedClientData } from "src/features/clients-children/types/clientTypes";
 import type { SelectedCostumeData } from "src/features/costumes/types/costumeTypes";
-import { formatHumanDate } from "src/utills/formatters";
+import { formatHumanDate } from "src/utils/formatters";
 import { useState } from "react";
 import { clientKeys } from "src/features/clients-children/hooks/useClients";
 

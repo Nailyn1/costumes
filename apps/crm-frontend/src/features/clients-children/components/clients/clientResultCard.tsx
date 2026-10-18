@@ -1,6 +1,6 @@
 import { UnstyledButton, Group, Box, Text, Badge } from "@mantine/core";
 import { IconChevronRight } from "@tabler/icons-react";
-import { formatPhoneNumber } from "src/utills/formatters";
+import { formatPhoneNumber } from "src/utils/formatters";
 
 interface ClientResultCardProps {
   name: string;

@@ -15,7 +15,7 @@ import type {
   GetVisitReservedDto,
   visitCancelRequestDto,
   visitCompleteReturnRequestDto,
-  visitIssuedRepsonseDto,
+  visitIssuedResponseDto,
   VisitIssueRequestDto,
 } from "@costumes/shared";
 import { notifications } from "@mantine/notifications";
@@ -208,7 +208,7 @@ export function useUnissueVisit() {
     onSuccess: (_, variables) => {
       queryClient.setQueriesData(
         { queryKey: ["visits", "issued"] },
-        (oldData: InfiniteData<visitIssuedRepsonseDto>) => {
+        (oldData: InfiniteData<visitIssuedResponseDto>) => {
           if (!oldData || !oldData.pages) return oldData;
           return {
             ...oldData,
@@ -298,7 +298,7 @@ export function useCompleteReturnVisit() {
     }) => visitsService.completeReturnVisit(data, visitId),
 
     onSuccess: (_, variables) => {
-      queryClient.setQueriesData<InfiniteData<visitIssuedRepsonseDto>>(
+      queryClient.setQueriesData<InfiniteData<visitIssuedResponseDto>>(
         { queryKey: ["visits", "issued"] },
         (oldData) => {
           if (!oldData || !oldData.pages) return oldData;

@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { clientsService } from "../services/clients.service.";
+import { clientsService } from "../services/clients.service";
 import { clientKeys } from "./useClients";
 import type { CreateChildRequestDto } from "@costumes/shared";
 

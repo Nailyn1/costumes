@@ -193,7 +193,7 @@ describe("CreateBookingPage", () => {
     expect(screen.getByLabelText("Дата возврата")).toHaveValue("21.12");
   });
 
-  it("requires the client and dates before a child and a costume can be picked", async () => {
+  it("requires the client and dates before selection but enables adding a child after client selection (T-071)", async () => {
     mockBackend();
     const user = userEvent.setup();
     renderPage();
@@ -431,7 +431,7 @@ describe("CreateBookingPage", () => {
     ).not.toBeInTheDocument(); // клиент выбран, поиск скрыт
   });
 
-  it("requires a prepayment value even when it is zero (current behaviour)", async () => {
+  it("requires an explicit prepayment value when the field is empty", async () => {
     const { previewCode } = mockBackend();
     const user = userEvent.setup();
     renderPage();
@@ -440,7 +440,6 @@ describe("CreateBookingPage", () => {
     await pickChild(user, "Маша");
     await pickCostume(user, "Эль", /Эльза \(C-0128\)/);
     await fillMoney(user, "Аренда", "8000");
-    await fillMoney(user, "Предоплата", "0");
 
     await user.click(screen.getByRole("button", { name: "Проверить" }));
 
@@ -450,9 +449,24 @@ describe("CreateBookingPage", () => {
     expect(previewCode).not.toHaveBeenCalled();
   });
 
-  it.todo(
-    "lets the staff book a visit without any prepayment (0 ₸) if the owner confirms it is allowed (T-072)",
-  );
+  it("books a visit with an explicit 0 ₸ prepayment (T-072)", async () => {
+    const { created } = mockBackend();
+    const user = userEvent.setup();
+    renderPage();
+    await pickClient(user);
+    await fillDates(user, "20");
+    await fillFirstOrder(user, "8000", "0");
+
+    const dialog = await openPreview(user);
+    await user.click(
+      within(dialog).getByRole("button", { name: "Подтвердить и создать" }),
+    );
+
+    await waitFor(() => expect(created).toHaveLength(1));
+    expect(created[0].body.orders).toEqual([
+      expect.objectContaining({ prepaymentAmount: 0 }),
+    ]);
+  });
 
   it("shows an error when the pickup window is reversed", async () => {
     mockBackend();
@@ -496,11 +510,6 @@ describe("CreateBookingPage", () => {
     expect(await screen.findByPlaceholderText("Выберите ребенка")).toBeInTheDocument();
     expect(screen.getByLabelText("Дата возврата")).toHaveValue("23.12");
   });
-
-  // Домен (§4.1): кнопка активна только после заполнения финансов, в коде — сразу после выбора клиента.
-  it.todo(
-    "enables «Добавить еще ребенка» only when the finances of the previous order are filled (T-071)",
-  );
 
   // Домен (§4.1): будни 18:30–19:30 / вернуть до 18:00; сб/вс 10:00–19:00 / до 19:00.
   // Сейчас время всегда 18:30/19:30/18:00 и при выборе даты не меняется — фиксируем «как есть».

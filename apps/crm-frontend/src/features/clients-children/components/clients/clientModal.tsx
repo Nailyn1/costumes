@@ -40,7 +40,7 @@ import {
   formatPhoneNumber,
   formatStayDates,
   ORDER_STATUS_MAP,
-} from "src/utills/formatters";
+} from "src/utils/formatters";
 import { ClientUpdateForm } from "../clients/clientUpdateForm";
 import { ChildUpdateForm } from "../children/ChildUpdateForm";
 import { ChildCreateForm } from "../children/ChildCreateForm";
@@ -95,16 +95,15 @@ export function ClientDetailedModal({
 
   const handleAddBlacklist = () => {
     if (!clientId) return;
+    const reason = blacklistReason.trim();
     addBlacklistMutation.mutate(
-      { clientId, data: { blacklistReason } },
+      { clientId, data: reason ? { blacklistReason: reason } : {} },
       {
         onSuccess: () => {
-          setIsBlacklistModalOpen(false);
-          setBlacklistReason("");
+          handleClose();
         },
       },
     );
-    onClose();
   };
 
   const handleRemoveBlacklist = () => {

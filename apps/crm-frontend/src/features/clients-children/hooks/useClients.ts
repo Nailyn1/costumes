@@ -4,7 +4,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { clientsService } from "../services/clients.service.";
+import { clientsService } from "../services/clients.service";
 import type {
   AddClientInBlackListRequestDto,
   CreateClientRequestDto,

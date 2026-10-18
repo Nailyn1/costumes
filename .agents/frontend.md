@@ -21,7 +21,7 @@ src/
 ├── components/             # общий UI: MainLayout, AddButtonWithModal, ConfirmDeleteModal, MoneyInput, selection/*
 ├── services/               # api.ts (axios), apiClient.ts (Zodios), interceptors.ts, socket.client.ts
 ├── stores/                 # Zustand: auth.store.ts
-└── utills/                 # handleError.ts, formatters.ts  (опечатка в имени папки — историческая)
+└── utils/                  # handleError.ts, formatters.ts
 ```
 
 Импорты — абсолютные от `src/` (`import { apiClient } from "src/services/apiClient"`), внутри фичи допустимы относительные.

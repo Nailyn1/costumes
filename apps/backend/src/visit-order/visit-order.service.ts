@@ -28,7 +28,7 @@ import {
   visitCancelRequestDto,
   visitCompleteReturnRequestDto,
   visitCompleteReturnResponseDto,
-  visitIssuedRepsonseDto,
+  visitIssuedResponseDto,
   VisitIssueRequestDto,
   visitNotificationResponseDto,
 } from '@costumes/shared';
@@ -550,8 +550,9 @@ export class VisitOrderService {
         },
       });
 
-      await tx.deposit.deleteMany({
-        where: { visitId: visitId },
+      await tx.deposit.updateMany({
+        where: { visitId, deletedAt: null },
+        data: { deletedAt: new Date() },
       });
     });
   }
@@ -897,7 +898,7 @@ export class VisitOrderService {
       },
       include: {
         client: true,
-        deposit: true,
+        deposits: { where: { deletedAt: null }, take: 1 },
         orders: {
           where: { deletedAt: null },
           include: {
@@ -913,6 +914,8 @@ export class VisitOrderService {
         `Визит №${visitId} не найден или не находится в статусе "Выдан"`,
       );
     }
+
+    const deposit = visit.deposits[0];
 
     return {
       visitId: visit.id,
@@ -935,8 +938,8 @@ export class VisitOrderService {
         returned: order.status === OrderStatus.returned,
       })),
       deposit: {
-        type: visit.deposit?.type || 'none',
-        amount: visit.deposit?.amount || 0,
+        type: deposit?.type || 'none',
+        amount: deposit?.amount || 0,
       },
     };
   }
@@ -947,7 +950,7 @@ export class VisitOrderService {
   ): Promise<MarkDepositReturnedDto> {
     const visit = await this.prisma.visit.findFirst({
       where: { id: visitId, deletedAt: null },
-      include: { deposit: true },
+      include: { deposits: { where: { deletedAt: null }, take: 1 } },
     });
 
     if (!visit) {
@@ -960,19 +963,21 @@ export class VisitOrderService {
       );
     }
 
-    if (!visit.deposit) {
+    const deposit = visit.deposits[0];
+
+    if (!deposit) {
       throw new BadRequestException(
         `Для визита №${visitId} залог не зафиксирован`,
       );
     }
 
-    if (visit.deposit.type === 'none') {
+    if (deposit.type === 'none') {
       throw new BadRequestException('У визита нет залога для возврата');
     }
 
     await this.prisma.$transaction(async (tx) => {
       await tx.deposit.update({
-        where: { visitId: visitId },
+        where: { id: deposit.id, deletedAt: null },
         data: { returned: true },
       });
 
@@ -1007,7 +1012,7 @@ export class VisitOrderService {
       where: { id: visitId, deletedAt: null },
       include: {
         orders: { where: { deletedAt: null } },
-        deposit: true,
+        deposits: { where: { deletedAt: null }, take: 1 },
       },
     });
 
@@ -1035,9 +1040,10 @@ export class VisitOrderService {
         data: { status: OrderStatus.returned },
       });
 
-      if (depositReturned && visit.deposit) {
+      const deposit = visit.deposits[0];
+      if (depositReturned && deposit) {
         await tx.deposit.update({
-          where: { visitId: visitId },
+          where: { id: deposit.id, deletedAt: null },
           data: { returned: true },
         });
       }
@@ -1068,10 +1074,11 @@ export class VisitOrderService {
     const whereCondition = {
       status: 'completed' as const,
       deletedAt: null,
-      deposit: {
-        returned: false,
-        type: {
-          not: 'none' as const,
+      deposits: {
+        some: {
+          deletedAt: null,
+          returned: false,
+          type: { not: 'none' as const },
         },
       },
     };
@@ -1087,7 +1094,7 @@ export class VisitOrderService {
         },
         include: {
           client: true,
-          deposit: true,
+          deposits: { where: { deletedAt: null }, take: 1 },
           orders: {
             where: { deletedAt: null },
             include: {
@@ -1108,6 +1115,7 @@ export class VisitOrderService {
         .map((order) => order.costume.name)
         .join(', ');
 
+      const deposit = visit.deposits[0];
       return {
         visitId: visit.id,
         visitCode: visit.visitCode,
@@ -1118,8 +1126,8 @@ export class VisitOrderService {
         clientPhone: visit.client.phone,
         clientName: visit.client.name,
         deposit: {
-          type: (visit.deposit?.type || 'none') as 'cash' | 'document' | 'none',
-          amount: visit.deposit?.amount ?? undefined,
+          type: (deposit?.type || 'none') as 'cash' | 'document' | 'none',
+          amount: deposit?.amount ?? undefined,
         },
         notes: visit.notes || '',
       };
@@ -1137,7 +1145,7 @@ export class VisitOrderService {
   async visitIssued(
     page: number = 1,
     limit: number = 20,
-  ): Promise<visitIssuedRepsonseDto> {
+  ): Promise<visitIssuedResponseDto> {
     const skip = (page - 1) * limit;
     const whereCondition = {
       status: 'issued' as const,
@@ -1155,7 +1163,7 @@ export class VisitOrderService {
         },
         include: {
           client: true,
-          deposit: true,
+          deposits: { where: { deletedAt: null }, take: 1 },
           orders: {
             where: { deletedAt: null },
             include: {
@@ -1176,6 +1184,7 @@ export class VisitOrderService {
         .map((order) => order.costume.name)
         .join(', ');
 
+      const deposit = visit.deposits[0];
       return {
         visitId: visit.id,
         visitCode: visit.visitCode,
@@ -1186,8 +1195,8 @@ export class VisitOrderService {
         clientPhone: visit.client.phone,
         clientName: visit.client.name,
         deposit: {
-          type: (visit.deposit?.type as 'cash' | 'document' | 'none') || 'none',
-          amount: visit.deposit?.amount ? visit.deposit.amount : undefined,
+          type: (deposit?.type as 'cash' | 'document' | 'none') || 'none',
+          amount: deposit?.amount ? deposit.amount : undefined,
         },
       };
     });

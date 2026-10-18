@@ -21,7 +21,7 @@ import type {
 } from "@costumes/shared";
 import { useCancelVisit, useIssueVisit } from "../../hooks/useVisits";
 import { MoneyInput } from "src/components/MoneyInput";
-import { formatPhoneNumber, formatStayDates } from "src/utills/formatters";
+import { formatPhoneNumber, formatStayDates } from "src/utils/formatters";
 import { useForm } from "@mantine/form";
 import { useState } from "react";
 

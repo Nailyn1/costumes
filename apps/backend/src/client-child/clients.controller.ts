@@ -26,7 +26,7 @@ import {
   GetListClientResponseDto,
   UpdateClientResponseDto,
 } from '@costumes/shared';
-import { SearchSchemaDto } from '../common/dto/seacrh.dto';
+import { SearchSchemaDto } from '../common/dto/search.dto';
 
 @Controller('clients')
 export class ClientController {

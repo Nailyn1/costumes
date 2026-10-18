@@ -8,6 +8,7 @@ generator client {
   provider = "prisma-client"
   output   = "../src/prisma/generated"
   moduleFormat    = "cjs"
+  previewFeatures = ["partialIndexes"]
 }
 
 datasource db {
@@ -95,7 +96,7 @@ model Visit {
   
   orders          Order[]
   notifications Notification[]
-  deposit         Deposit?
+  deposits        Deposit[]
 
   createdAt       DateTime    @default(now()) @map("created_at")
   updatedAt       DateTime    @updatedAt @map("updated_at")
@@ -138,7 +139,7 @@ model Order {
 }
 model Deposit {
   id        Int         @id @default(autoincrement())
-  visitId   Int         @unique @map("visit_id")
+  visitId   Int         @map("visit_id")
   visit     Visit       @relation(fields: [visitId], references: [id])
   type      DepositType @default(none)
   returned  Boolean     @default(false)
@@ -148,6 +149,7 @@ model Deposit {
   updatedAt DateTime    @updatedAt @map("updated_at")
   deletedAt DateTime?   @map("deleted_at")
 
+  @@unique([visitId], map: "deposits_active_visit_id_key", where: raw("deleted_at IS NULL"))
   @@map("deposits")
 }
 model Notification {

@@ -27,7 +27,7 @@ import {
   useUpdatePhoneAndResend,
 } from "src/features/visits/hooks/useNotifications";
 import type { visitNotificationResponseDto } from "@costumes/shared";
-import { formatPhoneNumber } from "src/utills/formatters";
+import { formatPhoneNumber } from "src/utils/formatters";
 import { IMaskInput } from "react-imask";
 import z from "zod";
 import { WhatsAppButton } from "src/components/WhatsAppButton";

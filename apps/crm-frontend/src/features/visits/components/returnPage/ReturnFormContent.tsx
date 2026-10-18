@@ -19,7 +19,7 @@ import {
   IconFileDescription,
 } from "@tabler/icons-react";
 import { useCompleteReturnVisit, useUnissueVisit } from "../../hooks/useVisits";
-import { formatPhoneNumber } from "src/utills/formatters";
+import { formatPhoneNumber } from "src/utils/formatters";
 import { useState } from "react";
 
 interface ReturnFormContentProps {

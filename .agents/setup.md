@@ -131,4 +131,4 @@ pnpm dev:frontend             # vite → http://localhost:5173
 - Каждая сессия работает в своей ветке `<type>/<short-description>`, базовая ветка указывается в задании сессии.
 - **Одна задача = один коммит** в своей ветке (Conventional Commits), файл задачи переносится в `tasks/done/` в том же коммите.
 - **Без push и без merge** — владелец смотрит коммиты и сам решает, что вливать.
-- Сессии с пересекающимися файлами одновременно не запускаются (особенно `package.json`/lock-файл, `visit-order.sevice.ts`, `shared/api-spec`).
+- Сессии с пересекающимися файлами одновременно не запускаются (особенно `package.json`/lock-файл, `visit-order.service.ts`, `shared/api-spec`).

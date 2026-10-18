@@ -1,5 +1,5 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { VisitOrderService } from './visit-order.sevice';
+import { VisitOrderService } from './visit-order.service';
 import { Prisma } from '../prisma/generated/client';
 
 import {
@@ -325,7 +325,7 @@ describe('VisitOrderService', () => {
         where: { id: 1, deletedAt: null },
         include: {
           orders: { where: { deletedAt: null } },
-          deposit: true,
+          deposits: { where: { deletedAt: null }, take: 1 },
         },
       });
     });
@@ -338,7 +338,7 @@ describe('VisitOrderService', () => {
       );
       expect(prismaMock.visit.findFirst).toHaveBeenCalledWith({
         where: { id: 1, deletedAt: null },
-        include: { deposit: true },
+        include: { deposits: { where: { deletedAt: null }, take: 1 } },
       });
     });
   });
@@ -362,7 +362,7 @@ describe('VisitOrderService', () => {
         status: 'issued',
         notes: null,
         orders: [],
-        deposit: null,
+        deposits: [],
       });
       txMock.visit.update.mockResolvedValue({
         id: 1,
@@ -378,7 +378,7 @@ describe('VisitOrderService', () => {
         where: { id: 1, deletedAt: null },
         include: {
           orders: { where: { deletedAt: null } },
-          deposit: true,
+          deposits: { where: { deletedAt: null }, take: 1 },
         },
       });
       expect(txMock.order.updateMany).toHaveBeenCalledWith(
@@ -496,14 +496,16 @@ describe('VisitOrderService', () => {
         where: {
           status: 'completed',
           deletedAt: null,
-          deposit: { returned: false, type: { not: 'none' } },
+          deposits: {
+            some: { deletedAt: null, returned: false, type: { not: 'none' } },
+          },
         },
         skip: 0,
         take: 20,
         orderBy: { endDateTime: 'desc' },
         include: {
           client: true,
-          deposit: true,
+          deposits: { where: { deletedAt: null }, take: 1 },
           orders: {
             where: { deletedAt: null },
             include: { child: true, costume: true },
@@ -514,7 +516,9 @@ describe('VisitOrderService', () => {
         where: {
           status: 'completed',
           deletedAt: null,
-          deposit: { returned: false, type: { not: 'none' } },
+          deposits: {
+            some: { deletedAt: null, returned: false, type: { not: 'none' } },
+          },
         },
       });
     });
@@ -535,7 +539,7 @@ describe('VisitOrderService', () => {
         orderBy: { endDateTime: 'asc' },
         include: {
           client: true,
-          deposit: true,
+          deposits: { where: { deletedAt: null }, take: 1 },
           orders: {
             where: { deletedAt: null },
             include: { child: true, costume: true },
@@ -1056,7 +1060,7 @@ describe('VisitOrderService remaining business rules', () => {
       expect(txMock.deposit.create).not.toHaveBeenCalled();
     });
 
-    it('unissues orders, clears payment and deletes deposit', async () => {
+    it('unissues orders, clears payment and soft-deletes the active deposit (T-026)', async () => {
       txMock.visit.findFirst.mockResolvedValue(makeVisit({ status: 'issued' }));
       await service.visitUnissue(1);
       expect(txMock.order.updateMany).toHaveBeenCalledWith({
@@ -1067,12 +1071,11 @@ describe('VisitOrderService remaining business rules', () => {
         where: { id: 1 },
         data: { status: 'reserved' },
       });
-      expect(txMock.deposit.deleteMany).toHaveBeenCalledWith({
-        where: { visitId: 1 },
+      expect(txMock.deposit.updateMany).toHaveBeenCalledWith({
+        where: { visitId: 1, deletedAt: null },
+        data: { deletedAt: expect.any(Date) as Date },
       });
     });
-
-    it.todo('T-026: preserve deposit audit history when undoing issue');
 
     it('rejects unissue unless the visit is issued', async () => {
       txMock.visit.findFirst.mockResolvedValue(makeVisit());
@@ -1091,7 +1094,7 @@ describe('VisitOrderService remaining business rules', () => {
       async (status) => {
         prismaMock.visit.findFirst.mockResolvedValue({
           ...makeVisit({ status }),
-          deposit: makeDeposit({ type: 'cash' }),
+          deposits: [makeDeposit({ type: 'cash' })],
         });
         await expect(service.MarkDepositReturned(1)).rejects.toThrow(
           'Вернуть залог можно только после завершения визита',
@@ -1103,7 +1106,7 @@ describe('VisitOrderService remaining business rules', () => {
     it('rejects a completed visit without a real deposit', async () => {
       prismaMock.visit.findFirst.mockResolvedValue({
         ...makeVisit({ status: 'completed' }),
-        deposit: makeDeposit({ type: 'none' }),
+        deposits: [makeDeposit({ type: 'none' })],
       });
       await expect(service.MarkDepositReturned(1)).rejects.toThrow(
         'У визита нет залога для возврата',
@@ -1122,13 +1125,13 @@ describe('VisitOrderService remaining business rules', () => {
     it('returns a document deposit after completion', async () => {
       prismaMock.visit.findFirst.mockResolvedValue({
         ...makeVisit({ status: 'completed' }),
-        deposit: makeDeposit({ type: 'document' }),
+        deposits: [makeDeposit({ type: 'document' })],
       });
       await expect(service.MarkDepositReturned(1)).resolves.toMatchObject({
         depositReturned: true,
       });
       expect(txMock.deposit.update).toHaveBeenCalledWith({
-        where: { visitId: 1 },
+        where: { id: 1, deletedAt: null },
         data: { returned: true },
       });
     });
@@ -1136,12 +1139,12 @@ describe('VisitOrderService remaining business rules', () => {
     it('allows an idempotent repeated deposit return and appends a note', async () => {
       prismaMock.visit.findFirst.mockResolvedValue({
         ...makeVisit({ status: 'completed', notes: 'старое' }),
-        deposit: { type: 'cash', returned: true },
+        deposits: [makeDeposit({ type: 'cash', returned: true })],
       });
       const result = await service.MarkDepositReturned(1, 'проверили');
       expect(result.depositReturned).toBe(true);
       expect(txMock.deposit.update).toHaveBeenCalledWith({
-        where: { visitId: 1 },
+        where: { id: 1, deletedAt: null },
         data: { returned: true },
       });
       expect(txMock.visit.update).toHaveBeenCalledWith({
@@ -1151,11 +1154,11 @@ describe('VisitOrderService remaining business rules', () => {
     });
     it('rejects a non-issued visit and an order with an invalid status', async () => {
       prismaMock.visit.findFirst
-        .mockResolvedValueOnce({ ...makeVisit(), orders: [], deposit: null })
+        .mockResolvedValueOnce({ ...makeVisit(), orders: [], deposits: [] })
         .mockResolvedValueOnce({
           ...makeVisit({ status: 'issued' }),
           orders: [makeOrder()],
-          deposit: null,
+          deposits: [],
         });
       await expect(
         service.visitCompleteReturn(1, { depositReturned: false } as never),
@@ -1170,7 +1173,7 @@ describe('VisitOrderService remaining business rules', () => {
       prismaMock.visit.findFirst.mockResolvedValue({
         ...makeVisit({ status: 'issued', notes: 'старое' }),
         orders: [makeOrder({ status: 'issued' })],
-        deposit: { type: 'cash', returned: false },
+        deposits: [makeDeposit({ type: 'cash', returned: false })],
       });
       txMock.visit.update.mockResolvedValue(makeVisit({ status: 'completed' }));
       await service.visitCompleteReturn(1, {
@@ -1192,12 +1195,12 @@ describe('VisitOrderService remaining business rules', () => {
       prismaMock.visit.findFirst.mockResolvedValue({
         ...makeVisit({ status: 'issued' }),
         orders: [],
-        deposit: { type: 'cash' },
+        deposits: [makeDeposit({ type: 'cash' })],
       });
       txMock.visit.update.mockResolvedValue(makeVisit({ status: 'completed' }));
       await service.visitCompleteReturn(1, { depositReturned: true } as never);
       expect(txMock.deposit.update).toHaveBeenCalledWith({
-        where: { visitId: 1 },
+        where: { id: 1, deletedAt: null },
         data: { returned: true },
       });
     });

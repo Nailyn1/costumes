@@ -1,4 +1,4 @@
-import type { visitIssuedRepsonseDto } from "@costumes/shared";
+import type { visitIssuedResponseDto } from "@costumes/shared";
 import {
   Paper,
   Group,
@@ -11,9 +11,9 @@ import {
 } from "@mantine/core";
 import { IconArrowRight } from "@tabler/icons-react";
 import { WhatsAppButton } from "src/components/WhatsAppButton";
-import { formatPhoneNumber, formatStayDates } from "src/utills/formatters";
+import { formatPhoneNumber, formatStayDates } from "src/utils/formatters";
 
-export type VisitIssuedItemDto = visitIssuedRepsonseDto["items"][number];
+export type VisitIssuedItemDto = visitIssuedResponseDto["items"][number];
 
 interface ReturnCardProps {
   visit: VisitIssuedItemDto;

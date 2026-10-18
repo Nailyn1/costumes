@@ -86,22 +86,48 @@ describe('visit order rules (integration)', () => {
     await api.post(`/visits/${visit.id}/unissue`).expect(204);
     const reset = await t.prisma.visit.findUniqueOrThrow({
       where: { id: visit.id },
-      include: { orders: true, deposit: true },
+      include: { orders: true, deposits: true },
     });
     expect(reset.status).toBe('reserved');
     expect(reset.orders[0]).toMatchObject({
       status: 'reserved',
       finalPayment: null,
     });
-    expect(reset.deposit).toBeNull();
+    expect(reset.deposits).toHaveLength(1);
+    expect(reset.deposits[0].deletedAt).not.toBeNull();
+    expect(reset.deposits[0].type).toBe('document');
     await api
       .post(`/visits/${visit.id}/issue`)
       .send({ additionalPayment: 4000, deposit: { type: 'none' } })
       .expect(204);
+    const deposits = await t.prisma.deposit.findMany({
+      where: { visitId: visit.id },
+      orderBy: { id: 'asc' },
+    });
+    expect(deposits).toHaveLength(2);
+    expect(deposits[0]).toMatchObject({ type: 'document' });
+    expect(deposits[0].deletedAt).not.toBeNull();
+    expect(deposits[1]).toMatchObject({ type: 'none', deletedAt: null });
+    const forReturn = await api
+      .get(`/visits/${visit.id}/for-return`)
+      .expect(200);
+    expect((forReturn.body as { deposit: { type: string } }).deposit.type).toBe(
+      'none',
+    );
+    await api
+      .post(`/visits/${visit.id}/complete-return`)
+      .send({ depositReturned: false })
+      .expect(201);
+    const unreturned = await api.get('/visits/unreturned-deposits').expect(200);
+    expect(
+      (unreturned.body as { items: { visitId: number }[] }).items.some(
+        (item) => item.visitId === visit.id,
+      ),
+    ).toBe(false);
     expect(
       (await t.prisma.visit.findUniqueOrThrow({ where: { id: visit.id } }))
         .status,
-    ).toBe('issued');
+    ).toBe('completed');
   });
 
   it('appends issue notes to existing visit notes', async () => {
@@ -140,8 +166,8 @@ describe('visit order rules (integration)', () => {
       .expect(201);
     expect(
       (
-        await t.prisma.deposit.findUniqueOrThrow({
-          where: { visitId: visit.id },
+        await t.prisma.deposit.findFirstOrThrow({
+          where: { visitId: visit.id, deletedAt: null },
         })
       ).returned,
     ).toBe(false);
@@ -151,8 +177,8 @@ describe('visit order rules (integration)', () => {
       .expect(201);
     expect(
       (
-        await t.prisma.deposit.findUniqueOrThrow({
-          where: { visitId: visit.id },
+        await t.prisma.deposit.findFirstOrThrow({
+          where: { visitId: visit.id, deletedAt: null },
         })
       ).returned,
     ).toBe(true);

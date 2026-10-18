@@ -205,11 +205,12 @@ describe("blacklist", () => {
         { blacklistReason: "не вернула костюм" },
       ]),
     );
+    await waitFor(() => expect(card).not.toBeInTheDocument());
     // список клиентов перезапрошен после мутации
     expect(await screen.findByText("В ЧС")).toBeInTheDocument();
   });
 
-  it("allows adding to the blacklist without a reason (current behaviour)", async () => {
+  it("allows adding to the blacklist without a reason and omits an empty reason (T-076)", async () => {
     const { calls } = mockClientsBackend();
     const user = userEvent.setup();
     const card = await openCard(user);
@@ -219,12 +220,13 @@ describe("blacklist", () => {
     const reasonDialog = await screen.findByRole("dialog", {
       name: /Добавление в черный список/,
     });
+    await user.type(within(reasonDialog).getByLabelText(/Причина/), "   ");
     await user.click(
       within(reasonDialog).getByRole("button", { name: "В черный список" }),
     );
 
     await waitFor(() => expect(calls.blacklistAdded).toHaveLength(1));
-    expect(calls.blacklistAdded[0]).toEqual({ blacklistReason: "" });
+    expect(calls.blacklistAdded[0]).toEqual({});
   });
 
   it("removes a client from the blacklist and drops the badge and the reason", async () => {
@@ -290,6 +292,8 @@ describe("blacklist", () => {
     );
     expect(showSpy).toHaveBeenCalledTimes(1);
     expect(screen.queryByText("В ЧС")).not.toBeInTheDocument();
+    expect(card).toBeInTheDocument();
+    expect(reasonDialog).toBeInTheDocument();
   });
 });
 

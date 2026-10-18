@@ -31,7 +31,9 @@ export function CreateBookingPage() {
         costumeId: (value) => (!value ? "Выберите костюм" : null),
         rentPrice: (value) => (!value ? "Введите сумму аренды" : null),
         prepaymentAmount: (value) =>
-          !value ? "Введите сумму предоплаты" : null,
+          value === undefined || value === null
+            ? "Введите сумму предоплаты"
+            : null,
       },
     },
   });

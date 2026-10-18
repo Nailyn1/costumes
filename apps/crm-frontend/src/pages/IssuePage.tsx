@@ -21,7 +21,7 @@ import {
 import { InView } from "react-intersection-observer";
 import type { GetReservedParams } from "src/features/visits/services/visits.service";
 import type { ReservedVisitItem } from "src/features/visits/types/visitTypes";
-import { IssueModal } from "src/features/visits/components/issuePage/IsuueModal";
+import { IssueModal } from "src/features/visits/components/issuePage/IssueModal";
 import { IssueSearchInput } from "src/features/visits/components/issuePage/IssueSearchInput";
 
 export function IssuePage() {
