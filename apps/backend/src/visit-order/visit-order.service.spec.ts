@@ -403,5 +403,106 @@ describe('VisitOrderService', () => {
         where: { status: 'issued', deletedAt: null },
       });
     });
+
+    it('filters deleted visits and orders from visits issued for return', async () => {
+      prismaMock.visit.findMany.mockResolvedValue([]);
+
+      await service.visitsIssuedForReturn();
+
+      expect(prismaMock.visit.findMany).toHaveBeenCalledWith({
+        where: { status: 'issued', deletedAt: null },
+        include: {
+          client: true,
+          orders: {
+            where: { deletedAt: null },
+            include: { child: true, costume: true },
+          },
+        },
+      });
+    });
+
+    it('filters deleted orders from visit search results', async () => {
+      prismaMock.visit.findMany.mockResolvedValue([]);
+
+      await service.visitSearch('Алия');
+
+      const visitQueries = prismaMock.visit.findMany.mock
+        .calls as unknown as unknown[];
+      const query = (visitQueries[0] as unknown[])[0] as {
+        where: { status: string; deletedAt: null; OR?: unknown };
+        include: {
+          orders: {
+            where: { deletedAt: null };
+          };
+        };
+      };
+      expect(query.where.status).toBe('reserved');
+      expect(query.where.deletedAt).toBeNull();
+      expect(Array.isArray(query.where.OR)).toBe(true);
+      expect(query.include.orders.where).toEqual({ deletedAt: null });
+    });
+
+    it('filters deleted orders from notification search results', async () => {
+      prismaMock.notification.findMany.mockResolvedValue([]);
+
+      await service.searchNotification('Алия');
+
+      expect(prismaMock.notification.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: {
+            visit: {
+              include: {
+                client: true,
+                orders: {
+                  where: { deletedAt: null },
+                  include: { child: true, costume: true },
+                },
+              },
+            },
+          },
+        }),
+      );
+    });
+
+    it('counts and lists notifications only for active visits', async () => {
+      prismaMock.$transaction.mockImplementation(
+        (operations: Promise<unknown>[]) => Promise.all(operations),
+      );
+      prismaMock.notification.count.mockResolvedValue(0);
+      prismaMock.notification.findMany.mockResolvedValue([]);
+
+      await service.visitNotification();
+
+      expect(prismaMock.notification.count).toHaveBeenNthCalledWith(1, {
+        where: { visit: { deletedAt: null } },
+      });
+      const countCalls = prismaMock.notification.count.mock
+        .calls as unknown as unknown[];
+      const todayFilter = (countCalls[1] as unknown[])[0] as {
+        where: {
+          visit: { deletedAt: null };
+          createdAt: { gte: Date };
+        };
+      };
+      expect(todayFilter.where.visit).toEqual({ deletedAt: null });
+      expect(todayFilter.where.createdAt.gte).toBeInstanceOf(Date);
+      expect(prismaMock.notification.findMany).toHaveBeenCalledWith({
+        skip: 0,
+        take: 20,
+        where: { visit: { deletedAt: null } },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          visit: {
+            include: {
+              client: true,
+              orders: {
+                where: { deletedAt: null },
+                include: { child: true, costume: true },
+              },
+            },
+          },
+        },
+      });
+    });
   });
 });

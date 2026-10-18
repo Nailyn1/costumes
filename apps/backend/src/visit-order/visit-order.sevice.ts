@@ -671,6 +671,7 @@ export class VisitOrderService {
       include: {
         client: true,
         orders: {
+          where: { deletedAt: null },
           include: {
             child: true,
             costume: true,
@@ -767,10 +768,12 @@ export class VisitOrderService {
     const visits = await this.prisma.visit.findMany({
       where: {
         status: 'issued',
+        deletedAt: null,
       },
       include: {
         client: true,
         orders: {
+          where: { deletedAt: null },
           include: {
             child: true,
             costume: true,
@@ -1224,11 +1227,13 @@ export class VisitOrderService {
 
     const skip = (page - 1) * limit;
 
+    const activeVisit = { visit: { deletedAt: null } };
     const [total, totalToday, notifications] = await this.prisma.$transaction([
-      this.prisma.notification.count(),
+      this.prisma.notification.count({ where: activeVisit }),
 
       this.prisma.notification.count({
         where: {
+          ...activeVisit,
           createdAt: {
             gte: startOfDay,
           },
@@ -1238,12 +1243,14 @@ export class VisitOrderService {
       this.prisma.notification.findMany({
         skip,
         take: limit,
+        where: activeVisit,
         orderBy: { createdAt: 'desc' },
         include: {
           visit: {
             include: {
               client: true,
               orders: {
+                where: { deletedAt: null },
                 include: {
                   child: true,
                   costume: true,
@@ -1324,6 +1331,7 @@ export class VisitOrderService {
           include: {
             client: true,
             orders: {
+              where: { deletedAt: null },
               include: {
                 child: true,
                 costume: true,
