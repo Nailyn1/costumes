@@ -47,14 +47,14 @@ export class CostumesService {
   ): Promise<CreateUpdateCostumesResponseDto> {
     const costume = await this.prisma.costume
       .update({
-        where: { id: costumeId },
+        where: { id: costumeId, deletedAt: null },
         data: {
           name: data.name,
         },
       })
       .catch((err) => {
         if (err.code === 'P2025') {
-          throw new NotFoundException(`Costume with id ${costumeId} not found`);
+          throw new NotFoundException(`Костюм с ID ${costumeId} не найден`);
         }
         throw err;
       });
@@ -70,11 +70,11 @@ export class CostumesService {
   async deleteCostume(costumeId: number): Promise<void> {
     await this.prisma.costume
       .update({
-        where: { id: costumeId },
+        where: { id: costumeId, deletedAt: null },
         data: { deletedAt: new Date() },
       })
       .catch(() => {
-        throw new NotFoundException(`Costume with ID ${costumeId} not found`);
+        throw new NotFoundException(`Костюм с ID ${costumeId} не найден`);
       });
   }
 
@@ -180,8 +180,10 @@ export class CostumesService {
       include: {
         orders: {
           where: {
+            deletedAt: null,
             status: { in: ['reserved', 'issued'] },
             visit: {
+              deletedAt: null,
               status: { not: 'cancelled' },
               AND: [
                 { startDateTime: { lt: requestedEnd } },
@@ -224,6 +226,7 @@ export class CostumesService {
             status: { in: ['reserved', 'issued'] },
             deletedAt: null,
             visit: {
+              deletedAt: null,
               status: { not: 'cancelled' },
             },
           },

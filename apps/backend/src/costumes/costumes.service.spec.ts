@@ -38,7 +38,18 @@ describe('CostumesService', () => {
       inventoryCode: 'C-0001',
     });
     expect(prisma.costume.update).toHaveBeenCalledWith({
-      where: { id: 1 },
+      where: { id: 1, deletedAt: null },
+      data: { name: 'Анна' },
+    });
+  });
+
+  it('rejects updating a costume that was already deleted', async () => {
+    prisma.costume.update.mockRejectedValue({ code: 'P2025' });
+    await expect(
+      service().updateCostume({ name: 'Анна' } as never, 1),
+    ).rejects.toThrow(new NotFoundException('Костюм с ID 1 не найден'));
+    expect(prisma.costume.update).toHaveBeenCalledWith({
+      where: { id: 1, deletedAt: null },
       data: { name: 'Анна' },
     });
   });
@@ -49,7 +60,18 @@ describe('CostumesService', () => {
     );
     await service().deleteCostume(1);
     expect(prisma.costume.update).toHaveBeenCalledWith({
-      where: { id: 1 },
+      where: { id: 1, deletedAt: null },
+      data: { deletedAt: expect.any(Date) as never },
+    });
+  });
+
+  it('rejects deleting a costume that was already deleted', async () => {
+    prisma.costume.update.mockRejectedValue({ code: 'P2025' });
+    await expect(service().deleteCostume(1)).rejects.toThrow(
+      new NotFoundException('Костюм с ID 1 не найден'),
+    );
+    expect(prisma.costume.update).toHaveBeenCalledWith({
+      where: { id: 1, deletedAt: null },
       data: { deletedAt: expect.any(Date) as never },
     });
   });
@@ -124,9 +146,11 @@ describe('CostumesService', () => {
         include: {
           orders: {
             where: {
+              deletedAt: null,
               status: { in: ['reserved', 'issued'] },
               visit: {
                 status: { not: 'cancelled' },
+                deletedAt: null,
                 AND: [
                   { startDateTime: { lt: new Date(end) } },
                   { endDateTime: { gt: new Date(start) } },
@@ -184,6 +208,11 @@ describe('CostumesService', () => {
         where: { id: 1, deletedAt: null },
         include: expect.objectContaining({
           orders: expect.objectContaining({
+            where: {
+              deletedAt: null,
+              status: { in: ['reserved', 'issued'] },
+              visit: { deletedAt: null, status: { not: 'cancelled' } },
+            },
             orderBy: { startDateTime: 'asc' },
           }) as never,
         }) as never,
@@ -251,10 +280,45 @@ describe('CostumesService', () => {
     ).resolves.toMatchObject([{ status: 'issued' }]);
   });
 
-  it.todo(
-    'filters deleted related orders and visits while searching available costumes (T-078)',
-  );
-  it.todo(
-    'does not update or soft-delete a costume that was already deleted (T-078)',
-  );
+  it('filters deleted related orders and visits while searching available costumes (T-078)', async () => {
+    prisma.costume.findMany.mockResolvedValue([
+      makeCostume({
+        orders: [
+          {
+            status: 'reserved',
+            deletedAt: new Date(),
+            visit: makeVisit({ status: 'reserved' }),
+          },
+          {
+            status: 'reserved',
+            visit: makeVisit({ deletedAt: new Date(), status: 'reserved' }),
+          },
+        ],
+      } as never),
+    ]);
+
+    await service().searchCostumeAvailable('Эльза', start, end);
+
+    expect(prisma.costume.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: {
+          orders: {
+            where: {
+              deletedAt: null,
+              status: { in: ['reserved', 'issued'] },
+              visit: {
+                deletedAt: null,
+                status: { not: 'cancelled' },
+                AND: [
+                  { startDateTime: { lt: new Date(end) } },
+                  { endDateTime: { gt: new Date(start) } },
+                ],
+              },
+            },
+            include: { visit: true },
+          },
+        },
+      }) as never,
+    );
+  });
 });
