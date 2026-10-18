@@ -37,7 +37,7 @@ export class ClientChildService {
     data: CreateChildRequestDto,
   ): Promise<CreateChildResponsetDto> {
     const client = await this.prisma.client.findUnique({
-      where: { id: data.clientId },
+      where: { id: data.clientId, deletedAt: null },
     });
 
     if (!client) {
@@ -62,14 +62,14 @@ export class ClientChildService {
   ): Promise<UpdateChildResponseDto> {
     const child = await this.prisma.child
       .update({
-        where: { id: childId },
+        where: { id: childId, deletedAt: null },
         data: {
           name: data.name,
         },
       })
       .catch((err) => {
         if (err.code === 'P2025') {
-          throw new NotFoundException(`Ребенок с этим ID ${childId} не найден`);
+          throw new NotFoundException(`Ребенок с ID ${childId} не найден`);
         }
         throw err;
       });
@@ -84,11 +84,11 @@ export class ClientChildService {
   async deleteChild(childId: number): Promise<void> {
     await this.prisma.child
       .update({
-        where: { id: childId },
+        where: { id: childId, deletedAt: null },
         data: { deletedAt: new Date() },
       })
       .catch(() => {
-        throw new NotFoundException(`Ребенок с этим ID ${childId} не найден`);
+        throw new NotFoundException(`Ребенок с ID ${childId} не найден`);
       });
   }
 
@@ -124,7 +124,7 @@ export class ClientChildService {
   ): Promise<UpdateClientResponseDto> {
     const client = await this.prisma.client
       .update({
-        where: { id: clientId },
+        where: { id: clientId, deletedAt: null },
         data: {
           name: data.name,
           phone: data.phone,
@@ -132,7 +132,7 @@ export class ClientChildService {
       })
       .catch((err) => {
         if (err.code === 'P2025') {
-          throw new NotFoundException(`Client with id ${clientId} not found`);
+          throw new NotFoundException(`Клиент с ID ${clientId} не найден`);
         }
         throw err;
       });
@@ -150,11 +150,11 @@ export class ClientChildService {
   async deleteClient(clientId: number): Promise<void> {
     await this.prisma.client
       .update({
-        where: { id: clientId },
+        where: { id: clientId, deletedAt: null },
         data: { deletedAt: new Date() },
       })
       .catch(() => {
-        throw new NotFoundException(`Client with ID ${clientId} not found`);
+        throw new NotFoundException(`Клиент с ID ${clientId} не найден`);
       });
   }
 
@@ -337,7 +337,7 @@ export class ClientChildService {
   ): Promise<void> {
     await this.prisma.client
       .update({
-        where: { id: clientId },
+        where: { id: clientId, deletedAt: null },
         data: {
           isBlacklisted: true,
           blacklistReason: body.blacklistReason,
@@ -351,7 +351,7 @@ export class ClientChildService {
   async removeClientFromBlacklist(clientId: number): Promise<void> {
     await this.prisma.client
       .update({
-        where: { id: clientId },
+        where: { id: clientId, deletedAt: null },
         data: {
           isBlacklisted: false,
           blacklistReason: null,

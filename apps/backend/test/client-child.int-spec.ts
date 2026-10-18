@@ -64,6 +64,86 @@ describe('clients and children (integration)', () => {
       .expect(404);
   });
 
+  it('rejects child and client mutations after soft deletion', async () => {
+    const clientResponse = await api
+      .post('/clients')
+      .send({ name: 'Удалённый клиент', phone: '+77079990004' })
+      .expect(201);
+    const clientId = (clientResponse.body as { clientId: number }).clientId;
+    const childResponse = await api
+      .post('/children')
+      .send({ clientId, name: 'Удалённый ребёнок' })
+      .expect(201);
+    const childId = (childResponse.body as { childId: number }).childId;
+
+    await api.delete(`/children/${childId}`).expect(204);
+    await api.delete(`/clients/${clientId}`).expect(204);
+    const deletedClientBefore = await t.prisma.client.findUniqueOrThrow({
+      where: { id: clientId },
+    });
+    const deletedChildBefore = await t.prisma.child.findUniqueOrThrow({
+      where: { id: childId },
+    });
+
+    await api
+      .post('/children')
+      .send({ clientId, name: 'Новый ребёнок' })
+      .expect(404);
+    expect(
+      await t.prisma.child.count({
+        where: { clientId, name: 'Новый ребёнок', deletedAt: null },
+      }),
+    ).toBe(0);
+    await api
+      .patch(`/children/${childId}`)
+      .send({ name: 'Изменение' })
+      .expect(404);
+    await api.delete(`/children/${childId}`).expect(404);
+    await api
+      .patch(`/clients/${clientId}`)
+      .send({ name: 'Изменение', phone: '+77079990004' })
+      .expect(404);
+    await api.delete(`/clients/${clientId}`).expect(404);
+    await api
+      .post(`/clients/${clientId}/blacklist`)
+      .send({ blacklistReason: 'причина' })
+      .expect(404);
+    await api.delete(`/clients/${clientId}/blacklist`).expect(404);
+
+    expect(
+      await t.prisma.client.findUniqueOrThrow({ where: { id: clientId } }),
+    ).toEqual(deletedClientBefore);
+    expect(
+      await t.prisma.child.findUniqueOrThrow({ where: { id: childId } }),
+    ).toEqual(deletedChildBefore);
+  });
+
+  it('finds a stored +7 phone by its equivalent 8 prefix', async () => {
+    const clientResponse = await api
+      .post('/clients')
+      .send({ name: 'Телефонный поиск', phone: '+77079990005' })
+      .expect(201);
+    const clientId = (clientResponse.body as { clientId: number }).clientId;
+
+    const localFormatSearch = await api
+      .get('/clients/search?q=87079990005')
+      .expect(200);
+    const countryCodeSearch = await api
+      .get('/clients/search?q=%2B77079990005')
+      .expect(200);
+    const fragmentSearch = await api.get('/clients/search?q=99000').expect(200);
+
+    for (const response of [
+      localFormatSearch,
+      countryCodeSearch,
+      fragmentSearch,
+    ]) {
+      expect(response.body).toContainEqual(
+        expect.objectContaining({ clientId, phone: '+77079990005' }),
+      );
+    }
+  });
+
   it('blacklists a client, rejects booking with the reason, then allows booking after removal', async () => {
     const clientResponse = await api
       .post('/clients')

@@ -107,6 +107,7 @@ describe('scorePhoneMatch', () => {
     expect(scorePhoneMatch('+77071234567', q('77071234567'))).toBe(100);
     expect(scorePhoneMatch('+77071234567', q('1234'))).toBe(55);
     expect(scorePhoneMatch('+77071234567', q('9999'))).toBe(0);
+    expect(scorePhoneMatch('+77071234567', q('87071234567'))).toBe(100);
   });
 
   it('ignores queries with fewer than 2 digits', () => {
@@ -141,6 +142,10 @@ describe('where-filters', () => {
       { contains: '7707' },
     ]);
     expect(buildPhoneFilters(q('7'))).toEqual([]);
+    expect(buildPhoneFilters(q('8707'))).toEqual([
+      { contains: '8707' },
+      { contains: '7707' },
+    ]);
   });
 });
 

@@ -80,8 +80,17 @@ describe('ClientChildService', () => {
       expect(prisma.child.create).not.toHaveBeenCalled();
     });
 
-    // Для добавления deletedAt-фильтра заведена отдельная задача.
-    it.todo('rejects creating a child for a deleted client (T-080)');
+    it('rejects creating a child for a deleted client', async () => {
+      prisma.client.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.createChild({ clientId: 7, name: 'Маша' }),
+      ).rejects.toThrow(new NotFoundException('Клиент с ID 7 не найден'));
+      expect(prisma.client.findUnique).toHaveBeenCalledWith({
+        where: { id: 7, deletedAt: null },
+      });
+      expect(prisma.child.create).not.toHaveBeenCalled();
+    });
   });
 
   describe('soft deletion', () => {
@@ -113,7 +122,7 @@ describe('ClientChildService', () => {
       prisma.child.update.mockRejectedValue(new Error('missing'));
 
       await expect(service.deleteChild(99)).rejects.toThrow(
-        new NotFoundException('Ребенок с этим ID 99 не найден'),
+        new NotFoundException('Ребенок с ID 99 не найден'),
       );
     });
 
@@ -121,13 +130,55 @@ describe('ClientChildService', () => {
       prisma.client.update.mockRejectedValue(new Error('missing'));
 
       await expect(service.deleteClient(99)).rejects.toThrow(
-        new NotFoundException('Client with ID 99 not found'),
+        new NotFoundException('Клиент с ID 99 не найден'),
       );
     });
 
-    // Update/delete use id without a deletedAt filter; blacklist mutations share the issue.
-    it.todo('treats already deleted clients and children as not found (T-081)');
-    it.todo('does not change blacklist state for a deleted client (T-081)');
+    it('filters deleted children when updating or deleting them', async () => {
+      prisma.child.update.mockRejectedValue({ code: 'P2025' });
+
+      await expect(service.updateChild({ name: 'Маша' }, 1)).rejects.toThrow(
+        new NotFoundException('Ребенок с ID 1 не найден'),
+      );
+      expect(prisma.child.update).toHaveBeenCalledWith({
+        where: { id: 1, deletedAt: null },
+        data: { name: 'Маша' },
+      });
+
+      prisma.child.update.mockClear();
+      prisma.child.update.mockRejectedValue(new Error('missing'));
+      await expect(service.deleteChild(1)).rejects.toThrow(
+        new NotFoundException('Ребенок с ID 1 не найден'),
+      );
+      const [childUpdate] = prisma.child.update.mock.calls[0] as unknown as [
+        { where: { id: number; deletedAt: null }; data: { deletedAt: Date } },
+      ];
+      expect(childUpdate.where).toEqual({ id: 1, deletedAt: null });
+      expect(childUpdate.data.deletedAt).toBeInstanceOf(Date);
+    });
+
+    it('filters deleted clients when updating or deleting them', async () => {
+      prisma.client.update.mockRejectedValue({ code: 'P2025' });
+
+      await expect(
+        service.updateClient({ name: 'Алия', phone: '+77071234567' }, 7),
+      ).rejects.toThrow(new NotFoundException('Клиент с ID 7 не найден'));
+      expect(prisma.client.update).toHaveBeenCalledWith({
+        where: { id: 7, deletedAt: null },
+        data: { name: 'Алия', phone: '+77071234567' },
+      });
+
+      prisma.client.update.mockClear();
+      prisma.client.update.mockRejectedValue(new Error('missing'));
+      await expect(service.deleteClient(7)).rejects.toThrow(
+        new NotFoundException('Клиент с ID 7 не найден'),
+      );
+      const [clientUpdate] = prisma.client.update.mock.calls[0] as unknown as [
+        { where: { id: number; deletedAt: null }; data: { deletedAt: Date } },
+      ];
+      expect(clientUpdate.where).toEqual({ id: 7, deletedAt: null });
+      expect(clientUpdate.data.deletedAt).toBeInstanceOf(Date);
+    });
   });
 
   describe('client search', () => {
@@ -204,9 +255,24 @@ describe('ClientChildService', () => {
       expect(query.where.OR).toContainEqual({ phone: { contains: '7707' } });
     });
 
-    it.todo(
-      'matches a phone query beginning with 8 against a stored +7 number (T-082)',
-    );
+    it('matches an 8-prefixed phone query to an equivalent +7 number', async () => {
+      prisma.client.findMany.mockResolvedValue([
+        { ...makeClient(), children: [] },
+      ]);
+
+      const results = await service.searchClients('87071234567');
+
+      expect(results).toHaveLength(1);
+      const [query] = prisma.client.findMany.mock.calls[0] as unknown as [
+        { where: { OR: { phone?: { contains?: string } }[] } },
+      ];
+      expect(query.where.OR).toContainEqual({
+        phone: { contains: '87071234567' },
+      });
+      expect(query.where.OR).toContainEqual({
+        phone: { contains: '77071234567' },
+      });
+    });
 
     // Поведение поиска по подстроке имени зафиксировано в search.utils.spec.ts.
     it.todo('ranks "Арина" above "Марина" for query "Арина" (T-034)');
@@ -309,11 +375,11 @@ describe('ClientChildService', () => {
       });
 
       expect(prisma.client.update).toHaveBeenNthCalledWith(1, {
-        where: { id: 7 },
+        where: { id: 7, deletedAt: null },
         data: { isBlacklisted: true, blacklistReason: 'не вернула костюм' },
       });
       expect(prisma.client.update).toHaveBeenNthCalledWith(2, {
-        where: { id: 7 },
+        where: { id: 7, deletedAt: null },
         data: { isBlacklisted: true, blacklistReason: 'повторное нарушение' },
       });
     });
@@ -324,7 +390,26 @@ describe('ClientChildService', () => {
       await service.removeClientFromBlacklist(7);
 
       expect(prisma.client.update).toHaveBeenCalledWith({
-        where: { id: 7 },
+        where: { id: 7, deletedAt: null },
+        data: { isBlacklisted: false, blacklistReason: null },
+      });
+    });
+
+    it('does not change a deleted client blacklist state', async () => {
+      prisma.client.update.mockRejectedValue({ code: 'P2025' });
+
+      await expect(
+        service.addClientToBlacklist(7, { blacklistReason: 'причина' }),
+      ).rejects.toThrow(new NotFoundException('Клиент с ID 7 не найден'));
+      await expect(service.removeClientFromBlacklist(7)).rejects.toThrow(
+        new NotFoundException('Клиент с ID 7 не найден'),
+      );
+      expect(prisma.client.update).toHaveBeenNthCalledWith(1, {
+        where: { id: 7, deletedAt: null },
+        data: { isBlacklisted: true, blacklistReason: 'причина' },
+      });
+      expect(prisma.client.update).toHaveBeenNthCalledWith(2, {
+        where: { id: 7, deletedAt: null },
         data: { isBlacklisted: false, blacklistReason: null },
       });
     });

@@ -1,7 +1,16 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { VisitOrderService } from './visit-order.sevice';
+import { Prisma } from '../prisma/generated/client';
 
-import { createPrismaMock, makeCreateVisitRequest } from '../test-utils';
+import {
+  createPrismaMock,
+  makeChild,
+  makeClient,
+  makeCostume,
+  makeCreateVisitRequest,
+  makeOrder,
+  makeVisit,
+} from '../test-utils';
 
 jest.mock('../prisma/generated/client', () => ({
   Prisma: {
@@ -12,15 +21,17 @@ jest.mock('../prisma/generated/client', () => ({
   OrderStatus: { issued: 'issued', returned: 'returned' },
 }));
 
-const redisMock = { get: jest.fn() };
+const redisMock = { get: jest.fn(), set: jest.fn(), del: jest.fn() };
+const queueMock = { add: jest.fn() };
+const loggerMock = { logger: { id: 'trace-1', error: jest.fn() } };
 const { prisma: prismaMock, tx: txMock, reset } = createPrismaMock();
 
 const createService = () =>
   new VisitOrderService(
     redisMock as never,
-    {} as never,
+    queueMock as never,
     prismaMock as never,
-    {} as never,
+    loggerMock as never,
   );
 
 describe('VisitOrderService', () => {
@@ -633,6 +644,491 @@ describe('VisitOrderService', () => {
           },
         },
       });
+    });
+  });
+});
+
+describe('VisitOrderService remaining business rules', () => {
+  let service: VisitOrderService;
+
+  beforeEach(() => {
+    reset();
+    service = createService();
+  });
+
+  describe('booking validation and code reservation', () => {
+    it.todo('T-084: reject two orders for the same costume in one booking');
+    const prepareValidBooking = (
+      notifications: Record<string, unknown>[] = [],
+    ) => {
+      redisMock.get.mockResolvedValue('reserved');
+      txMock.client.findFirst.mockResolvedValue(makeClient());
+      txMock.child.findMany.mockResolvedValue([makeChild()]);
+      txMock.costume.findMany.mockResolvedValue([makeCostume()]);
+      txMock.order.findMany.mockResolvedValue([]);
+      txMock.visit.create.mockResolvedValue({
+        ...makeVisit({
+          startDateTime: new Date('2026-12-20T18:30:00Z'),
+          endDateTime: new Date('2026-12-21T18:00:00Z'),
+          issueTimeFrom: '18:30',
+          returnTimeUntil: '18:00',
+        }),
+        client: makeClient(),
+        notifications,
+        orders: [
+          {
+            ...makeOrder({ prepaymentAmount: 5000 }),
+            child: makeChild(),
+            costume: makeCostume(),
+          },
+        ],
+      });
+    };
+
+    it('accepts full prepayment, stores local time as UTC and releases the code lock', async () => {
+      prepareValidBooking();
+      const data = makeCreateVisitRequest({
+        issueTimeFrom: '18:30',
+        returnTimeUntil: '18:00',
+        orders: [
+          { childId: 1, costumeId: 1, rentPrice: 5000, prepaymentAmount: 5000 },
+        ],
+      });
+      await service.createVisit(data as never, false);
+      const createCalls = txMock.visit.create.mock.calls as unknown as Array<
+        [{ data: { startDateTime: Date; endDateTime: Date } }]
+      >;
+      const createArg = createCalls[0][0];
+      expect(createArg.data.startDateTime).toEqual(
+        new Date('2026-12-20T18:30:00Z'),
+      );
+      expect(createArg.data.endDateTime).toEqual(
+        new Date('2026-12-21T18:00:00Z'),
+      );
+      expect(redisMock.del).toHaveBeenCalledWith('visit_code_lock:1234');
+      expect(queueMock.add).not.toHaveBeenCalled();
+    });
+
+    it('creates a pending notification and enqueues the named job', async () => {
+      prepareValidBooking([
+        {
+          id: 9,
+          type: 'booking_confirmation',
+          status: 'pending',
+          traceId: 'trace-1',
+          createdAt: new Date('2026-12-01T00:00:00Z'),
+        },
+      ]);
+      await service.createVisit(
+        makeCreateVisitRequest({
+          issueTimeFrom: '18:30',
+          returnTimeUntil: '18:00',
+        }) as never,
+        true,
+      );
+      const createCalls = txMock.visit.create.mock.calls as unknown as Array<
+        [
+          {
+            data: {
+              notifications: {
+                create: { type: string; status: string; traceId: string };
+              };
+            };
+          },
+        ]
+      >;
+      const createArg = createCalls[0][0];
+      expect(createArg.data.notifications.create).toEqual({
+        type: 'booking_confirmation',
+        status: 'pending',
+        traceId: 'trace-1',
+      });
+      expect(queueMock.add).toHaveBeenCalledWith(
+        'send-whatsapp',
+        { notificationId: 9, traceId: 'trace-1' },
+        { jobId: 'notification-9' },
+      );
+    });
+
+    it('keeps the visit when queue submission fails', async () => {
+      prepareValidBooking([
+        {
+          id: 9,
+          type: 'booking_confirmation',
+          status: 'pending',
+          traceId: 'trace-1',
+          createdAt: new Date('2026-12-01T00:00:00Z'),
+        },
+      ]);
+      queueMock.add.mockRejectedValue(new Error('queue unavailable'));
+      await expect(
+        service.createVisit(
+          makeCreateVisitRequest({
+            issueTimeFrom: '18:30',
+            returnTimeUntil: '18:00',
+          }) as never,
+          true,
+        ),
+      ).resolves.toMatchObject({ visitCode: '1234' });
+      expect(loggerMock.logger.error).toHaveBeenCalled();
+    });
+
+    it('turns a foreign-key error into a bad request', async () => {
+      prepareValidBooking();
+      const error = new Prisma.PrismaClientKnownRequestError('foreign key', {
+        code: 'P2003',
+        clientVersion: '7',
+      });
+      error.code = 'P2003';
+      txMock.visit.create.mockRejectedValue(error);
+      await expect(
+        service.createVisit(makeCreateVisitRequest() as never, false),
+      ).rejects.toMatchObject({ status: 400 });
+    });
+    it('rejects dates in reverse order before reading the reservation', async () => {
+      await expect(
+        service.createVisit(
+          makeCreateVisitRequest({
+            startDateTime: '2026-12-22',
+            endDateTime: '2026-12-20',
+          }) as never,
+          false,
+        ),
+      ).rejects.toThrow('Дата начала не может быть позже даты возврата');
+      expect(redisMock.get).not.toHaveBeenCalled();
+    });
+
+    it('rejects missing code reservation', async () => {
+      redisMock.get.mockResolvedValue(null);
+      await expect(
+        service.createVisit(makeCreateVisitRequest() as never, false),
+      ).rejects.toMatchObject({ status: 409 });
+      expect(txMock.visit.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects prepayment above rent before writing a visit', async () => {
+      redisMock.get.mockResolvedValue('reserved');
+      const data = makeCreateVisitRequest({
+        orders: [
+          { childId: 1, costumeId: 1, rentPrice: 5000, prepaymentAmount: 5001 },
+        ],
+      });
+      await expect(
+        service.createVisit(data as never, false),
+      ).rejects.toMatchObject({ status: 400 });
+      expect(txMock.visit.create).not.toHaveBeenCalled();
+    });
+
+    it('generates four digits, skips Redis and database collisions and reserves for 15 minutes', async () => {
+      const random = jest
+        .spyOn(Math, 'random')
+        .mockReturnValueOnce(0.0001)
+        .mockReturnValueOnce(0.0002)
+        .mockReturnValueOnce(0.1234);
+      try {
+        redisMock.get.mockResolvedValueOnce('reserved').mockResolvedValue(null);
+        prismaMock.visit.findUnique
+          .mockResolvedValueOnce({ id: 1 })
+          .mockResolvedValueOnce(null);
+        redisMock.set.mockResolvedValue('OK');
+        await expect(service.generatePreviewCode()).resolves.toBe('1234');
+        expect(redisMock.set).toHaveBeenCalledWith(
+          'visit_code_lock:1234',
+          'reserved',
+          'EX',
+          900,
+          'NX',
+        );
+      } finally {
+        random.mockRestore();
+      }
+    });
+
+    it('stops after ten unsuccessful code attempts', async () => {
+      redisMock.get.mockResolvedValue('reserved');
+      await expect(service.generatePreviewCode()).rejects.toMatchObject({
+        status: 500,
+      });
+      expect(redisMock.get).toHaveBeenCalledTimes(10);
+      expect(redisMock.set).not.toHaveBeenCalled();
+    });
+
+    it('uses strict overlap boundaries and returns each busy costume once', async () => {
+      prismaMock.order.findMany.mockResolvedValue([
+        { costume: { id: 1, name: 'Эльза' } },
+        { costume: { id: 1, name: 'Эльза' } },
+      ]);
+      const start = new Date('2026-12-20T10:00:00Z');
+      const end = new Date('2026-12-21T10:00:00Z');
+      await expect(
+        service.isSuitAvailability([1, 2], start, end),
+      ).resolves.toEqual([{ id: 1, name: 'Эльза' }]);
+      expect(prismaMock.order.findMany).toHaveBeenCalledWith({
+        where: {
+          costumeId: { in: [1, 2] },
+          deletedAt: null,
+          status: { in: ['reserved', 'issued'] },
+          AND: [{ startDateTime: { lt: end } }, { endDateTime: { gt: start } }],
+        },
+        select: { costume: { select: { id: true, name: true } } },
+      });
+    });
+  });
+
+  describe('tags and lists', () => {
+    it('marks an active order written', async () => {
+      prismaMock.order.update.mockResolvedValue({ id: 5 });
+      await service.orderMarkTagWritten(5);
+      expect(prismaMock.order.update).toHaveBeenCalledWith({
+        where: { id: 5, deletedAt: null },
+        data: { tagStatus: 'written' },
+      });
+    });
+
+    it('paginates reserved visits and applies an inclusive day filter', async () => {
+      prismaMock.visit.findMany.mockResolvedValue([]);
+      prismaMock.visit.count.mockResolvedValue(5);
+      await expect(
+        service.visitReserved('2026-12-20', '2026-12-21', 2, 2),
+      ).resolves.toEqual({
+        items: [],
+        total: 5,
+        page: 2,
+        limit: 2,
+        hasMore: true,
+      });
+      const calls = prismaMock.visit.findMany.mock.calls as unknown as Array<
+        [
+          {
+            where: {
+              status: string;
+              deletedAt: null;
+              startDateTime: { gte: Date; lte: Date };
+            };
+            take: number;
+            skip: number;
+          },
+        ]
+      >;
+      const query = calls[0][0];
+      expect(query.where.status).toBe('reserved');
+      expect(query.where.deletedAt).toBeNull();
+      expect(query.where.startDateTime.gte.getDate()).toBe(20);
+      expect(query.where.startDateTime.gte.getHours()).toBe(0);
+      expect(query.where.startDateTime.lte.getDate()).toBe(21);
+      expect(query.where.startDateTime.lte.getHours()).toBe(23);
+      expect(query.take).toBe(2);
+      expect(query.skip).toBe(2);
+    });
+
+    it('rejects reversed reserved-list dates', async () => {
+      await expect(
+        service.visitReserved('2026-12-21', '2026-12-20'),
+      ).rejects.toMatchObject({ status: 400 });
+      expect(prismaMock.visit.findMany).not.toHaveBeenCalled();
+    });
+
+    it('does not search for one-character visit or return query', async () => {
+      await expect(service.visitSearch('А')).resolves.toEqual([]);
+      await expect(service.visitsReturnSearch('А')).resolves.toEqual([]);
+      expect(prismaMock.visit.findMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('issue and unissue', () => {
+    it.todo('T-028: define and validate underpayment and overpayment on issue');
+    it('allocates payment, records a cash deposit and appends issue notes', async () => {
+      txMock.visit.findFirst.mockResolvedValue({
+        ...makeVisit({ notes: 'старое' }),
+        orders: [
+          makeOrder({ id: 1, rentPrice: 5000, prepaymentAmount: 1000 }),
+          makeOrder({ id: 2, rentPrice: 3000, prepaymentAmount: 1000 }),
+        ],
+      });
+      await service.visitIssue(
+        {
+          additionalPayment: 6000,
+          deposit: { type: 'cash', amount: 5000 },
+          notes: 'новое',
+        } as never,
+        1,
+      );
+      expect(txMock.order.update).toHaveBeenNthCalledWith(1, {
+        where: { id: 1, deletedAt: null },
+        data: { status: 'issued', finalPayment: 4000 },
+      });
+      expect(txMock.order.update).toHaveBeenNthCalledWith(2, {
+        where: { id: 2, deletedAt: null },
+        data: { status: 'issued', finalPayment: 2000 },
+      });
+      expect(txMock.visit.update).toHaveBeenCalledWith({
+        where: { id: 1 },
+        data: { status: 'issued', notes: 'старое\nновое' },
+      });
+      expect(txMock.deposit.create).toHaveBeenCalledWith({
+        data: { visitId: 1, type: 'cash', amount: 5000, returned: false },
+      });
+    });
+
+    it.each(['document', 'none'])(
+      'records %s deposit without an amount',
+      async (type) => {
+        txMock.visit.findFirst.mockResolvedValue({
+          ...makeVisit(),
+          orders: [],
+        });
+        await service.visitIssue(
+          { additionalPayment: 0, deposit: { type } } as never,
+          1,
+        );
+        expect(txMock.deposit.create).toHaveBeenCalledWith({
+          data: { visitId: 1, type, amount: 0, returned: false },
+        });
+      },
+    );
+
+    it('propagates a transaction error before a deposit is written', async () => {
+      txMock.visit.findFirst.mockResolvedValue({
+        ...makeVisit(),
+        orders: [makeOrder()],
+      });
+      txMock.order.update.mockRejectedValue(new Error('database failure'));
+      await expect(
+        service.visitIssue(
+          { additionalPayment: 1, deposit: { type: 'none' } } as never,
+          1,
+        ),
+      ).rejects.toThrow('database failure');
+      expect(txMock.visit.update).not.toHaveBeenCalled();
+      expect(txMock.deposit.create).not.toHaveBeenCalled();
+    });
+
+    it('unissues orders, clears payment and deletes deposit', async () => {
+      txMock.visit.findFirst.mockResolvedValue(makeVisit({ status: 'issued' }));
+      await service.visitUnissue(1);
+      expect(txMock.order.updateMany).toHaveBeenCalledWith({
+        where: { visitId: 1, deletedAt: null },
+        data: { status: 'reserved', finalPayment: null },
+      });
+      expect(txMock.visit.update).toHaveBeenCalledWith({
+        where: { id: 1 },
+        data: { status: 'reserved' },
+      });
+      expect(txMock.deposit.deleteMany).toHaveBeenCalledWith({
+        where: { visitId: 1 },
+      });
+    });
+
+    it.todo('T-026: preserve deposit audit history when undoing issue');
+
+    it('rejects unissue unless the visit is issued', async () => {
+      txMock.visit.findFirst.mockResolvedValue(makeVisit());
+      await expect(service.visitUnissue(1)).rejects.toMatchObject({
+        status: 400,
+      });
+      expect(txMock.order.updateMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('return, cancellation and deposit', () => {
+    it.todo('T-027: allow a partial return after business rules are defined');
+    it.todo('T-083: reject deposit return before completion or for type none');
+
+    it('allows an idempotent repeated deposit return and appends a note', async () => {
+      prismaMock.visit.findFirst.mockResolvedValue({
+        ...makeVisit({ status: 'completed', notes: 'старое' }),
+        deposit: { type: 'cash', returned: true },
+      });
+      const result = await service.MarkDepositReturned(1, 'проверили');
+      expect(result.depositReturned).toBe(true);
+      expect(txMock.deposit.update).toHaveBeenCalledWith({
+        where: { visitId: 1 },
+        data: { returned: true },
+      });
+      expect(txMock.visit.update).toHaveBeenCalledWith({
+        where: { id: 1 },
+        data: { notes: 'старое\n[Возврат залога]: проверили' },
+      });
+    });
+    it('rejects a non-issued visit and an order with an invalid status', async () => {
+      prismaMock.visit.findFirst
+        .mockResolvedValueOnce({ ...makeVisit(), orders: [], deposit: null })
+        .mockResolvedValueOnce({
+          ...makeVisit({ status: 'issued' }),
+          orders: [makeOrder()],
+          deposit: null,
+        });
+      await expect(
+        service.visitCompleteReturn(1, { depositReturned: false } as never),
+      ).rejects.toMatchObject({ status: 400 });
+      await expect(
+        service.visitCompleteReturn(1, { depositReturned: false } as never),
+      ).rejects.toMatchObject({ status: 400 });
+      expect(txMock.order.updateMany).not.toHaveBeenCalled();
+    });
+
+    it('returns all orders and appends a comment without requiring deposit return', async () => {
+      prismaMock.visit.findFirst.mockResolvedValue({
+        ...makeVisit({ status: 'issued', notes: 'старое' }),
+        orders: [makeOrder({ status: 'issued' })],
+        deposit: { type: 'cash', returned: false },
+      });
+      txMock.visit.update.mockResolvedValue(makeVisit({ status: 'completed' }));
+      await service.visitCompleteReturn(1, {
+        depositReturned: false,
+        notes: 'всё цело',
+      } as never);
+      expect(txMock.order.updateMany).toHaveBeenCalledWith({
+        where: { visitId: 1, deletedAt: null },
+        data: { status: 'returned' },
+      });
+      expect(txMock.deposit.update).not.toHaveBeenCalled();
+      expect(txMock.visit.update).toHaveBeenCalledWith({
+        where: { id: 1 },
+        data: { status: 'completed', notes: 'старое\n[Завершение]: всё цело' },
+      });
+    });
+
+    it('marks the deposit returned when completing a visit', async () => {
+      prismaMock.visit.findFirst.mockResolvedValue({
+        ...makeVisit({ status: 'issued' }),
+        orders: [],
+        deposit: { type: 'cash' },
+      });
+      txMock.visit.update.mockResolvedValue(makeVisit({ status: 'completed' }));
+      await service.visitCompleteReturn(1, { depositReturned: true } as never);
+      expect(txMock.deposit.update).toHaveBeenCalledWith({
+        where: { visitId: 1 },
+        data: { returned: true },
+      });
+    });
+
+    it('cancels a reserved visit and records the reason', async () => {
+      prismaMock.visit.findFirst.mockResolvedValue(
+        makeVisit({ notes: 'старое' }),
+      );
+      await service.visitCancel(1, { reason: 'ошибка' } as never);
+      expect(txMock.order.updateMany).toHaveBeenCalledWith({
+        where: { visitId: 1, deletedAt: null },
+        data: { status: 'cancelled' },
+      });
+      expect(txMock.visit.update).toHaveBeenCalledWith({
+        where: { id: 1 },
+        data: {
+          status: 'cancelled',
+          notes: 'старое\n[Причина отмены]: ошибка',
+        },
+      });
+    });
+
+    it('rejects cancellation of an issued visit', async () => {
+      prismaMock.visit.findFirst.mockResolvedValue(
+        makeVisit({ status: 'issued' }),
+      );
+      await expect(service.visitCancel(1, {} as never)).rejects.toMatchObject({
+        status: 400,
+      });
+      expect(txMock.order.updateMany).not.toHaveBeenCalled();
     });
   });
 });

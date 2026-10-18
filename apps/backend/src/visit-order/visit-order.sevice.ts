@@ -477,11 +477,15 @@ export class VisitOrderService {
         remainingPayment -= paymentForThisOrder;
       }
 
+      const updatedNotes = data.notes
+        ? `${visit.notes ? `${visit.notes}\n` : ''}${data.notes}`
+        : visit.notes;
+
       await tx.visit.update({
         where: { id: visitId },
         data: {
           status: 'issued',
-          notes: data.notes ?? visit.notes,
+          notes: updatedNotes,
         },
       });
 
