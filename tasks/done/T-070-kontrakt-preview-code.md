@@ -23,6 +23,8 @@
 
 ## Результат
 
+Коммит: `2896f39`.
+
 TypeSpec и клиент теперь ожидают `string` по шаблону `^\d{4}$`; backend отвечает JSON-строкой с `Content-Type: application/json`. Прежний frontend остаётся совместим: его `String(code)` получает ту же строку. Убран `String(code)` из `VisitSummaryPanel`, заменён T-070 `it.todo` на исполняемый тест. Integration-тесты, читавшие необработанный `.text`, переведены на JSON `.body`.
 
 Проверено: `shared` build, backend/frontend typecheck и lint; backend unit — 258 passed / 8 todo, integration — 33 passed, frontend `vitest run` — 117 passed / 5 todo. Лимит времени frontend-тестов стабилизирован в T-088. Изменения не коммичены.

@@ -22,6 +22,8 @@
 
 ## Результат
 
+Коммит: `2896f39`.
+
 В `vitest.config.ts` задан `testTimeout: 15000` для UI-тестов с debounce и длинными `userEvent`-сценариями. Локальные лимиты T-070 удалены; ожидание debounced поиска в форме брони оставлено 6 секунд. Assertions не менялись.
 
 Полный frontend `vitest run` дважды прошёл: 13 файлов, 117 passed, 5 todo. Typecheck прошёл. Полный frontend lint: 0 ошибок, 1 ранее существовавшее предупреждение в `WhatsAppButton.tsx` об избыточном `eslint-disable`. Изменения не коммичены.

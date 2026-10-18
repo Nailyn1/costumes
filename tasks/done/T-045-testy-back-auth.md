@@ -29,4 +29,6 @@
 
 ## Результат
 
+Коммит: `2896f39`.
+
 Добавлены unit-тесты `AuthService` и `WsJwtGuard` и HTTP integration-сценарии в `auth.int-spec.ts`. Быстрая ротация исправлена в T-086 и проверена без задержек. T-085 (английские сообщения auth/WS) остаётся отдельной задачей и `it.todo`. Проверки всего рабочего дерева: backend unit — 258 passed / 8 todo, integration — 33 passed, frontend — 117 passed / 5 todo; typecheck и lint прошли.
