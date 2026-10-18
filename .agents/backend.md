@@ -22,7 +22,7 @@ src/
 │   ├── filters/prisma-client-exception.filter.ts
 │   ├── interceptors/sentry.interceptor.ts
 │   └── utils/              # search.utils.ts (поиск+ранжирование), visit-message.utils.ts
-└── config/                 # jwt.config.ts, logger.config.ts
+└── config/                 # jwt.config.ts, logger.config.ts, cors.config.ts (список origin для HTTP и Socket.IO)
 ```
 
 Новый домен = новый модуль `src/<domain>/` с `<domain>.module.ts`, `<domain>.controller.ts`, `<domain>.service.ts`, `dto/<domain>.dto.ts`.
@@ -31,7 +31,7 @@ src/
 
 - **Controller** — только HTTP: роут, guard, парсинг params/query, вызов сервиса, возврат результата. Без бизнес-логики и без Prisma.
 - **Service** (`@Injectable()`) — вся бизнес-логика и все обращения к Prisma/Redis/очередям. Слоя репозиториев нет и не вводим.
-- Все защищённые эндпоинты — `@UseGuards(JwtAuthGuard)` на методе. Без guard'а только `auth/login`, `auth/refresh` (свой `JwtRefreshGuard`) и вебхук `webhooks/whatsapp`.
+- Все защищённые эндпоинты — `@UseGuards(JwtAuthGuard)` на методе. Без `JwtAuthGuard` только `auth/login`, `auth/refresh` (свой `JwtRefreshGuard`) и вебхук `webhooks/whatsapp` (защищён `WebhookTokenGuard`, токен Green-API).
 
 ## 3. Контракт и валидация (критично)
 

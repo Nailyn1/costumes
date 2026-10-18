@@ -19,10 +19,11 @@
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | `postgres` / `123456` / `costumes` | контейнер Postgres (прод-compose) |
 | `REDIS_HOST` / `REDIS_PORT` / `REDIS_URL` | `localhost` / `6379` / `redis://localhost:6379` | Redis и BullMQ |
 | `PORT` | `5000` | порт API |
-| `CLIENT_URL` | `http://localhost:5173` | CORS |
+| `CLIENT_URL` | `http://localhost:5173` | CORS: HTTP и Socket.IO используют один список origin (`src/config/cors.config.ts`: `CLIENT_URL` + localhost) |
 | `SERVER_URL`, `SERVER_DOMAIN` | | URL сервера |
 | `JWT_SECRET` | любая длинная строка | подпись JWT |
-| `GREEN_API_URL`, `GREEN_API_ID_INSTANCE`, `GREEN_API_TOKEN`, `INSTANCE_ID` | | WhatsApp (Green-API). Тестового инстанса пока нет — локально отправка падает, это нормально |
+| `GREEN_API_URL`, `GREEN_API_ID_INSTANCE`, `GREEN_API_TOKEN` | | WhatsApp (Green-API); ID инстанса — только `GREEN_API_ID_INSTANCE` (по нему же ключ статуса в Redis; старая `INSTANCE_ID` удалена, на сервере её можно убрать из `.env`). Тестового инстанса пока нет — локально отправка падает, это нормально |
+| `GREEN_API_WEBHOOK_TOKEN` | длинная случайная строка | токен вебхука `POST /webhooks/whatsapp` (`Authorization: Bearer`). Не задан: в `production` вебхук отвечает 401, в остальных окружениях пропускается с warning в логе. Настройка в Green-API — [domain.md §5](./domain.md#5-whatsapp-уведомления-green-api) |
 | `SENTRY_DSN` | пусто | Sentry backend |
 | `NODE_ENV` | `development` | `production` включает secure-cookie и файловые логи без pretty |
 | `USER{1..5}_LOGIN/NAME/PASSWORD` | | пользователи для seed (login ≥ 6 символов, пароль ≥ 12) |

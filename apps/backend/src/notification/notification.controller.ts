@@ -5,9 +5,11 @@ import {
   HttpStatus,
   Post,
   Req,
+  UseGuards,
 } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
+import { WebhookTokenGuard } from './webhook-token.guard';
 
 export interface GreenApiStatusWebhook {
   typeWebhook: 'outgoingMessageStatus' | 'outgoingAPIMessageStatus';
@@ -73,6 +75,7 @@ export class NotificationController {
   ) {}
 
   @Post()
+  @UseGuards(WebhookTokenGuard)
   @HttpCode(HttpStatus.OK)
   async handleWebHook(@Body() body: GreenApiWebhook, @Req() req: any) {
     const l = await this.notificationService.getContextualLogger(body, req);
