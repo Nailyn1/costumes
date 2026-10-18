@@ -97,6 +97,7 @@ src/
 
 - `any` запрещён → `unknown` + type guard. `as unknown as X` — только при интеграции с нетипизированными библиотеками, с комментарием почему.
 - Prettier: `singleQuote: true`, `trailingComma: 'all'`. ESLint: `eslint.config.mjs` (typescript-eslint type-checked).
+- `pnpm --filter @costumes/backend lint` проверяет `src/` и `test/` без изменений файлов; `pnpm --filter @costumes/backend lint:fix` применяет автоисправления.
 - Предпочитай `const`, `map/filter/reduce`, ранний `return`.
 - Комментарии — на русском или английском, коротко; только когда «почему» неочевидно.
 

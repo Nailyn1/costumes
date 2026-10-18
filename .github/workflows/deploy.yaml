@@ -42,10 +42,8 @@ jobs:
         run: pnpm exec tsc -b
         working-directory: apps/crm-frontend
 
-      # Без --fix (в package.json lint его содержит) и только src: test/ вне tsconfig (T-040)
       - name: Lint backend
-        run: pnpm exec eslint "src/**/*.ts"
-        working-directory: apps/backend
+        run: pnpm --filter @costumes/backend lint
 
       - name: Lint frontend
         run: pnpm lint

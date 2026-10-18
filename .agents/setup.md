@@ -84,7 +84,8 @@ pnpm dev:frontend             # vite → http://localhost:5173
 | `pnpm exec prisma generate` | только перегенерировать клиент |
 | `pnpm exec prisma studio` | GUI для БД |
 | `pnpm db:seed` | пользователи |
-| `pnpm lint` | ESLint с `--fix` |
+| `pnpm lint` | ESLint для `src/` и `test/`, без изменений файлов |
+| `pnpm lint:fix` | ESLint с автоматическими исправлениями для `src/` и `test/` |
 | `pnpm exec tsc --noEmit -p tsconfig.json` | typecheck |
 | `pnpm typecheck` | `tsc --noEmit` вместе с `test/` |
 | `pnpm test` | Jest unit (`src/**/*.spec.ts`) |
