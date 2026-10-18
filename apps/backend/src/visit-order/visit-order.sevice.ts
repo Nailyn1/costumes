@@ -353,9 +353,7 @@ export class VisitOrderService {
       where: {
         costumeId: { in: costumeIds },
         deletedAt: null,
-        status: {
-          not: 'cancelled',
-        },
+        status: { in: ['reserved', 'issued'] },
         AND: [
           { startDateTime: { lt: endDateTime } },
           { endDateTime: { gt: startDateTime } },
@@ -434,11 +432,11 @@ export class VisitOrderService {
   async orderMarkTagWritten(orderId: number): Promise<void> {
     await this.prisma.order
       .update({
-        where: { id: orderId },
+        where: { id: orderId, deletedAt: null },
         data: { tagStatus: 'written' },
       })
       .catch(() => {
-        throw new NotFoundException(`Order with ID ${orderId} not found`);
+        throw new NotFoundException(`Заказ с ID ${orderId} не найден`);
       });
   }
 
@@ -448,7 +446,7 @@ export class VisitOrderService {
     await this.prisma.$transaction(async (tx) => {
       const visit = await tx.visit.findFirst({
         where: { id: visitId, deletedAt: null },
-        include: { orders: true },
+        include: { orders: { where: { deletedAt: null } } },
       });
 
       if (!visit) {
@@ -470,7 +468,7 @@ export class VisitOrderService {
 
         const paymentForThisOrder = Math.min(remainingPayment, debt);
         await tx.order.update({
-          where: { id: order.id },
+          where: { id: order.id, deletedAt: null },
           data: {
             status: 'issued',
             finalPayment: paymentForThisOrder,
@@ -527,7 +525,7 @@ export class VisitOrderService {
       }
 
       await tx.order.updateMany({
-        where: { visitId: visitId },
+        where: { visitId: visitId, deletedAt: null },
         data: {
           status: 'reserved',
           finalPayment: null,
@@ -986,7 +984,10 @@ export class VisitOrderService {
 
     const visit = await this.prisma.visit.findFirst({
       where: { id: visitId, deletedAt: null },
-      include: { orders: true, deposit: true },
+      include: {
+        orders: { where: { deletedAt: null } },
+        deposit: true,
+      },
     });
 
     if (!visit) {
@@ -1009,7 +1010,7 @@ export class VisitOrderService {
 
     const updatedVisit = await this.prisma.$transaction(async (tx) => {
       await tx.order.updateMany({
-        where: { visitId: visitId },
+        where: { visitId: visitId, deletedAt: null },
         data: { status: OrderStatus.returned },
       });
 
@@ -1200,7 +1201,7 @@ export class VisitOrderService {
 
     await this.prisma.$transaction(async (tx) => {
       await tx.order.updateMany({
-        where: { visitId: visitId },
+        where: { visitId: visitId, deletedAt: null },
         data: { status: 'cancelled' },
       });
 

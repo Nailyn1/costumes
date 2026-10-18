@@ -267,7 +267,42 @@ describe('CostumesService', () => {
     });
   });
 
-  it.todo('ignores returned orders when checking availability (T-024)');
+  it('excludes returned orders from availability search and costume periods (T-024)', async () => {
+    prisma.costume.findMany.mockResolvedValue([
+      makeCostume({ orders: [] } as never),
+    ]);
+    await service().searchCostumeAvailable('Эльза', start, end);
+
+    expect(prisma.costume.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: {
+          orders: expect.objectContaining({
+            where: expect.objectContaining({
+              status: { in: ['reserved', 'issued'] },
+            }) as never,
+          }) as never,
+        },
+      }) as never,
+    );
+
+    prisma.costume.findMany.mockClear();
+    prisma.costume.findUnique.mockResolvedValue(
+      makeCostume({ orders: [] } as never),
+    );
+    await service().costumesAvailability(1);
+
+    expect(prisma.costume.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: {
+          orders: expect.objectContaining({
+            where: expect.objectContaining({
+              status: { in: ['reserved', 'issued'] },
+            }) as never,
+          }) as never,
+        },
+      }) as never,
+    );
+  });
   it('determines availability from active orders and ignores Costume.status (T-025)', async () => {
     prisma.costume.findMany.mockResolvedValue([
       makeCostume({

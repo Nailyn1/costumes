@@ -3,6 +3,15 @@ import { VisitOrderService } from './visit-order.sevice';
 
 import { createPrismaMock, makeCreateVisitRequest } from '../test-utils';
 
+jest.mock('../prisma/generated/client', () => ({
+  Prisma: {
+    PrismaClientKnownRequestError: class extends Error {
+      code = '';
+    },
+  },
+  OrderStatus: { issued: 'issued', returned: 'returned' },
+}));
+
 const redisMock = { get: jest.fn() };
 const { prisma: prismaMock, tx: txMock, reset } = createPrismaMock();
 
@@ -55,6 +64,26 @@ describe('VisitOrderService', () => {
       expect(txMock.visit.update).toHaveBeenCalled();
     });
 
+    it('issues only active orders of the visit', async () => {
+      txMock.visit.findFirst.mockResolvedValue({
+        id: 1,
+        status: 'reserved',
+        orders: [{ id: 2, rentPrice: 5000, prepaymentAmount: 1000 }],
+      });
+
+      await service.visitIssue(issueData, 1);
+
+      expect(txMock.visit.findFirst).toHaveBeenCalledWith({
+        where: { id: 1, deletedAt: null },
+        include: { orders: { where: { deletedAt: null } } },
+      });
+      expect(txMock.order.update).toHaveBeenCalledTimes(1);
+      expect(txMock.order.update).toHaveBeenCalledWith({
+        where: { id: 2, deletedAt: null },
+        data: { status: 'issued', finalPayment: 0 },
+      });
+    });
+
     it('rejects a deleted visit as not found', async () => {
       txMock.visit.findFirst.mockResolvedValue(null);
 
@@ -63,9 +92,23 @@ describe('VisitOrderService', () => {
       );
       expect(txMock.visit.findFirst).toHaveBeenCalledWith({
         where: { id: 1, deletedAt: null },
-        include: { orders: true },
+        include: { orders: { where: { deletedAt: null } } },
       });
       expect(txMock.visit.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('orderMarkTagWritten', () => {
+    it('returns not found for a deleted order', async () => {
+      prismaMock.order.update.mockRejectedValue({ code: 'P2025' });
+
+      await expect(service.orderMarkTagWritten(1)).rejects.toThrow(
+        new NotFoundException('Заказ с ID 1 не найден'),
+      );
+      expect(prismaMock.order.update).toHaveBeenCalledWith({
+        where: { id: 1, deletedAt: null },
+        data: { tagStatus: 'written' },
+      });
     });
   });
 
@@ -203,7 +246,30 @@ describe('VisitOrderService', () => {
       where: {
         costumeId: { in: [1] },
         deletedAt: null,
-        status: { not: 'cancelled' },
+        status: { in: ['reserved', 'issued'] },
+        AND: [
+          { startDateTime: { lt: new Date('2026-12-21') } },
+          { endDateTime: { gt: new Date('2026-12-20') } },
+        ],
+      },
+      select: { costume: { select: { id: true, name: true } } },
+    });
+  });
+
+  it('does not treat returned orders as conflicts when creating a booking', async () => {
+    prismaMock.order.findMany.mockResolvedValue([]);
+
+    await service.isSuitAvailability(
+      [1],
+      new Date('2026-12-20'),
+      new Date('2026-12-21'),
+    );
+
+    expect(prismaMock.order.findMany).toHaveBeenCalledWith({
+      where: {
+        costumeId: { in: [1] },
+        deletedAt: null,
+        status: { in: ['reserved', 'issued'] },
         AND: [
           { startDateTime: { lt: new Date('2026-12-21') } },
           { endDateTime: { gt: new Date('2026-12-20') } },
@@ -244,7 +310,10 @@ describe('VisitOrderService', () => {
       );
       expect(prismaMock.visit.findFirst).toHaveBeenCalledWith({
         where: { id: 1, deletedAt: null },
-        include: { orders: true, deposit: true },
+        include: {
+          orders: { where: { deletedAt: null } },
+          deposit: true,
+        },
       });
     });
 
@@ -257,6 +326,67 @@ describe('VisitOrderService', () => {
       expect(prismaMock.visit.findFirst).toHaveBeenCalledWith({
         where: { id: 1, deletedAt: null },
         include: { deposit: true },
+      });
+    });
+  });
+
+  describe('visit order mutations and soft delete', () => {
+    it('unissues only active orders', async () => {
+      txMock.visit.findFirst.mockResolvedValue({ id: 1, status: 'issued' });
+
+      await service.visitUnissue(1);
+
+      expect(txMock.order.updateMany).toHaveBeenCalledWith({
+        where: { visitId: 1, deletedAt: null },
+        data: { status: 'reserved', finalPayment: null },
+      });
+    });
+
+    it('completes return using only active orders', async () => {
+      prismaMock.visit.findFirst.mockResolvedValue({
+        id: 1,
+        visitCode: '1234',
+        status: 'issued',
+        notes: null,
+        orders: [],
+        deposit: null,
+      });
+      txMock.visit.update.mockResolvedValue({
+        id: 1,
+        visitCode: '1234',
+        status: 'completed',
+      });
+
+      await service.visitCompleteReturn(1, {
+        depositReturned: false,
+      } as never);
+
+      expect(prismaMock.visit.findFirst).toHaveBeenCalledWith({
+        where: { id: 1, deletedAt: null },
+        include: {
+          orders: { where: { deletedAt: null } },
+          deposit: true,
+        },
+      });
+      expect(txMock.order.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { visitId: 1, deletedAt: null },
+        }),
+      );
+    });
+
+    it('cancels only active orders', async () => {
+      prismaMock.visit.findFirst.mockResolvedValue({
+        id: 1,
+        status: 'reserved',
+        notes: null,
+      });
+
+      await service.visitCancel(1, {} as never);
+
+      expect(txMock.order.updateMany).toHaveBeenCalledWith({
+        where: { visitId: 1, deletedAt: null },
+        data: { status: 'cancelled' },
       });
     });
   });
