@@ -1,5 +1,5 @@
 import { UnauthorizedException } from '@nestjs/common';
-import { WebhookTokenGuard } from './webhook-token.guard';
+import { WebhookTokenGuard } from '../webhook-token.guard';
 
 const makeGuard = (env: Record<string, string | undefined>) =>
   new WebhookTokenGuard({

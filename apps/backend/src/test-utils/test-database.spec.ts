@@ -2,7 +2,7 @@ import {
   ensureTestDatabaseExists,
   getTestDatabaseTarget,
   quotePostgresIdentifier,
-} from '../../test/support/test-database';
+} from './test-database';
 
 describe('test database preparation', () => {
   it('targets the postgres maintenance database for a test database', () => {

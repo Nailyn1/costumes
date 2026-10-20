@@ -17,9 +17,30 @@ export const clientKeys = {
   lists: () => [...clientKeys.all, "list"] as const,
   search: (query: string) => [...clientKeys.lists(), "search", query] as const,
   formState: (id: string) => [...clientKeys.all, "formState", id] as const,
+  whatsapp: (id: number, phone: string) => [...clientKeys.all, "whatsapp", id, phone] as const,
   detail: (id: number | string | null) =>
     [...clientKeys.all, "detail", id ? id.toString() : "empty"] as const,
 };
+
+export function useWhatsappAvailability(clientId: number, phone: string, whatsappConfirmed = false) {
+  const queryClient = useQueryClient();
+  const query = useQuery({
+    queryKey: clientKeys.whatsapp(clientId, phone),
+    queryFn: () => clientsService.checkWhatsappAvailability(clientId),
+    enabled: clientId > 0 && !!phone && !whatsappConfirmed,
+    staleTime: 60 * 60 * 1000,
+    retry: false,
+  });
+  const refresh = useMutation({
+    mutationFn: () => clientsService.checkWhatsappAvailability(clientId, true),
+    onSuccess: (result) => queryClient.setQueryData(clientKeys.whatsapp(clientId, phone), result),
+  });
+  return { status: whatsappConfirmed ? 'exists' : query.isError ? 'unknown' : query.data?.status ?? 'unknown',
+    isChecking: !whatsappConfirmed && query.isPending && query.isFetching,
+    isRefreshing: refresh.isPending,
+    refresh: () => refresh.mutate(),
+  };
+}
 
 export function useSearchClients(searchQuery: string) {
   return useQuery({

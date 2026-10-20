@@ -39,6 +39,7 @@ export const ClientSearchField = memo(function ClientSearchField({
           name: client.name,
           phone: client.phone,
           children: client.children,
+          whatsappConfirmed: client.whatsappConfirmed,
         });
 
         setSearch("");

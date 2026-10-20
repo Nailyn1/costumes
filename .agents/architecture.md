@@ -49,7 +49,7 @@ TypeSpec (`shared/api-spec`) → `openapi.yaml` → `typed-openapi` → `shared/
 - **Frontend** — напрямую из `shared/src` через path alias в `tsconfig.app.json` + `vite-tsconfig-paths`. Сборка shared фронту не нужна.
 
 ### backend (NestJS 12)
-Модули: `auth`, `client-child`, `costumes`, `visit-order`, `notification`, `prisma`, `redis` (+ `queue.module`). Слои: Controller → Service → Prisma (репозиториев нет). Глобально: `ZodValidationPipe`, `PrismaClientExceptionFilter`, `SentryInterceptor`, `IdempotencyInterceptor`, логгер Pino. Подробно: [backend.md](./backend.md).
+Модули: `auth`, `client-child`, `costumes`, `visit-order`, `notification`, `prisma`, `redis` (+ `queue.module`). Обычно слои Controller → Service → Prisma; в `notification` Prisma-выборки вынесены в узкий `NotificationRepository`. Глобально: `ZodValidationPipe`, `PrismaClientExceptionFilter`, `SentryInterceptor`, `IdempotencyInterceptor`, логгер Pino. Подробно: [backend.md](./backend.md).
 
 ### frontend (React 19 + Vite 8)
 Feature-based структура (`features/{auth,clients-children,costumes,visits}`), Mantine 9, TanStack Query 5, Zustand 5, React Router 7, Socket.IO-клиент. Подробно: [frontend.md](./frontend.md).
@@ -61,6 +61,7 @@ Feature-based структура (`features/{auth,clients-children,costumes,visi
 | `idempotency:{userId}:{md5(url)}:{key}` | идемпотентность POST/PATCH/PUT по заголовку `X-Idempotency-Key` | 24 ч |
 | `visit_code_lock:{code}` | резерв `visitCode` между «Проверить» и «Подтвердить» | 15 мин |
 | `whatsapp:instance:{id}:status` / `:last_ts` | состояние WhatsApp-инстанса | без TTL |
+| `whatsapp:availability:{sha256(phone)}` | результат `checkWhatsapp` (`exists`/`absent`), без номера в ключе | 1 час |
 | `bull:notifications:*` | очередь BullMQ | управляет BullMQ |
 
 ### Аутентификация

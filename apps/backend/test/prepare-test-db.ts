@@ -13,7 +13,7 @@ import {
   ensureTestDatabaseExists,
   getTestDatabaseTarget,
   quotePostgresIdentifier,
-} from './support/test-database';
+} from '../src/test-utils/test-database';
 
 const { file } = loadTestEnv();
 const reset = process.argv.includes('--reset');

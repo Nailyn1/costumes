@@ -7,6 +7,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  ParseBoolPipe,
   ParseIntPipe,
   Patch,
   Post,
@@ -27,10 +28,31 @@ import {
   UpdateClientResponseDto,
 } from '@costumes/shared';
 import { SearchSchemaDto } from '../common/dto/search.dto';
+import { NotificationService } from '../notification/notification.service';
+import { WhatsappAvailabilityResponseDto } from '@costumes/shared';
 
 @Controller('clients')
 export class ClientController {
-  constructor(private readonly clientChildService: ClientChildService) {}
+  constructor(
+    private readonly clientChildService: ClientChildService,
+    private readonly notificationService: NotificationService,
+  ) {}
+
+  @Get(':clientId/whatsapp-availability')
+  @UseGuards(JwtAuthGuard)
+  async checkWhatsappAvailability(
+    @Param('clientId', ParseIntPipe) clientId: number,
+    @Query('force', new DefaultValuePipe(false), ParseBoolPipe) force: boolean,
+  ): Promise<WhatsappAvailabilityResponseDto> {
+    const phone = await this.clientChildService.getActiveClientPhone(clientId);
+    return {
+      status: await this.notificationService.checkWhatsappAvailability(
+        phone,
+        force,
+        clientId,
+      ),
+    };
+  }
 
   @Post()
   @UseGuards(JwtAuthGuard)

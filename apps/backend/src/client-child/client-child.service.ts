@@ -18,6 +18,7 @@ import {
   AddClientInBlackListRequestDto,
 } from '@costumes/shared';
 import { Prisma } from '../prisma/generated/client';
+import { NotificationRepository } from '../notification/notification.repository';
 import {
   buildPhoneFilters,
   buildWordStartFilters,
@@ -58,7 +59,20 @@ const DUPLICATE_CLIENT_PHONE_MESSAGE =
 
 @Injectable()
 export class ClientChildService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationRepository: NotificationRepository,
+  ) {}
+
+  async getActiveClientPhone(clientId: number): Promise<string> {
+    const client = await this.prisma.client.findFirst({
+      where: { id: clientId, deletedAt: null },
+      select: { phone: true },
+    });
+    if (!client)
+      throw new NotFoundException(`Клиент с ID ${clientId} не найден`);
+    return client.phone;
+  }
 
   async createChild(
     data: CreateChildRequestDto,
@@ -147,6 +161,7 @@ export class ClientChildService {
       phone,
       children: [],
       isBlacklisted,
+      whatsappConfirmed: false,
     };
   }
 
@@ -192,6 +207,7 @@ export class ClientChildService {
       phone,
       children: [],
       isBlacklisted,
+      whatsappConfirmed: false,
     };
   }
 
@@ -244,24 +260,28 @@ export class ClientChildService {
       take: 30,
     });
 
-    return sortBySearchScore(clients, (client) =>
+    const matches = sortBySearchScore(clients, (client) =>
       maxScore([
         scoreTextMatch(client.name, search),
         scorePhoneMatch(client.phone, search),
         ...client.children.map((child) => scoreTextMatch(child.name, search)),
       ]),
-    )
-      .slice(0, 10)
-      .map((client) => ({
-        clientId: client.id,
-        name: client.name,
-        phone: client.phone,
-        children: client.children?.map((child) => ({
-          childId: child.id,
-          name: child.name,
-        })),
-        isBlacklisted: client.isBlacklisted,
-      }));
+    ).slice(0, 10);
+    const confirmedIds =
+      await this.notificationRepository.findClientIdsWithConfirmedWhatsapp(
+        matches.map((client) => client.id),
+      );
+    return matches.map((client) => ({
+      clientId: client.id,
+      name: client.name,
+      phone: client.phone,
+      children: client.children?.map((child) => ({
+        childId: child.id,
+        name: child.name,
+      })),
+      isBlacklisted: client.isBlacklisted,
+      whatsappConfirmed: confirmedIds.has(client.id),
+    }));
   }
 
   async listClients(
@@ -340,6 +360,11 @@ export class ClientChildService {
       throw new NotFoundException(`Клиент с ID ${clientId} не найден`);
     }
 
+    const confirmedIds =
+      await this.notificationRepository.findClientIdsWithConfirmedWhatsapp([
+        clientId,
+      ]);
+
     const visits = clientData.visits.map((visit) => {
       return {
         visitId: visit.id,
@@ -370,6 +395,7 @@ export class ClientChildService {
         name: clientData.name,
         phone: clientData.phone,
         isBlacklisted: clientData.isBlacklisted,
+        whatsappConfirmed: confirmedIds.has(clientId),
         blacklistReason: clientData.blacklistReason || undefined,
         children: clientData.children.map((child) => ({
           childId: child.id,

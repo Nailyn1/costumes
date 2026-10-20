@@ -20,7 +20,11 @@ export interface TestApp {
   redis: Redis;
   /** Заглушка очереди `notifications`: jobs не уходят в Redis и не обрабатываются. */
   notificationQueue: { add: jest.Mock };
-  whatsapp: { sendMessage: jest.Mock; getStateInstance: jest.Mock };
+  whatsapp: {
+    sendMessage: jest.Mock;
+    getStateInstance: jest.Mock;
+    checkWhatsapp: jest.Mock;
+  };
   user: { login: string; password: string };
   close: () => Promise<void>;
 }
@@ -44,6 +48,7 @@ export async function createTestApp(): Promise<TestApp> {
   const notificationQueue = { add: jest.fn().mockResolvedValue({}) };
   const whatsapp = {
     sendMessage: jest.fn(),
+    checkWhatsapp: jest.fn().mockResolvedValue(true),
     // вызывается на старте (NotificationService.onModuleInit)
     getStateInstance: jest.fn().mockResolvedValue('authorized'),
   };

@@ -19,7 +19,8 @@ import { loggerConfigFactory } from './config/logger.config';
     SentryModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: ['.env', 'apps/backend/.env'],
+      // При запуске из корня значения backend/.env имеют приоритет над корневым .env.
+      envFilePath: ['apps/backend/.env', '.env'],
     }),
     LoggerModule.forRootAsync({
       imports: [ConfigModule],

@@ -1,5 +1,5 @@
-import { buildVisitMessage } from '../common/utils/visit-message.utils';
-import type { VisitWithDetails } from './notification.service';
+import { buildVisitMessage } from '../../common/utils/visit-message.utils';
+import type { VisitWithDetails } from '../notification.service';
 
 const makeOrder = (
   childName: string,

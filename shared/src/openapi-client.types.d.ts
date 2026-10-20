@@ -24,6 +24,10 @@ export namespace Schemas {
     children?: Array<Children_Child>;
     isBlacklisted: boolean;
     blacklistReason?: string;
+    /**
+     * A delivered, read, or confirmed message proves WhatsApp on the current phone.
+     */
+    whatsappConfirmed: boolean;
   } & Record<string, unknown>;
   export type Clients_ClientItem = {
     clientId: number;
@@ -75,6 +79,7 @@ export namespace Schemas {
   } & Record<string, unknown>;
   export type Clients_UpdateClientRequest = Partial<{ name: Clients_ClientName; phone: Clients_PhoneString }> &
     Record<string, unknown>;
+  export type Clients_WhatsappAvailability = { status: "exists" | "absent" | "unknown" } & Record<string, unknown>;
   export type Clients_blacklistReason = Partial<{ blacklistReason: string }> & Record<string, unknown>;
   export type Common_Error = { statusCode: number; message: string; error?: string } & Record<string, unknown>;
   export type Costumes_AvailabilityPeriod = {
@@ -503,6 +508,17 @@ export namespace Endpoints {
     };
     responses: { 204: unknown; default: Schemas.Common_Error };
   };
+  export type get_ClientOperations_checkWhatsappAvailability = {
+    method: "GET";
+    path: "/clients/{clientId}/whatsapp-availability";
+    requestFormat: "json";
+    responseFormat: "json";
+    parameters: {
+      query?: Partial<{ force: boolean }>;
+      path: { clientId: number };
+    };
+    responses: { 200: Schemas.Clients_WhatsappAvailability; default: Schemas.Common_Error };
+  };
   export type post_CostumeOperations_create = {
     method: "POST";
     path: "/costumes";
@@ -824,6 +840,7 @@ export type EndpointByMethod = {
     "/clients/detail/{clientId}": Endpoints.get_ClientOperations_getClientDetail;
     "/clients/list": Endpoints.get_ClientOperations_getClientList;
     "/clients/search": Endpoints.get_ClientOperations_search;
+    "/clients/{clientId}/whatsapp-availability": Endpoints.get_ClientOperations_checkWhatsappAvailability;
     "/costumes/list": Endpoints.get_CostumeOperations_getCostumesList;
     "/costumes/search": Endpoints.get_CostumeOperations_searchAvailability;
     "/costumes/search-available": Endpoints.get_CostumeOperations_searchAvailable;

@@ -14,6 +14,7 @@ export const schemas = {
   Clients_PhoneString: generated.Clients_PhoneString,
   Clients_Client: generated.Clients_Client,
   Clients_ClientItem: generated.Clients_ClientItem,
+  Clients_WhatsappAvailability: generated.Clients_WhatsappAvailability,
   Visits_OrderStatus: generated.Visits_OrderStatus,
   Clients_ClientOrderHistory: generated.Clients_ClientOrderHistory,
   Costumes_VisitCode: generated.Costumes_VisitCode,

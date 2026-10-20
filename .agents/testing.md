@@ -59,6 +59,7 @@ pnpm --filter crm-frontend test:watch
 
 - `createPrismaMock()` → `{ prisma, tx, reset }`. `prisma` — мок `PrismaService`, `tx` — клиент, который получает callback в `$transaction(async (tx) => ...)`. Делегаты (`tx.visit.findFirst`…) создаются лениво, схему перечислять не нужно. `reset` вызывать в `beforeEach`.
 - Фабрики `makeClient / makeChild / makeCostume / makeVisit / makeOrder / makeDeposit / makeCreateVisitRequest` — валидный объект по умолчанию + `overrides`.
+- `test-database.ts` → проверка имени `*_test` и подготовка отсутствующей тестовой БД; `test/prepare-test-db.ts` импортирует его из `src/test-utils`, чтобы unit-тест не выводил файлы за пределы `rootDir: src` watch-сборки.
 - Сгенерированный Prisma-клиент и `PrismaService` в unit-тестах подменены заглушками через `moduleNameMapper` в `jest`-секции `package.json` (клиент импортирует `./x.js`, который ts-jest не резолвит) — в spec для этого ничего писать не нужно.
 
 Образцы: `src/visit-order/visit-order.service.spec.ts` (сервис + Prisma-мок), `src/common/utils/search.utils.spec.ts` (чистые функции).

@@ -1,6 +1,7 @@
 import { UnrecoverableError } from 'bullmq';
-import { NotificationService } from './notification.service';
-import { createPrismaMock } from '../test-utils';
+import { NotificationService } from '../notification.service';
+import { NotificationRepository } from '../notification.repository';
+import { createPrismaMock } from '../../test-utils';
 
 const { prisma, tx, reset } = createPrismaMock();
 
@@ -21,6 +22,7 @@ describe('NotificationService', () => {
   let service: NotificationService;
   let redis: { get: jest.Mock; set: jest.Mock };
   let whatsapp: { sendMessage: jest.Mock; getStateInstance: jest.Mock };
+  let checkAvailability: jest.SpyInstance;
   let queue: { getJob: jest.Mock; add: jest.Mock };
   let gateway: { emitNotificationStatusUpdate: jest.Mock };
   let config: { get: jest.Mock };
@@ -47,7 +49,11 @@ describe('NotificationService', () => {
       { logger } as never,
       queue as never,
       gateway as never,
+      new NotificationRepository(prisma as never),
     );
+    checkAvailability = jest
+      .spyOn(service, 'checkWhatsappAvailability')
+      .mockResolvedValue('exists');
   });
 
   describe('changeOutgoingStatus (status priority)', () => {
@@ -297,6 +303,7 @@ describe('NotificationService', () => {
     const notification = {
       id: 4,
       visit: {
+        clientId: 7,
         visitCode: '1234',
         startDateTime: new Date('2026-12-20T00:00:00Z'),
         endDateTime: new Date('2026-12-21T00:00:00Z'),
@@ -374,9 +381,35 @@ describe('NotificationService', () => {
       ).rejects.toBeInstanceOf(UnrecoverableError);
     });
 
-    it.todo(
-      'sets noAccount when the number has no WhatsApp (the status is not produced anywhere yet, T-053)',
-    );
+    it('sets noAccount without sending or retrying when the current number is absent', async () => {
+      prisma.notification.findUnique.mockResolvedValue(notification);
+      checkAvailability.mockResolvedValue('absent');
+
+      await expect(
+        service.processWhatsAppSending(4, logger as never),
+      ).resolves.toBeUndefined();
+
+      expect(checkAvailability).toHaveBeenCalledWith(
+        '+77071234567',
+        false,
+        notification.visit.clientId,
+      );
+      expect(whatsapp.sendMessage).not.toHaveBeenCalled();
+      expect(prisma.notification.update).toHaveBeenCalledWith({
+        where: { id: 4 },
+        data: { status: 'noAccount', errorText: 'На номере нет WhatsApp' },
+      });
+    });
+
+    it('retries without sending when availability is unknown', async () => {
+      prisma.notification.findUnique.mockResolvedValue(notification);
+      checkAvailability.mockResolvedValue('unknown');
+      await expect(
+        service.processWhatsAppSending(4, logger as never),
+      ).rejects.toThrow('Не удалось проверить');
+      expect(whatsapp.sendMessage).not.toHaveBeenCalled();
+      expect(prisma.notification.update).not.toHaveBeenCalled();
+    });
   });
 
   describe('handleManualResend', () => {

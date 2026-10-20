@@ -12,7 +12,7 @@
 
 Файлы `.env` в git **не коммитятся**. Шаблоны с плейсхолдерами лежат рядом: `apps/backend/.env.example`, корневой `.env.example`, `apps/crm-frontend/.env.development.example` — скопируй в `.env` / `.env.development` и заполни. Список переменных ниже.
 
-**`apps/backend/.env`** (backend читает `.env` из cwd и `apps/backend/.env`; Prisma CLI — из `apps/backend`):
+**`apps/backend/.env`** (при запуске backend из корня этот файл читается первым, корневой `.env` служит запасным; при запуске из `apps/backend` читается локальный `.env`; переменные окружения процесса имеют приоритет над файлами. Prisma CLI — из `apps/backend`). Одноимённые `GREEN_API_*`, включая `GREEN_API_WEBHOOK_TOKEN`, задавай в `apps/backend/.env`: пустое значение в нём также перекроет корневое.
 
 | Переменная | Пример для dev | Назначение |
 |---|---|---|
@@ -23,7 +23,7 @@
 | `CLIENT_URL` | `http://localhost:5173` | CORS: HTTP и Socket.IO используют один список origin (`src/config/cors.config.ts`: `CLIENT_URL` + localhost) |
 | `SERVER_URL`, `SERVER_DOMAIN` | | URL сервера |
 | `JWT_SECRET` | любая длинная строка | подпись JWT |
-| `GREEN_API_URL`, `GREEN_API_ID_INSTANCE`, `GREEN_API_TOKEN` | | WhatsApp (Green-API); ID инстанса — только `GREEN_API_ID_INSTANCE` (по нему же ключ статуса в Redis; старая `INSTANCE_ID` удалена, на сервере её можно убрать из `.env`). Тестового инстанса пока нет — локально отправка падает, это нормально |
+| `GREEN_API_URL`, `GREEN_API_ID_INSTANCE`, `GREEN_API_TOKEN` | | Тестовый инстанс Green-API для локальной разработки; `GREEN_API_URL` — адрес API из кабинета инстанса, а не адрес ngrok. `checkWhatsapp` вызывается исходящим HTTP-запросом и не требует ngrok. ID инстанса — только `GREEN_API_ID_INSTANCE` (по нему же ключ статуса в Redis) |
 | `GREEN_API_WEBHOOK_TOKEN` | длинная случайная строка | токен вебхука `POST /webhooks/whatsapp` (`Authorization: Bearer`). Не задан: в `production` вебхук отвечает 401, в остальных окружениях пропускается с warning в логе. Настройка в Green-API — [domain.md §5](./domain.md#5-whatsapp-уведомления-green-api) |
 | `SENTRY_DSN` | пусто | Sentry backend |
 | `NODE_ENV` | `development` | `production` включает secure-cookie и файловые логи без pretty |
@@ -106,7 +106,7 @@ pnpm dev:frontend             # vite → http://localhost:5173
 - **Backend не видит новые типы shared** → не выполнен `pnpm --filter @costumes/shared build`.
 - **`Cannot find module '../prisma/generated/client'`** → `pnpm exec prisma generate` в `apps/backend`.
 - **ESLint backend: сотни ошибок `Insert ␍`/`Delete ␍`** → проблема окончаний строк на Windows ([T-003](../tasks/backlog/T-003-okonchaniya-strok.md)), к логике отношения не имеет.
-- **WhatsApp не отправляется локально** → нет тестового инстанса Green-API; job уйдёт в ретраи — это ожидаемо.
+- **Проверка WhatsApp недоступна локально** → проверь тестовый инстанс и три `GREEN_API_*` в `apps/backend/.env`; UI покажет «Не удалось проверить» и разрешит создать визит. Для входящих вебхуков нужен доступный извне адрес с путём `/webhooks/whatsapp`, например `https://<ngrok-host>/webhooks/whatsapp`, а также совпадающий токен вебхука.
 - **409 «Request already in progress»** → сработал `IdempotencyInterceptor` (повтор запроса с тем же `X-Idempotency-Key`).
 
 ## 6. Работа в git worktree (параллельные сессии агентов)

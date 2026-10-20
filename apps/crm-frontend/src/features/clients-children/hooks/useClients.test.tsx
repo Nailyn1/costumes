@@ -19,6 +19,7 @@ const client = {
   phone: "+77071234567",
   children: [],
   isBlacklisted: false,
+  whatsappConfirmed: false,
 };
 
 describe("useSearchClients", () => {

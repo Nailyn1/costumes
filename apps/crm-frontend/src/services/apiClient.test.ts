@@ -58,7 +58,7 @@ describe("typed API client", () => {
   it("validates responses while retaining unknown fields", async () => {
     server.use(
       http.get(`${API_URL}/clients/search`, () =>
-        HttpResponse.json([{ clientId: 1, name: "Alia", phone: "+77001112233", isBlacklisted: false, futureField: "kept" }]),
+        HttpResponse.json([{ clientId: 1, name: "Alia", phone: "+77001112233", isBlacklisted: false, whatsappConfirmed: false, futureField: "kept" }]),
       ),
     );
     const result = await apiClient.get("/clients/search", { query: { q: "Al" } });

@@ -4,6 +4,8 @@ import { ClientUpdateForm } from "./clientUpdateForm";
 import { clientKeys, useDeleteClient } from "../../hooks/useClients";
 import type { SelectedClientCardProps } from "../../types/clientTypes";
 import { useQueryClient } from "@tanstack/react-query";
+import { Stack } from '@mantine/core';
+import { WhatsappAvailabilityNotice } from './WhatsappAvailabilityNotice';
 
 export function SelectedClientCard({
   client,
@@ -20,6 +22,7 @@ export function SelectedClientCard({
   };
 
   return (
+    <Stack gap="xs">
     <SelectedCard
       title={client.name}
       description={formatPhoneNumber(client.phone)}
@@ -41,5 +44,7 @@ export function SelectedClientCard({
         />
       )}
     />
+    <WhatsappAvailabilityNotice clientId={Number(client.id)} phone={client.phone} whatsappConfirmed={client.whatsappConfirmed} />
+    </Stack>
   );
 }

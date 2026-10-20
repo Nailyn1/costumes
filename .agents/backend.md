@@ -30,7 +30,7 @@ src/
 ## 2. Слои
 
 - **Controller** — только HTTP: роут, guard, парсинг params/query, вызов сервиса, возврат результата. Без бизнес-логики и без Prisma.
-- **Service** (`@Injectable()`) — вся бизнес-логика и все обращения к Prisma/Redis/очередям. Слоя репозиториев нет и не вводим.
+- **Service** (`@Injectable()`) — бизнес-логика, Redis и очередь. Обычно обращается к Prisma напрямую. В `notification` используется узкий `NotificationRepository` для выборок и записи уведомлений; он не содержит бизнес-правил и не является общей абстракцией для всех модулей.
 - Все защищённые эндпоинты — `@UseGuards(JwtAuthGuard)` на методе. Без `JwtAuthGuard` только `auth/login`, `auth/refresh` (свой `JwtRefreshGuard`) и вебхук `webhooks/whatsapp` (защищён `WebhookTokenGuard`, токен Green-API).
 
 ## 3. Контракт и валидация (критично)

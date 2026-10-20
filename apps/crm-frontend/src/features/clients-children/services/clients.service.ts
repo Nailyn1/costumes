@@ -9,6 +9,11 @@ import type { GetParams } from "src/features/visits/services/visits.service";
 import { apiClient } from "src/services/apiClient";
 
 export const clientsService = {
+  checkWhatsappAvailability(clientId: number, force = false) {
+    return apiClient.get('/clients/{clientId}/whatsapp-availability', {
+      path: { clientId }, query: { force },
+    });
+  },
   searchClients(searchQuery: string) {
     return apiClient.get("/clients/search", { query: { q: searchQuery } });
   },

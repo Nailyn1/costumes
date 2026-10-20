@@ -3,13 +3,25 @@ import { ClientChildService } from './client-child.service';
 import { createPrismaMock, makeClient, makeChild } from '../test-utils';
 
 const { prisma, reset } = createPrismaMock();
+const notificationRepository = {
+  findClientIdsWithConfirmedWhatsapp: jest.fn(() =>
+    Promise.resolve(new Set<number>()),
+  ),
+};
 
 describe('ClientChildService', () => {
   let service: ClientChildService;
 
   beforeEach(() => {
     reset();
-    service = new ClientChildService(prisma as never);
+    notificationRepository.findClientIdsWithConfirmedWhatsapp.mockReset();
+    notificationRepository.findClientIdsWithConfirmedWhatsapp.mockResolvedValue(
+      new Set(),
+    );
+    service = new ClientChildService(
+      prisma as never,
+      notificationRepository as never,
+    );
   });
 
   describe('createClient', () => {
@@ -25,6 +37,7 @@ describe('ClientChildService', () => {
         phone: '+77071234567',
         children: [],
         isBlacklisted: false,
+        whatsappConfirmed: false,
       });
       expect(prisma.client.findFirst).toHaveBeenCalledWith({
         where: { phone: '+77071234567', deletedAt: null },
@@ -280,6 +293,7 @@ describe('ClientChildService', () => {
           name: 'Алия',
           phone: '+77071234567',
           isBlacklisted: true,
+          whatsappConfirmed: false,
           children: [{ childId: 1, name: 'Маша' }],
         },
       ]);
@@ -303,6 +317,37 @@ describe('ClientChildService', () => {
       ).toBe(true);
       expect(query.select.children.where).toEqual({ deletedAt: null });
       expect(query.take).toBe(30);
+      expect(
+        notificationRepository.findClientIdsWithConfirmedWhatsapp,
+      ).toHaveBeenCalledWith([7]);
+    });
+
+    it('marks only selected clients with verified past WhatsApp delivery', async () => {
+      prisma.client.findMany.mockResolvedValue([
+        { ...makeClient({ id: 7, name: 'Алия' }), children: [] },
+        { ...makeClient({ id: 8, name: 'Алиясова' }), children: [] },
+      ]);
+      notificationRepository.findClientIdsWithConfirmedWhatsapp.mockResolvedValue(
+        new Set([7]),
+      );
+
+      const results = await service.searchClients('алия');
+
+      expect(
+        results.map(({ clientId, whatsappConfirmed }) => ({
+          clientId,
+          whatsappConfirmed,
+        })),
+      ).toEqual([
+        { clientId: 7, whatsappConfirmed: true },
+        { clientId: 8, whatsappConfirmed: false },
+      ]);
+      expect(
+        notificationRepository.findClientIdsWithConfirmedWhatsapp,
+      ).toHaveBeenCalledTimes(1);
+      expect(
+        notificationRepository.findClientIdsWithConfirmedWhatsapp,
+      ).toHaveBeenCalledWith([7, 8]);
     });
 
     it('ranks exact client names ahead of prefix matches', async () => {
@@ -409,6 +454,7 @@ describe('ClientChildService', () => {
       const result = await service.detailedClient(7);
 
       expect(result.client.children).toEqual([{ childId: 1, name: 'Маша' }]);
+      expect(result.client.whatsappConfirmed).toBe(false);
       expect(prisma.client.findUnique).toHaveBeenCalledWith({
         where: { id: 7, deletedAt: null },
         include: {
@@ -425,6 +471,24 @@ describe('ClientChildService', () => {
           },
         },
       });
+    });
+
+    it('includes historical WhatsApp confirmation in the client detail', async () => {
+      prisma.client.findUnique.mockResolvedValue({
+        ...makeClient(),
+        children: [],
+        visits: [],
+      });
+      notificationRepository.findClientIdsWithConfirmedWhatsapp.mockResolvedValue(
+        new Set([7]),
+      );
+
+      const result = await service.detailedClient(7);
+
+      expect(result.client.whatsappConfirmed).toBe(true);
+      expect(
+        notificationRepository.findClientIdsWithConfirmedWhatsapp,
+      ).toHaveBeenCalledWith([7]);
     });
 
     it('returns not found for a deleted or missing client', async () => {

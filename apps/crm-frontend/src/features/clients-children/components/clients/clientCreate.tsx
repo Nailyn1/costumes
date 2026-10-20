@@ -26,6 +26,7 @@ export function ClientCreateForm({ onCreated }: ClientCreateFormProps) {
             phone: createdClient.phone,
             children: [],
             isBlacklisted: false,
+            whatsappConfirmed: createdClient.whatsappConfirmed,
           });
           form.reset();
         },

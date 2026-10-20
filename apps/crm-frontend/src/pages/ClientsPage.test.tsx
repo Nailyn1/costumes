@@ -56,12 +56,13 @@ function mockClientsBackend(initial: Partial<ServerState> = {}) {
     ),
     http.get(`${API_URL}/clients/search`, ({ request }) => {
       calls.searchQueries.push(new URL(request.url).searchParams.get("q") ?? "");
-      return HttpResponse.json([{ ...asItem(), children: [] }]);
+      return HttpResponse.json([{ ...asItem(), children: [], whatsappConfirmed: false }]);
     }),
     http.get(`${API_URL}/clients/detail/1`, () =>
       HttpResponse.json({
         client: {
           ...asItem(),
+          whatsappConfirmed: false,
           ...(state.blacklistReason
             ? { blacklistReason: state.blacklistReason }
             : {}),
@@ -88,7 +89,7 @@ function mockClientsBackend(initial: Partial<ServerState> = {}) {
       calls.updated.push(body);
       state.name = body.name;
       state.phone = body.phone;
-      return HttpResponse.json(asItem());
+      return HttpResponse.json({ ...asItem(), whatsappConfirmed: false });
     }),
     http.delete(`${API_URL}/clients/1`, () => {
       calls.deleted += 1;

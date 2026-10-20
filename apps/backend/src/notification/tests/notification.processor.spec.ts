@@ -1,4 +1,4 @@
-import { NotificationProcessor } from './notification.processor';
+import { NotificationProcessor } from '../notification.processor';
 
 describe('NotificationProcessor', () => {
   let service: {

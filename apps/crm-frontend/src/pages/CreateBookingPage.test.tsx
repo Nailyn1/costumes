@@ -8,6 +8,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { renderWithProviders } from "../../test/render";
 import { API_URL, server } from "../../test/server";
 import { CreateBookingPage } from "./CreateBookingPage";
+import { clientKeys } from '../features/clients-children/hooks/useClients';
 
 /**
  * Форма кладёт выбранные сущности в кэш через setQueryData без подписчиков
@@ -35,6 +36,7 @@ const aliya = {
     { childId: 11, name: "Даша" },
   ],
   isBlacklisted: false,
+  whatsappConfirmed: false,
 };
 
 const elsa = {
@@ -83,6 +85,7 @@ function mockBackend(
   );
   server.use(
     http.get(`${API_URL}/clients/search`, () => HttpResponse.json([aliya])),
+    http.get(`${API_URL}/clients/:clientId/whatsapp-availability`, () => HttpResponse.json({ status: 'exists' })),
     http.get(`${API_URL}/costumes/search-available`, ({ request }) => {
       costumeQueries.push(new URL(request.url).searchParams);
       return HttpResponse.json([elsa, busyAnna]);
@@ -317,6 +320,63 @@ describe("CreateBookingPage", () => {
     expect(created[0].sendNotification).toBe("false");
   });
 
+  it('allows a visit without WhatsApp and turns notification off', async () => {
+    const { created } = mockBackend();
+    server.use(http.get(`${API_URL}/clients/:clientId/whatsapp-availability`, () =>
+      HttpResponse.json({ status: 'absent' })));
+    const user = userEvent.setup();
+    renderPage();
+    await pickClient(user);
+    expect(await screen.findByText(/WhatsApp не найден/, undefined, SEARCH_TIMEOUT)).toBeInTheDocument();
+    await fillDates(user, '20');
+    await fillFirstOrder(user, '8000', '3000');
+    const dialog = await openPreview(user);
+    expect(within(dialog).getByText(/сообщите код выдачи клиенту лично/)).toBeInTheDocument();
+    expect(within(dialog).getByLabelText(/Отправить клиенту уведомление/)).toBeDisabled();
+    await user.click(within(dialog).getByRole('button', { name: 'Подтвердить и создать' }));
+    await waitFor(() => expect(created).toHaveLength(1));
+    expect(created[0].sendNotification).toBe('false');
+  });
+
+  it('loads the phone for preview when selection cache is missing', async () => {
+    const { created } = mockBackend();
+    server.use(
+      http.get(`${API_URL}/clients/detail/:clientId`, () => HttpResponse.json({
+        client: { ...aliya, phone: '+77079990001' }, visits: [],
+      })),
+      http.get(`${API_URL}/clients/:clientId/whatsapp-availability`, () => HttpResponse.json({ status: 'absent' })),
+    );
+    const user = userEvent.setup();
+    const { queryClient } = renderPage();
+    await pickClient(user);
+    await fillDates(user, '20');
+    await fillFirstOrder(user, '8000', '3000');
+    queryClient.removeQueries({ queryKey: clientKeys.formState('1') });
+    const dialog = await openPreview(user);
+    expect(await within(dialog).findByText(/\+77079990001/)).toBeInTheDocument();
+    expect(within(dialog).getByLabelText(/Отправить клиенту уведомление/)).toBeDisabled();
+    await user.click(within(dialog).getByRole('button', { name: 'Подтвердить и создать' }));
+    await waitFor(() => expect(created).toHaveLength(1));
+    expect(created[0].sendNotification).toBe('false');
+  });
+
+  it('allows a visit when WhatsApp availability is unknown', async () => {
+    const { created } = mockBackend();
+    server.use(http.get(`${API_URL}/clients/:clientId/whatsapp-availability`, () =>
+      HttpResponse.json({ status: 'unknown' })));
+    const user = userEvent.setup();
+    renderPage();
+    await pickClient(user);
+    expect(await screen.findByText(/Не удалось проверить WhatsApp/, undefined, SEARCH_TIMEOUT)).toBeInTheDocument();
+    await fillDates(user, '20');
+    await fillFirstOrder(user, '8000', '3000');
+    const dialog = await openPreview(user);
+    expect(within(dialog).getByLabelText(/Отправить клиенту уведомление/)).not.toBeDisabled();
+    await user.click(within(dialog).getByRole('button', { name: 'Подтвердить и создать' }));
+    await waitFor(() => expect(created).toHaveLength(1));
+    expect(created[0].sendNotification).toBe('true');
+  });
+
   it("resets the form after a successful creation", async () => {
     mockBackend();
     const user = userEvent.setup();
@@ -411,6 +471,7 @@ describe("CreateBookingPage", () => {
           phone: "+77075554433",
           children: [],
           isBlacklisted: false,
+          whatsappConfirmed: false,
         }, { status: 201 });
       }),
     );

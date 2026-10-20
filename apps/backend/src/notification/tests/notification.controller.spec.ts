@@ -1,6 +1,6 @@
 import 'reflect-metadata';
-import { NotificationController } from './notification.controller';
-import { WebhookTokenGuard } from './webhook-token.guard';
+import { NotificationController } from '../notification.controller';
+import { WebhookTokenGuard } from '../webhook-token.guard';
 
 describe('NotificationController webhook', () => {
   let service: {

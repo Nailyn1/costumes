@@ -3,7 +3,7 @@ import { createServer, Server as HttpServer } from 'http';
 import type { AddressInfo } from 'net';
 import { Server } from 'socket.io';
 import type { ServerOptions } from 'socket.io';
-import { NotificationGateway } from './notification.gateway';
+import { NotificationGateway } from '../notification.gateway';
 
 // Берём настоящие опции из декоратора gateway и поднимаем Socket.IO с ними:
 // проверяем, что CORS-политика сокета совпадает с HTTP (T-031).

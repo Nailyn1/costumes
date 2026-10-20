@@ -34,6 +34,7 @@ export function ClientUpdateForm({
             ...client,
             name: res.name,
             phone: res.phone,
+            whatsappConfirmed: res.whatsappConfirmed,
           });
         },
       },

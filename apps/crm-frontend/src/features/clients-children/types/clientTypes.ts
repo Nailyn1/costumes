@@ -8,6 +8,7 @@ export interface SelectedClientData {
   phone: string;
   children?: SelectedChild[];
   isBlacklisted?: boolean;
+  whatsappConfirmed?: boolean;
 }
 
 export interface ClientSearchFieldProps {

@@ -56,6 +56,7 @@ export const Clients_Client = z
     children: z.array(Children_Child).optional(),
     isBlacklisted: z.boolean(),
     blacklistReason: z.string().optional(),
+    whatsappConfirmed: z.boolean(),
   })
   .catchall(z.unknown());
 
@@ -137,6 +138,11 @@ export type Clients_UpdateClientRequest = __TypedOpenapi.Schemas.Clients_UpdateC
 export const Clients_UpdateClientRequest = z
   .object({ name: Clients_ClientName, phone: Clients_PhoneString })
   .partial()
+  .catchall(z.unknown());
+
+export type Clients_WhatsappAvailability = __TypedOpenapi.Schemas.Clients_WhatsappAvailability;
+export const Clients_WhatsappAvailability = z
+  .object({ status: z.enum(["exists", "absent", "unknown"]) })
   .catchall(z.unknown());
 
 export type Clients_blacklistReason = __TypedOpenapi.Schemas.Clients_blacklistReason;
@@ -690,6 +696,27 @@ export const delete_ClientOperations_removeClientFromBlackList = {
   responses: { 204: z.unknown(), default: Common_Error },
 };
 
+export type get_ClientOperations_checkWhatsappAvailability =
+  __TypedOpenapi.Endpoints.get_ClientOperations_checkWhatsappAvailability;
+export const get_ClientOperations_checkWhatsappAvailability = {
+  method: z.literal("GET"),
+  path: z.literal("/clients/{clientId}/whatsapp-availability"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: {
+    query: z
+      .strictObject({
+        force: z
+          .union([z.boolean(), z.string(), z.number()])
+          .transform((x) => x === true || x === "true" || x === 1 || x === "1"),
+      })
+      .partial()
+      .optional(),
+    path: z.strictObject({ clientId: z.coerce.number().int() }),
+  },
+  responses: { 200: Clients_WhatsappAvailability, default: Common_Error },
+};
+
 export type post_CostumeOperations_create = __TypedOpenapi.Endpoints.post_CostumeOperations_create;
 export const post_CostumeOperations_create = {
   method: z.literal("POST"),
@@ -1025,6 +1052,7 @@ export const EndpointByMethod = {
     "/clients/detail/{clientId}": get_ClientOperations_getClientDetail,
     "/clients/list": get_ClientOperations_getClientList,
     "/clients/search": get_ClientOperations_search,
+    "/clients/{clientId}/whatsapp-availability": get_ClientOperations_checkWhatsappAvailability,
     "/costumes/list": get_CostumeOperations_getCostumesList,
     "/costumes/search": get_CostumeOperations_searchAvailability,
     "/costumes/search-available": get_CostumeOperations_searchAvailable,
@@ -1121,6 +1149,10 @@ export const endpointParameterStyles = {
       },
     },
     "/clients/search": { query: { q: { style: "form", explode: false, allowReserved: false } } },
+    "/clients/{clientId}/whatsapp-availability": {
+      query: { force: { style: "form", explode: false, allowReserved: false } },
+      path: { clientId: { style: "simple", explode: false, allowReserved: false } },
+    },
     "/costumes/list": {
       query: {
         page: { style: "form", explode: false, allowReserved: false },

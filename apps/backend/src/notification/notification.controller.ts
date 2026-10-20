@@ -78,10 +78,7 @@ export class NotificationController {
   async handleWebHook(@Body() body: GreenApiWebhook, @Req() req: any) {
     const l = await this.notificationService.getContextualLogger(body, req);
 
-    l.debug(
-      { webhookType: body.typeWebhook, payload: body },
-      'Received Green-API webhook',
-    );
+    l.debug({ webhookType: body.typeWebhook }, 'Received Green-API webhook');
     try {
       if (
         body.typeWebhook === 'outgoingMessageStatus' ||

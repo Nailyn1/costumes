@@ -14,6 +14,38 @@ describe('clients and children (integration)', () => {
     await t.close();
   });
 
+  it('checks the current active client phone and does not block on provider failure', async () => {
+    const created = await api
+      .post('/clients')
+      .send({
+        name: 'Клиент проверки',
+        phone: '+77079991234',
+      })
+      .expect(201);
+    const id = (created.body as { clientId: number }).clientId;
+    t.whatsapp.checkWhatsapp.mockResolvedValueOnce(false);
+    await api
+      .get(`/clients/${id}/whatsapp-availability`)
+      .expect(200, { status: 'absent' });
+    expect(t.whatsapp.checkWhatsapp).toHaveBeenCalledWith(
+      '+77079991234',
+      false,
+    );
+
+    await api
+      .patch(`/clients/${id}`)
+      .send({ phone: '+77079991235' })
+      .expect(200);
+    t.whatsapp.checkWhatsapp.mockRejectedValueOnce(
+      new Error('temporarily unavailable'),
+    );
+    await api
+      .get(`/clients/${id}/whatsapp-availability`)
+      .expect(200, { status: 'unknown' });
+    await api.delete(`/clients/${id}`).expect(204);
+    await api.get(`/clients/${id}/whatsapp-availability`).expect(404);
+  });
+
   it.each([
     [{ name: 'А', phone: '+77071234567' }],
     [{ name: 'A!', phone: '+77071234567' }],

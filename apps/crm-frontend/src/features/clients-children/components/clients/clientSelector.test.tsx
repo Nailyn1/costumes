@@ -14,6 +14,7 @@ const client = (isBlacklisted: boolean) => ({
   phone: "+77079998877",
   children: [],
   isBlacklisted,
+  whatsappConfirmed: false,
 });
 
 const optionOf = (text: RegExp) =>

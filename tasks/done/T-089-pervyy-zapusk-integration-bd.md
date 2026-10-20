@@ -23,3 +23,5 @@
 ## Результат
 
 Реализовано создание БД через maintenance database `postgres` только для PostgreSQL URL с суффиксом `_test`; существующая БД используется без пересоздания. Обновлены инструкции и `.env.test.example`. Проверено четырьмя unit-тестами и фактическим первым запуском на новой временной `costumes_t089_probe_test`: созданы БД и 21 миграция, повторный запуск не пересоздал БД и не применял миграции. Временная БД удалена после проверки. Backend typecheck и lint прошли; `pnpm test:int` — 34 теста.
+
+Дополнение 2026-10-20: helper `test-database.ts` перенесён из `test/support` в `src/test-utils`. Иначе unit-тест внутри `src` импортировал файл вне `rootDir: src`, и `nest start --watch` падал с TS6059. Пути импорта теста и скрипта подготовки БД обновлены. После исправления прошли backend typecheck, build, lint, 4 unit-теста helper и 35 integration-тестов.

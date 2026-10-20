@@ -13,6 +13,7 @@ const clients = [
     phone: "+77071234567",
     children: [{ childId: 10, name: "Маша" }],
     isBlacklisted: false,
+    whatsappConfirmed: true,
   },
   {
     clientId: 2,
@@ -20,6 +21,7 @@ const clients = [
     phone: "+77079998877",
     children: [],
     isBlacklisted: true,
+    whatsappConfirmed: false,
     blacklistReason: "не вернула костюм",
   },
 ];
@@ -61,6 +63,7 @@ describe("ClientSearchField", () => {
         name: "Алия",
         phone: "+77071234567",
         children: [{ childId: 10, name: "Маша" }],
+        whatsappConfirmed: true,
       }),
     );
   });

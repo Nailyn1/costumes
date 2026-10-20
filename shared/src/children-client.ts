@@ -33,6 +33,9 @@ export type GetListClientResponseDto = z.infer<
 export type GetDetailedClientResponseDto = z.infer<
   typeof schemas.Clients_GetClientDetailed
 >;
+export type WhatsappAvailabilityResponseDto = z.infer<
+  typeof schemas.Clients_WhatsappAvailability
+>;
 export type AddClientInBlackListRequestDto = z.infer<
   typeof schemas.Clients_blacklistReason
 >;
