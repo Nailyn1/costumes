@@ -23,6 +23,58 @@ describe('clients and children (integration)', () => {
     await api.post('/clients').send(body).expect(400);
   });
 
+  it('keeps phone numbers unique among active clients and reuses deleted phones', async () => {
+    const first = await api
+      .post('/clients')
+      .send({ name: 'Первый клиент телефона', phone: '+77079990101' })
+      .expect(201);
+    const firstId = (first.body as { clientId: number }).clientId;
+    const second = await api
+      .post('/clients')
+      .send({ name: 'Второй клиент телефона', phone: '+77079990102' })
+      .expect(201);
+    const secondId = (second.body as { clientId: number }).clientId;
+
+    await api
+      .patch(`/clients/${secondId}`)
+      .send({ name: 'Второй клиент с новым именем' })
+      .expect(200);
+    expect(
+      await t.prisma.client.findUniqueOrThrow({ where: { id: secondId } }),
+    ).toMatchObject({
+      name: 'Второй клиент с новым именем',
+      phone: '+77079990102',
+      deletedAt: null,
+    });
+
+    await api
+      .post('/clients')
+      .send({ name: 'Дубликат телефона', phone: '+77079990101' })
+      .expect(409);
+    await api
+      .patch(`/clients/${secondId}`)
+      .send({ name: 'Второй клиент с новым именем', phone: '+77079990101' })
+      .expect(409);
+    expect(
+      await t.prisma.client.findUniqueOrThrow({ where: { id: secondId } }),
+    ).toMatchObject({ phone: '+77079990102', deletedAt: null });
+
+    await api.delete(`/clients/${firstId}`).expect(204);
+    const reused = await api
+      .post('/clients')
+      .send({ name: 'Новый клиент телефона', phone: '+77079990101' })
+      .expect(201);
+    const reusedId = (reused.body as { clientId: number }).clientId;
+    expect(
+      await t.prisma.client.findUniqueOrThrow({ where: { id: reusedId } }),
+    ).toMatchObject({ phone: '+77079990101', deletedAt: null });
+    expect(
+      await t.prisma.client.count({
+        where: { phone: '+77079990101', deletedAt: null },
+      }),
+    ).toBe(1);
+  });
+
   it('creates a client and child, then soft-deletes both', async () => {
     const clientResponse = await api
       .post('/clients')

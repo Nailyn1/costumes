@@ -301,10 +301,9 @@ describe('CostumesService', () => {
       }) as never,
     );
   });
-  it('determines availability from active orders and ignores Costume.status (T-025)', async () => {
+  it('determines availability from active orders without a stored costume status (T-025)', async () => {
     prisma.costume.findMany.mockResolvedValue([
       makeCostume({
-        status: 'available',
         orders: [{ status: 'issued', visit: makeVisit() }],
       } as never),
     ]);

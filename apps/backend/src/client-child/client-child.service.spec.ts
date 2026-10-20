@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { ClientChildService } from './client-child.service';
 import { createPrismaMock, makeClient, makeChild } from '../test-utils';
 
@@ -40,7 +40,7 @@ describe('ClientChildService', () => {
       await expect(
         service.createClient({ name: 'Марина', phone: '+77071234567' }),
       ).rejects.toThrow(
-        new BadRequestException('Client with this phone already exists'),
+        new ConflictException('Клиент с таким телефоном уже существует'),
       );
       expect(prisma.client.create).not.toHaveBeenCalled();
     });
@@ -55,6 +55,81 @@ describe('ClientChildService', () => {
         where: { phone: '+77071234567', deletedAt: null },
       });
       expect(prisma.client.create).toHaveBeenCalled();
+    });
+
+    it('maps a concurrent unique phone violation to conflict', async () => {
+      prisma.client.findFirst.mockResolvedValue(null);
+      prisma.client.create.mockRejectedValue({
+        code: 'P2002',
+        meta: { target: ['phone'] },
+      });
+
+      await expect(
+        service.createClient({ name: 'Марина', phone: '+77071234567' }),
+      ).rejects.toThrow(
+        new ConflictException('Клиент с таким телефоном уже существует'),
+      );
+    });
+  });
+
+  describe('updateClient', () => {
+    it('rejects a phone used by another active client', async () => {
+      prisma.client.findFirst.mockResolvedValue(makeClient({ id: 8 }));
+
+      await expect(
+        service.updateClient({ name: 'Алия', phone: '+77071234567' }, 7),
+      ).rejects.toThrow(
+        new ConflictException('Клиент с таким телефоном уже существует'),
+      );
+      expect(prisma.client.findFirst).toHaveBeenCalledWith({
+        where: {
+          phone: '+77071234567',
+          deletedAt: null,
+          id: { not: 7 },
+        },
+      });
+      expect(prisma.client.update).not.toHaveBeenCalled();
+    });
+
+    it('allows retaining its own phone and maps a concurrent unique violation', async () => {
+      prisma.client.findFirst.mockResolvedValue(null);
+      prisma.client.update.mockRejectedValue({
+        code: 'P2002',
+        meta: { target: ['phone'] },
+      });
+
+      await expect(
+        service.updateClient({ name: 'Алия', phone: '+77071234567' }, 7),
+      ).rejects.toThrow(
+        new ConflictException('Клиент с таким телефоном уже существует'),
+      );
+      expect(prisma.client.update).toHaveBeenCalledWith({
+        where: { id: 7, deletedAt: null },
+        data: { name: 'Алия', phone: '+77071234567' },
+      });
+    });
+
+    it('updates a name without checking an omitted phone', async () => {
+      prisma.client.update.mockResolvedValue(makeClient({ name: 'Алия 2' }));
+
+      await expect(
+        service.updateClient({ name: 'Алия 2' }, 7),
+      ).resolves.toMatchObject({ clientId: 7, name: 'Алия 2' });
+      expect(prisma.client.findFirst).not.toHaveBeenCalled();
+      expect(prisma.client.update).toHaveBeenCalledWith({
+        where: { id: 7, deletedAt: null },
+        data: { name: 'Алия 2', phone: undefined },
+      });
+    });
+
+    it('does not treat a different unique constraint as a phone conflict', async () => {
+      prisma.client.findFirst.mockResolvedValue(null);
+      const error = { code: 'P2002', meta: { target: ['another_field'] } };
+      prisma.client.update.mockRejectedValue(error);
+
+      await expect(
+        service.updateClient({ name: 'Алия', phone: '+77071234567' }, 7),
+      ).rejects.toBe(error);
     });
   });
 
@@ -158,6 +233,7 @@ describe('ClientChildService', () => {
     });
 
     it('filters deleted clients when updating or deleting them', async () => {
+      prisma.client.findFirst.mockResolvedValue(null);
       prisma.client.update.mockRejectedValue({ code: 'P2025' });
 
       await expect(

@@ -1,5 +1,5 @@
 import {
-  BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -28,6 +28,33 @@ import {
   scoreTextMatch,
   sortBySearchScore,
 } from '../common/utils/search.utils';
+
+function isPhoneUniqueConstraintViolation(error: unknown): boolean {
+  if (
+    typeof error !== 'object' ||
+    error === null ||
+    !('code' in error) ||
+    error.code !== 'P2002'
+  ) {
+    return false;
+  }
+
+  if (!('meta' in error) || typeof error.meta !== 'object' || !error.meta) {
+    return true;
+  }
+
+  if (!('target' in error.meta)) return true;
+  const target = error.meta.target;
+  const targets = Array.isArray(target) ? target : [target];
+  return targets.some(
+    (field) =>
+      field === 'phone' ||
+      (typeof field === 'string' && field.includes('clients_phone_key')),
+  );
+}
+
+const DUPLICATE_CLIENT_PHONE_MESSAGE =
+  'Клиент с таким телефоном уже существует';
 
 @Injectable()
 export class ClientChildService {
@@ -102,11 +129,16 @@ export class ClientChildService {
       },
     });
     if (existingClient) {
-      throw new BadRequestException('Client with this phone already exists');
+      throw new ConflictException(DUPLICATE_CLIENT_PHONE_MESSAGE);
     }
-    const client = await this.prisma.client.create({
-      data: { name: data.name, phone: data.phone },
-    });
+    const client = await this.prisma.client
+      .create({ data: { name: data.name, phone: data.phone } })
+      .catch((error: unknown) => {
+        if (isPhoneUniqueConstraintViolation(error)) {
+          throw new ConflictException(DUPLICATE_CLIENT_PHONE_MESSAGE);
+        }
+        throw error;
+      });
 
     const { id: clientId, name, phone, isBlacklisted } = client;
     return {
@@ -122,6 +154,19 @@ export class ClientChildService {
     data: UpdateClientRequestDto,
     clientId: number,
   ): Promise<UpdateClientResponseDto> {
+    if (data.phone) {
+      const existingClient = await this.prisma.client.findFirst({
+        where: {
+          phone: data.phone,
+          deletedAt: null,
+          id: { not: clientId },
+        },
+      });
+      if (existingClient) {
+        throw new ConflictException(DUPLICATE_CLIENT_PHONE_MESSAGE);
+      }
+    }
+
     const client = await this.prisma.client
       .update({
         where: { id: clientId, deletedAt: null },
@@ -133,6 +178,9 @@ export class ClientChildService {
       .catch((err) => {
         if (err.code === 'P2025') {
           throw new NotFoundException(`Клиент с ID ${clientId} не найден`);
+        }
+        if (isPhoneUniqueConstraintViolation(err)) {
+          throw new ConflictException(DUPLICATE_CLIENT_PHONE_MESSAGE);
         }
         throw err;
       });

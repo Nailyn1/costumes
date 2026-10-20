@@ -37,7 +37,6 @@ export const makeCostume = (overrides: Partial<Costume> = {}): Costume => ({
   id: 1,
   inventoryCode: 'C-0001',
   name: 'Эльза',
-  status: 'available',
   notes: null,
   createdAt: new Date('2026-12-01T10:00:00Z'),
   updatedAt: new Date('2026-12-01T10:00:00Z'),
