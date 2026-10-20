@@ -112,7 +112,7 @@ describe("401 response interceptor", () => {
   it("refreshes the token once and retries the original request with it", async () => {
     setToken("stale");
     const { tokens, keys } = protectedEndpoint();
-    const refresh = vi.fn(() => HttpResponse.json({ accessToken: "fresh" }));
+    const refresh = vi.fn(() => HttpResponse.json({ accessToken: "fresh" }, { status: 201 }));
     server.use(http.post(`${API_URL}/auth/refresh`, refresh));
 
     const response = await api.post("/protected", { a: 1 });
@@ -131,7 +131,7 @@ describe("401 response interceptor", () => {
       HttpResponse.json({ message: "no" }, { status: 401 }),
     );
     server.use(http.get(`${API_URL}/always-401`, protectedHandler));
-    const refresh = vi.fn(() => HttpResponse.json({ accessToken: "fresh" }));
+    const refresh = vi.fn(() => HttpResponse.json({ accessToken: "fresh" }, { status: 201 }));
     server.use(http.post(`${API_URL}/auth/refresh`, refresh));
 
     await expect(api.get("/always-401")).rejects.toMatchObject({
@@ -161,7 +161,7 @@ describe("401 response interceptor", () => {
   });
 
   it("does not try to refresh on 401 from /auth/ paths", async () => {
-    const refresh = vi.fn(() => HttpResponse.json({ accessToken: "fresh" }));
+    const refresh = vi.fn(() => HttpResponse.json({ accessToken: "fresh" }, { status: 201 }));
     server.use(
       http.post(`${API_URL}/auth/login`, () =>
         HttpResponse.json({ message: "Неверный пароль" }, { status: 401 }),
@@ -180,7 +180,7 @@ describe("401 response interceptor", () => {
     "passes %i through without refreshing",
     async (status) => {
       setToken("tok");
-      const refresh = vi.fn(() => HttpResponse.json({ accessToken: "fresh" }));
+      const refresh = vi.fn(() => HttpResponse.json({ accessToken: "fresh" }, { status: 201 }));
       server.use(
         http.get(`${API_URL}/boom`, () =>
           HttpResponse.json({ message: "ошибка" }, { status }),
@@ -213,7 +213,7 @@ describe("401 response interceptor", () => {
           : HttpResponse.json({}, { status: 401 }),
       ),
     );
-    const refresh = vi.fn(() => HttpResponse.json({ accessToken: "fresh" }));
+    const refresh = vi.fn(() => HttpResponse.json({ accessToken: "fresh" }, { status: 201 }));
     server.use(http.post(`${API_URL}/auth/refresh`, refresh));
 
     const [a, b] = await Promise.all([api.get("/a"), api.get("/b")]);

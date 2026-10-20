@@ -10,6 +10,29 @@ beforeEach(() => {
   useAuthStore.setState({ accessToken: null, isAuth: false, user: null });
 });
 describe("typed API client", () => {
+  it("accepts the 201 responses returned by login and refresh", async () => {
+    server.use(
+      http.post(`${API_URL}/auth/login`, () =>
+        HttpResponse.json(
+          { accessToken: "initial", user: { login: "operator", name: "Оператор" } },
+          { status: 201 },
+        ),
+      ),
+      http.post(`${API_URL}/auth/refresh`, () =>
+        HttpResponse.json({ accessToken: "refreshed" }, { status: 201 }),
+      ),
+    );
+
+    await expect(
+      apiClient.post("/auth/login", {
+        body: { login: "operator", password: "password1234" },
+      }),
+    ).resolves.toMatchObject({ accessToken: "initial" });
+    await expect(
+      apiClient.post("/auth/refresh", { header: { Cookie: "" } }),
+    ).resolves.toMatchObject({ accessToken: "refreshed" });
+  });
+
   it("resolves relative production and development base URLs once", () => {
     expect(resolveApiBaseUrl("/api", "https://crm.example")).toBe(
       "https://crm.example/api",
@@ -67,7 +90,7 @@ describe("typed API client", () => {
     server.use(
       http.delete(`${API_URL}/clients/1`, () => new HttpResponse(null, { status: 204 })),
       http.get(`${API_URL}/clients/search`, () => HttpResponse.json({ statusCode: 401, message: "Требуется вход" }, { status: 401 })),
-      http.post(`${API_URL}/auth/refresh`, () => HttpResponse.json({ accessToken: "fresh" })),
+      http.post(`${API_URL}/auth/refresh`, () => HttpResponse.json({ accessToken: "fresh" }, { status: 201 })),
     );
     await expect(apiClient.delete("/clients/{clientId}", { path: { clientId: 1 } })).resolves.toBeUndefined();
     const responseError = apiClient.get("/clients/search", { query: { q: "Al" } });
@@ -94,7 +117,7 @@ describe("typed API client", () => {
           notifications: [], orders: [],
         }, { status: 201 });
       }),
-      http.post(`${API_URL}/auth/refresh`, () => HttpResponse.json({ accessToken: "fresh" })),
+      http.post(`${API_URL}/auth/refresh`, () => HttpResponse.json({ accessToken: "fresh" }, { status: 201 })),
     );
 
     const created = await apiClient.post("/visits", {

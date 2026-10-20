@@ -365,8 +365,8 @@ export namespace Endpoints {
     parameters: {
       body: Schemas.Auth_LoginRequest;
     };
-    responses: { 200: Schemas.Auth_LoginSuccessResponse; default: Schemas.Common_Error };
-    responseHeaders: { 200: { "Set-Cookie": string } };
+    responses: { 201: Schemas.Auth_LoginSuccessResponse; default: Schemas.Common_Error };
+    responseHeaders: { 201: { "Set-Cookie": string } };
   };
   export type post_AuthOperations_logout = {
     method: "POST";
@@ -385,7 +385,7 @@ export namespace Endpoints {
     parameters: {
       header: { Cookie: string };
     };
-    responses: { 200: Schemas.Auth_RefreshSuccessResponse; default: Schemas.Common_Error };
+    responses: { 201: Schemas.Auth_RefreshSuccessResponse; default: Schemas.Common_Error };
   };
   export type post_ChildOperations_create = {
     method: "POST";

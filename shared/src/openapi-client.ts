@@ -551,8 +551,8 @@ export const post_AuthOperations_login = {
   requestFormat: z.literal("json"),
   responseFormat: z.literal("json"),
   parameters: { body: Auth_LoginRequest },
-  responses: { 200: Auth_LoginSuccessResponse, default: Common_Error },
-  responseHeaders: { 200: z.strictObject({ "Set-Cookie": z.string() }) },
+  responses: { 201: Auth_LoginSuccessResponse, default: Common_Error },
+  responseHeaders: { 201: z.strictObject({ "Set-Cookie": z.string() }) },
 };
 
 export type post_AuthOperations_logout = __TypedOpenapi.Endpoints.post_AuthOperations_logout;
@@ -573,7 +573,7 @@ export const post_AuthOperations_refresh = {
   requestFormat: z.literal("json"),
   responseFormat: z.literal("json"),
   parameters: { header: z.strictObject({ Cookie: z.string() }) },
-  responses: { 200: Auth_RefreshSuccessResponse, default: Common_Error },
+  responses: { 201: Auth_RefreshSuccessResponse, default: Common_Error },
 };
 
 export type post_ChildOperations_create = __TypedOpenapi.Endpoints.post_ChildOperations_create;
