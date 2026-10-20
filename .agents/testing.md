@@ -100,7 +100,7 @@ ts-jest работает с `isolatedModules` (`tsconfig.jest.json`) — тип�
 
 1. Dev-инфраструктура запущена (`docker compose -f docker-compose.dev.yml up -d`) — **один экземпляр** Postgres/Redis на все worktree, второй не поднимай.
 2. `cp apps/backend/.env.test.example apps/backend/.env.test` (файл не коммитится; при отсутствии берётся `.env.test.example`). Переменные: `DATABASE_URL` (БД **должна** оканчиваться на `_test` — иначе `test:int` откажется стартовать), `REDIS_*` + `REDIS_DB`, `JWT_SECRET`, данные тестового сотрудника. Настоящие `.env` тесты не читают.
-3. `pnpm test:int` сам вызывает `test/prepare-test-db.ts`: `prisma migrate deploy` на `costumes_test` (БД создаётся, если её нет, недостающие миграции накатываются; данные не удаляются).
+3. `pnpm test:int` сам вызывает `test/prepare-test-db.ts`: если БД из `DATABASE_URL` ещё нет, скрипт создаёт её через служебную БД `postgres`, затем запускает `prisma migrate deploy`. Автосоздание разрешено только для PostgreSQL БД с суффиксом `_test`; пользователь PostgreSQL должен иметь право `CREATEDB`. Повторный запуск использует существующую БД и накатывает только недостающие миграции. Сам `migrate deploy` данные не удаляет; integration-наборы очищают таблицы при старте.
 4. Полное пересоздание тестовой БД — `pnpm --filter @costumes/backend test:db:reset` (`prisma migrate reset --force`). Prisma блокирует эту команду при запуске из AI-агента без явного согласия — запускай вручную из своего терминала. Нужно после правки/отката миграций в ветке.
 5. Jest для integration запускается с `--experimental-vm-modules` (сгенерированный Prisma-клиент использует динамический `import()`), `--runInBand` (одна БД на все наборы) — это уже прописано в `test:int`.
 
