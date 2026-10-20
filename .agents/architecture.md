@@ -7,9 +7,9 @@ costumes/
 ├── apps/
 │   ├── backend/          # NestJS API (@costumes/backend)
 │   └── crm-frontend/     # React SPA (crm-frontend)
-├── shared/               # Контракт API (@costumes/shared): TypeSpec → OpenAPI → Zod + Zodios-клиент
+├── shared/               # Контракт API (@costumes/shared): TypeSpec → OpenAPI → Zod 4 + typed-openapi клиент
 │   ├── api-spec/         # *.tsp — ЕДИНСТВЕННЫЙ источник истины для API
-│   └── src/              # сгенерированный openapi-client.ts + ручные экспорты схем/типов
+│   └── src/              # generated клиент/схемы + ручные экспорты схем/типов
 ├── .agents/              # правила и знания для AI-агентов
 ├── tasks/                # учёт задач: backlog/ · in-progress/ · done/
 ├── docker-compose.yaml   # прод-стек
@@ -24,7 +24,7 @@ Workspaces: `apps/*` и `shared`.
 
 ```mermaid
 graph TD
-    FE[Frontend: React 19 / Vite / Mantine] -->|REST + Zodios| NGINX[Nginx в контейнере фронта]
+    FE[Frontend: React 19 / Vite / Mantine] -->|REST + typed-openapi / Axios| NGINX[Nginx в контейнере фронта]
     FE -->|Socket.IO| NGINX
     NGINX -->|/api/* → :5000| BE[Backend: NestJS]
     NGINX -->|/socket.io/*| BE
@@ -42,17 +42,17 @@ graph TD
 ## 3. Компоненты
 
 ### shared (контракт)
-TypeSpec (`shared/api-spec`) → `openapi.yaml` → `openapi-zod-client` → `shared/src/openapi-client.ts` (Zod-схемы + Zodios `createApiClient`). Поверх — ручные экспорты в `shared/src/{auth,children-client,costumes,visits-orders}.ts`. Подробно: [shared-api.md](./shared-api.md).
+TypeSpec (`shared/api-spec`) → `openapi.yaml` → `typed-openapi` → `shared/src/openapi-client.ts` (Zod 4 схемы + typed client). Frontend transport подключает клиент к Axios singleton и его interceptors. Поверх — ручные экспорты в `shared/src/{auth,children-client,costumes,visits-orders}.ts`. Подробно: [shared-api.md](./shared-api.md).
 
 **Как пакеты потребляют shared:**
 - **Backend** — через собранный `shared/dist` (`main: ./dist/index.js`, CommonJS). После правок shared нужен `build`.
 - **Frontend** — напрямую из `shared/src` через path alias в `tsconfig.app.json` + `vite-tsconfig-paths`. Сборка shared фронту не нужна.
 
-### backend (NestJS 11)
+### backend (NestJS 12)
 Модули: `auth`, `client-child`, `costumes`, `visit-order`, `notification`, `prisma`, `redis` (+ `queue.module`). Слои: Controller → Service → Prisma (репозиториев нет). Глобально: `ZodValidationPipe`, `PrismaClientExceptionFilter`, `SentryInterceptor`, `IdempotencyInterceptor`, логгер Pino. Подробно: [backend.md](./backend.md).
 
-### frontend (React 19 + Vite 7)
-Feature-based структура (`features/{auth,clients-children,costumes,visits}`), Mantine 8, TanStack Query 5, Zustand 5, React Router 7, Socket.IO-клиент. Подробно: [frontend.md](./frontend.md).
+### frontend (React 19 + Vite 8)
+Feature-based структура (`features/{auth,clients-children,costumes,visits}`), Mantine 9, TanStack Query 5, Zustand 5, React Router 7, Socket.IO-клиент. Подробно: [frontend.md](./frontend.md).
 
 ### Redis — для чего используется
 | Ключ | Назначение | TTL |

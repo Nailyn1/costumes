@@ -1,7 +1,7 @@
 import { Stack, Group, TextInput, Button, Divider } from "@mantine/core";
 import { IconCheck } from "@tabler/icons-react";
 import { useForm } from "@mantine/form";
-import { zodResolver } from "mantine-form-zod-resolver";
+import { schemaResolver } from "@mantine/form";
 import { CreateClientRequestSchema } from "@costumes/shared";
 import { IMaskInput } from "react-imask";
 import { useCreateClient } from "../../hooks/useClients";
@@ -12,7 +12,7 @@ export function ClientCreateForm({ onCreated }: ClientCreateFormProps) {
 
   const form = useForm({
     initialValues: { name: "", phone: "" },
-    validate: zodResolver(CreateClientRequestSchema),
+    validate: schemaResolver(CreateClientRequestSchema),
   });
 
   const handleSubmit = (values: typeof form.values) => {

@@ -61,7 +61,7 @@ interface IssueRequest {
 /** Бэкенд страницы выдачи: список «К выдаче», карточка визита и приём `POST /visits/:id/issue`. */
 function mockBackend(
   issue: (req: IssueRequest) => Response | Promise<Response> = () =>
-    new HttpResponse(null, { status: 201 }),
+    new HttpResponse(null, { status: 204 }),
 ) {
   const issued: IssueRequest[] = [];
   const cancelled: Array<Record<string, unknown>> = [];
@@ -96,7 +96,7 @@ function mockBackend(
     }),
     http.post(`${API_URL}/visits/:visitId/cancel`, async ({ request }) => {
       cancelled.push((await request.json()) as Record<string, unknown>);
-      return HttpResponse.json({ visitId: 1 });
+      return new HttpResponse(null, { status: 204 });
     }),
   );
   return { issued, cancelled, searchQueries, reservedHandler };
@@ -288,7 +288,7 @@ describe("IssuePage", () => {
     it("sends the request once even if the button is clicked twice", async () => {
       const { issued } = mockBackend(async () => {
         await new Promise((resolve) => setTimeout(resolve, 300));
-        return new HttpResponse(null, { status: 201 });
+        return new HttpResponse(null, { status: 204 });
       });
       const user = userEvent.setup();
       const dialog = await openVisitModal(user);

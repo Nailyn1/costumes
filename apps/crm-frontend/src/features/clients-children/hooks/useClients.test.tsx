@@ -76,7 +76,7 @@ describe("client mutation hooks: cache invalidation", () => {
   });
 
   it("invalidates the lists and the client card after removing from the blacklist", async () => {
-    const handler = vi.fn(() => new HttpResponse(null, { status: 200 }));
+    const handler = vi.fn(() => new HttpResponse(null, { status: 204 }));
     server.use(http.delete(`${API_URL}/clients/1/blacklist`, handler));
 
     const { invalidate } = await runMutation(useRemoveClientFromBlacklist, 1);
@@ -89,7 +89,7 @@ describe("client mutation hooks: cache invalidation", () => {
   it("invalidates the lists after creating a client", async () => {
     server.use(
       http.post(`${API_URL}/clients`, () =>
-        HttpResponse.json({ ...client, clientId: 2 }),
+        HttpResponse.json({ ...client, clientId: 2 }, { status: 201 }),
       ),
     );
 
@@ -115,7 +115,7 @@ describe("client mutation hooks: cache invalidation", () => {
 
   it("invalidates the lists and drops the cached form state after a delete", async () => {
     server.use(
-      http.delete(`${API_URL}/clients/1`, () => new HttpResponse(null, { status: 200 })),
+      http.delete(`${API_URL}/clients/1`, () => new HttpResponse(null, { status: 204 })),
     );
     const { result, queryClient } = renderHookWithProviders(useDeleteClient);
     queryClient.setQueryData(clientKeys.formState("1"), { id: "1" });

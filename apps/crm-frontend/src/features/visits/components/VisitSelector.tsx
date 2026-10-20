@@ -31,13 +31,8 @@ export const VisitSelector = memo(function VisitSelector({
 
   const handleFieldChange = useCallback(
     <K extends keyof VisitData>(key: K, value: VisitData[K]) => {
-      let stringValue: string | null = null;
-
-      if (value instanceof Date) {
-        stringValue = toISODateString(value);
-      } else {
-        stringValue = value as string | null;
-      }
+      const stringValue =
+        value instanceof Date ? toISODateString(value) : (value as string | null);
 
       const newValues: VisitData = { ...values, [key]: stringValue };
 

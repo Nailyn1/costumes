@@ -1,6 +1,6 @@
 # Backend: правила разработки (`apps/backend`)
 
-NestJS 11, TypeScript, Prisma 7 (`prisma-client` генератор + `@prisma/adapter-pg`), ioredis, BullMQ, Socket.IO, nestjs-pino, Sentry.
+NestJS 12, TypeScript, Prisma 7 (`prisma-client` генератор + `@prisma/adapter-pg`), ioredis, BullMQ, Socket.IO, nestjs-pino, Sentry.
 
 ## 1. Структура
 
@@ -46,7 +46,7 @@ src/
     return this.costumesService.createCostume(dto);
   }
   ```
-  Глобальный `ZodValidationPipe` валидирует всё, у чего есть статическое `schema`, и отдаёт 400 `{ message: 'Validation failed', errors }`.
+  Глобальный `ZodValidationPipe` валидирует всё, у чего есть статическое `schema`, и отдаёт 400 `{ statusCode: 400, message: 'Validation failed', errors }`.
 - Числовые params — `ParseIntPipe`; пагинация — `DefaultValuePipe(1|20)` + `ParseIntPipe`; ответ пагинации: `{ items, total, page, limit, hasMore }`.
 - Сложные ответы можно прогонять через `ResponseSchema.parse(...)` перед возвратом (так сделано в `createVisit`, `findOrdersNotWritten`).
 - Порядок роутов: статические пути (`search`, `list`, `issued`) объявлять **до** параметрических (`:id`), если они на одном уровне.

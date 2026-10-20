@@ -43,9 +43,9 @@ describe('buildVisitMessage', () => {
       ]),
     );
     expect(text).toContain('1. *Маша*: Эльза');
-    expect(text).toContain('Цена: 5000 | Внесено: 1000');
+    expect(text).toContain('  Цена: 5000 | Внесено: 1000');
     expect(text).toContain('2. *Миша*: Человек-паук');
-    expect(text).toContain('Цена: 4000 | Внесено: 4000');
+    expect(text).toContain('  Цена: 4000 | Внесено: 4000');
   });
 
   it('adds totals and balance for several orders', () => {

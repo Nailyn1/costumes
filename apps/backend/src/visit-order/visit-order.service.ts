@@ -32,15 +32,9 @@ import {
   VisitIssueRequestDto,
   visitNotificationResponseDto,
 } from '@costumes/shared';
-import {
-  DepositType,
-  OrderStatus,
-  Prisma,
-  VisitStatus,
-} from '../prisma/generated/client';
+import { OrderStatus, Prisma, VisitStatus } from '../prisma/generated/client';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { buildVisitMessage } from '../common/utils/visit-message.utils';
-import { VisitWithDetails } from '../notification/notification.service';
 import {
   buildIdentifierFilters,
   buildPhoneFilters,
@@ -500,7 +494,7 @@ export class VisitOrderService {
         await tx.deposit.create({
           data: {
             visitId: visitId,
-            type: deposit.type as DepositType,
+            type: deposit.type,
             amount: deposit.type === 'cash' ? (deposit.amount ?? 0) : 0,
             returned: false,
           },
@@ -769,7 +763,7 @@ export class VisitOrderService {
         inventoryCode: order.costume.inventoryCode,
         rentPrice: order.rentPrice,
         prepaymentAmount: order.prepaymentAmount,
-        tagStatus: order.tagStatus as 'written' | 'not_written',
+        tagStatus: order.tagStatus,
       })),
     };
   }
@@ -1126,7 +1120,7 @@ export class VisitOrderService {
         clientPhone: visit.client.phone,
         clientName: visit.client.name,
         deposit: {
-          type: (deposit?.type || 'none') as 'cash' | 'document' | 'none',
+          type: deposit?.type || 'none',
           amount: deposit?.amount ?? undefined,
         },
         notes: visit.notes || '',
@@ -1195,7 +1189,7 @@ export class VisitOrderService {
         clientPhone: visit.client.phone,
         clientName: visit.client.name,
         deposit: {
-          type: (deposit?.type as 'cash' | 'document' | 'none') || 'none',
+          type: deposit?.type || 'none',
           amount: deposit?.amount ? deposit.amount : undefined,
         },
       };
@@ -1301,7 +1295,7 @@ export class VisitOrderService {
 
       const costumeNames = visit.orders.map((o) => o.costume.name).join(', ');
 
-      const message = buildVisitMessage(visit as VisitWithDetails);
+      const message = buildVisitMessage(visit);
       return {
         notificationId: notif.id,
         status: notif.status,
@@ -1392,7 +1386,7 @@ export class VisitOrderService {
 
       const costumeNames = visit.orders.map((o) => o.costume.name).join(', ');
 
-      const message = buildVisitMessage(visit as VisitWithDetails);
+      const message = buildVisitMessage(visit);
 
       return {
         notificationId: notif.id,

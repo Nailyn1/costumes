@@ -2,6 +2,7 @@ import {
   ArgumentMetadata,
   BadRequestException,
   Injectable,
+  HttpStatus,
   PipeTransform,
 } from '@nestjs/common';
 import { z } from 'zod';
@@ -26,12 +27,13 @@ export class ZodValidationPipe implements PipeTransform {
       // Используем flatten или формат ошибок, который вам удобен
       throw new BadRequestException({
         message: 'Validation failed',
+        statusCode: HttpStatus.BAD_REQUEST,
         errors: result.error.format(),
       });
     }
 
     // Возвращаем чистый провалидированный объект
-    return result.data as unknown;
+    return result.data;
   }
 
   private hasSchema(metatype: unknown): metatype is ZodMetatype {

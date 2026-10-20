@@ -10,42 +10,36 @@ import { apiClient } from "src/services/apiClient";
 
 export const clientsService = {
   searchClients(searchQuery: string) {
-    return apiClient.ClientOperations_search({ queries: { q: searchQuery } });
+    return apiClient.get("/clients/search", { query: { q: searchQuery } });
   },
   createClient(data: CreateClientRequestDto) {
-    return apiClient.ClientOperations_create(data);
+    return apiClient.post("/clients", { body: data });
   },
   deleteClient(clientId: number) {
-    return apiClient.ClientOperations_delete(undefined, {
-      params: { clientId: clientId },
-    });
+    return apiClient.delete("/clients/{clientId}", { path: { clientId } });
   },
   updateClient(data: UpdateClientRequestDto, clientId: number) {
-    return apiClient.ClientOperations_update(data, { params: { clientId } });
+    return apiClient.patch("/clients/{clientId}", { body: data, path: { clientId } });
   },
   createChild(data: CreateChildRequestDto) {
-    return apiClient.ChildOperations_create(data);
+    return apiClient.post("/children", { body: data });
   },
   updateChild(data: UpdateChildRequestDto, childId: number) {
-    return apiClient.ChildOperations_update(data, { params: { childId } });
+    return apiClient.patch("/children/{childId}", { body: data, path: { childId } });
   },
   deleteChild(childId: number) {
-    return apiClient.ChildOperations_delete(undefined, { params: { childId } });
+    return apiClient.delete("/children/{childId}", { path: { childId } });
   },
   addClientInBlacklist(clientId: number, data: AddClientInBlackListRequestDto) {
-    return apiClient.ClientOperations_addClientInBlackList(data, {
-      params: { clientId },
-    });
+    return apiClient.post("/clients/{clientId}/blacklist", { body: data, path: { clientId } });
   },
   removeClientFromBlacklist(clientId: number) {
-    return apiClient.ClientOperations_removeClientFromBlackList(undefined, {
-      params: { clientId },
-    });
+    return apiClient.delete("/clients/{clientId}/blacklist", { path: { clientId } });
   },
   getClientsList(params?: GetParams) {
-    return apiClient.ClientOperations_getClientList({ queries: params });
+    return apiClient.get("/clients/list", { query: params });
   },
   getDetaileClient(clientId: number) {
-    return apiClient.ClientOperations_getClientDetail({ params: { clientId } });
+    return apiClient.get("/clients/detail/{clientId}", { path: { clientId } });
   },
 };

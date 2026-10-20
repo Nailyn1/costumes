@@ -1,4 +1,4 @@
-import { schemas } from "./openapi-client.js";
+import { schemas } from "./schemas.js";
 import { z } from "zod";
 
 export type CreateCostumesRequestDto = z.infer<

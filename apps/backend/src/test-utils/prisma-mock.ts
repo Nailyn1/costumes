@@ -20,18 +20,25 @@ function createDelegates(): PrismaMock {
   // создаются лениво, поэтому не нужно заранее перечислять всю схему.
   const modelProxy = (): ModelMock => {
     const methods = new Map<string, jest.Mock>();
-    return new Proxy({} as ModelMock, {
-      get: (_target, method: string) => {
-        if (!methods.has(method)) methods.set(method, jest.fn());
-        return methods.get(method);
+    return new Proxy(
+      {},
+      {
+        get: (_target, method: string) => {
+          if (!methods.has(method)) methods.set(method, jest.fn());
+          return methods.get(method);
+        },
+        has: () => true,
+        ownKeys: () => [...methods.keys()],
+        getOwnPropertyDescriptor: (_target, method: string) =>
+          methods.has(method)
+            ? {
+                enumerable: true,
+                configurable: true,
+                value: methods.get(method),
+              }
+            : undefined,
       },
-      has: () => true,
-      ownKeys: () => [...methods.keys()],
-      getOwnPropertyDescriptor: (_target, method: string) =>
-        methods.has(method)
-          ? { enumerable: true, configurable: true, value: methods.get(method) }
-          : undefined,
-    });
+    );
   };
 
   const transaction = jest.fn();

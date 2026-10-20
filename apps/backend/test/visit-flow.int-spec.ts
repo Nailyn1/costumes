@@ -220,14 +220,16 @@ describe('visit flow (integration)', () => {
 
   it('rejects overlapping reservations of one costume', async () => {
     const ids = await seedBooking('+77071110004');
+    const firstVisitCode = await reserveVisitCode();
     await api
       .post('/visits?sendNotification=false')
-      .send(visitBody(ids, await reserveVisitCode()))
+      .send(visitBody(ids, firstVisitCode))
       .expect(201);
 
+    const secondVisitCode = await reserveVisitCode();
     const res = await api
       .post('/visits?sendNotification=false')
-      .send(visitBody(ids, await reserveVisitCode()));
+      .send(visitBody(ids, secondVisitCode));
 
     expect(res.status).toBeGreaterThanOrEqual(400);
     expect(res.status).toBeLessThan(500);

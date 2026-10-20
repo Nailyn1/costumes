@@ -1,4 +1,5 @@
-import type { AxiosInstance, InternalAxiosRequestConfig } from "axios";
+import { AxiosError, AxiosHeaders, type AxiosInstance, type AxiosResponse, type InternalAxiosRequestConfig } from "axios";
+import { TypedStatusError } from "@costumes/shared";
 import { useAuthStore } from "src/stores/auth.store";
 import { authService } from "src/features/auth/services/auth.service";
 
@@ -51,6 +52,27 @@ export const setupInterceptors = (instance: AxiosInstance) => {
           return instance(originalRequest);
         } catch (refreshError) {
           useAuthStore.getState().logout();
+          if (refreshError instanceof TypedStatusError) {
+            const statusResponse = refreshError.response;
+            const responseHeaders = new AxiosHeaders();
+            for (const name of ["content-type", "set-cookie"]) {
+              const value = statusResponse.headers.get(name);
+              if (value) responseHeaders.set(name, value);
+            }
+            return Promise.reject(
+              new AxiosError(
+                refreshError.message,
+                "ERR_BAD_RESPONSE",
+                originalRequest,
+                undefined,
+                {
+                  ...statusResponse,
+                  config: originalRequest,
+                  headers: responseHeaders,
+                } as AxiosResponse,
+              ),
+            );
+          }
           return Promise.reject(refreshError);
         }
       }

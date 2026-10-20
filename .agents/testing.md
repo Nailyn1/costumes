@@ -117,7 +117,7 @@ Vitest + `@testing-library/react` + `@testing-library/user-event` + jsdom + MSW.
 
 Правила:
 - Чистую логику (расчёты, дефолты, форматирование) выноси из компонентов в `utils/` и тестируй как функции; вынос — отдельным `refactor(front)`-коммитом без изменения поведения (пример: `features/visits/utils/orderTotals.ts`).
-- Ответы MSW должны проходить Zod-валидацию Zodios-клиента из `@costumes/shared` — собирай их по схемам (телефон `+7XXXXXXXXXX`, имена кириллицей и т.п.).
+- Ответы MSW должны проходить Zod-валидацию typed-openapi клиента из `@costumes/shared`, включая статус HTTP по контракту; собирай их по схемам (телефон `+7XXXXXXXXXX`, имена кириллицей и т.п.).
 - Ищи элементы по тексту/роли/placeholder, как пользователь. Опции Mantine `Select` — `getByText(...).closest("[data-combobox-option]")`. Для debounce (400 мс) используй `findBy*` с `{ timeout: 3000 }`, не `setTimeout` в тесте (кроме проверки «запроса не было»).
 - Не тестируй мобильную вёрстку (`useMediaQuery` в jsdom всегда `false`).
 

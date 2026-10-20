@@ -60,7 +60,6 @@ export function WhatsAppButton(props: WhatsAppButtonProps) {
     );
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     phone,

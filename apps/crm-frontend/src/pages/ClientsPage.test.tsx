@@ -81,7 +81,7 @@ function mockClientsBackend(initial: Partial<ServerState> = {}) {
       calls.blacklistRemoved += 1;
       state.isBlacklisted = false;
       state.blacklistReason = undefined;
-      return new HttpResponse(null, { status: 200 });
+      return new HttpResponse(null, { status: 204 });
     }),
     http.patch(`${API_URL}/clients/1`, async ({ request }) => {
       const body = (await request.json()) as { name: string; phone: string };
@@ -93,7 +93,7 @@ function mockClientsBackend(initial: Partial<ServerState> = {}) {
     http.delete(`${API_URL}/clients/1`, () => {
       calls.deleted += 1;
       state.deleted = true;
-      return new HttpResponse(null, { status: 200 });
+      return new HttpResponse(null, { status: 204 });
     }),
   );
   return { state, calls };

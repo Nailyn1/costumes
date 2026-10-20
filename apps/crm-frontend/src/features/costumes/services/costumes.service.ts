@@ -7,28 +7,24 @@ import { apiClient } from "src/services/apiClient";
 
 export const costumeService = {
   createCostume(data: CreateCostumesRequestDto) {
-    return apiClient.CostumeOperations_create(data);
+    return apiClient.post("/costumes", { body: data });
   },
   updateCostume(data: UpdateCostumesRequestDto, costumeId: number) {
-    return apiClient.CostumeOperations_update(data, { params: { costumeId } });
+    return apiClient.patch("/costumes/{costumeId}", { body: data, path: { costumeId } });
   },
   deleteCostume(costumeId: number) {
-    return apiClient.CostumeOperations_delete(undefined, {
-      params: { costumeId },
-    });
+    return apiClient.delete("/costumes/{costumeId}", { path: { costumeId } });
   },
   searchCostumes(searchQuery: string) {
-    return apiClient.CostumeOperations_searchAvailability({
-      queries: { q: searchQuery },
-    });
+    return apiClient.get("/costumes/search", { query: { q: searchQuery } });
   },
   searchAvailableCostumes(
     searchQuery: string,
     stardDate: string,
     endDate: string,
   ) {
-    return apiClient.CostumeOperations_searchAvailable({
-      queries: {
+    return apiClient.get("/costumes/search-available", {
+      query: {
         q: searchQuery,
         startDate: stardDate,
         endDate: endDate,
@@ -36,13 +32,9 @@ export const costumeService = {
     });
   },
   isAvailableCostume(costumeId: number) {
-    return apiClient.CostumeOperations_getDetailedAvailability({
-      params: { costumeId },
-    });
+    return apiClient.get("/costumes/{costumeId}/availability", { path: { costumeId } });
   },
   getCostumesList(params?: GetParams) {
-    return apiClient.CostumeOperations_getCostumesList({
-      queries: params,
-    });
+    return apiClient.get("/costumes/list", { query: params });
   },
 };

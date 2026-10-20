@@ -18,7 +18,9 @@ shared/
 │   ├── tspconfig.yaml        # emitter @typespec/openapi3, OpenAPI 3.1
 │   └── tsp-output/           # сгенерированный openapi.yaml (в .gitignore)
 ├── src/
-│   ├── openapi-client.ts     # СГЕНЕРИРОВАН: Zod-схемы `schemas.*` + `createApiClient` (Zodios). Не править руками
+│   ├── openapi-client.ts     # generated typed-openapi клиент и именованные Zod 4 схемы. Не править руками
+│   ├── openapi-client.types.d.ts # generated endpoint/schema declarations
+│   ├── schemas.ts            # ручной namespace `schemas.*` для DTO экспорта
 │   ├── auth.ts               # ручные экспорты: типы *Dto и схемы *Schema
 │   ├── children-client.ts
 │   ├── costumes.ts
@@ -27,11 +29,12 @@ shared/
 └── dist/                     # результат build (CommonJS + .d.ts), в .gitignore
 ```
 
-Цепочка: **`.tsp` → `tsp compile` → `openapi.yaml` → `openapi-zod-client` → `src/openapi-client.ts` → ручной экспорт в `src/<domain>.ts` → `tsc --build` → `dist/`**.
+Цепочка: **`.tsp` → `tsp compile` → OpenAPI 3.1 → `typed-openapi` → `src/openapi-client.ts` → ручные экспорты в `src/schemas.ts` и `src/<domain>.ts` → `tsc --build` → `dist/`**. Zod 4 используется в обеих сборках; generated schemas валидируют входы и ответы.
 
 Именование, которое получается на выходе:
-- схема: `schemas.<Namespace>_<Model>` → `schemas.Costumes_CreateCostumeRequest`;
-- метод клиента: `<Interface>_<operation>` → `apiClient.CostumeOperations_create`.
+- generated schema: named export `Costumes_CreateCostumeRequest`;
+- ручной совместимый namespace `schemas.Costumes_CreateCostumeRequest` собран в `src/schemas.ts` и используется доменными экспортами.
+- frontend вызывает `apiClient.post("/costumes", { body })`, `apiClient.get("/costumes/list", { query })` и т.п.; HTTP transport — Axios singleton `apps/crm-frontend/src/services/api.ts` через `apiClient.ts` adapter.
 
 ## 2. Алгоритм изменения API (строго по порядку)
 
@@ -44,7 +47,7 @@ shared/
    cd shared
    pnpm gen:api
    ```
-   Перегенерирует `api-spec/tsp-output` и `src/openapi-client.ts`. Посмотри `git diff src/openapi-client.ts` — изменения должны быть только ожидаемыми.
+   Перегенерирует `api-spec/tsp-output`, `src/openapi-client.ts` и `src/openapi-client.types.d.ts`. Посмотри diff обоих generated файлов.
 3. **Ручной экспорт** в `shared/src/<domain>.ts` (только то, что реально используется):
    ```ts
    export type CreateCostumesRequestDto = z.infer<typeof schemas.Costumes_CreateCostumeRequest>;
@@ -61,8 +64,10 @@ shared/
 
 ## 3. Подводные камни
 
-- Сгенерированные схемы — `.passthrough()`: лишние поля не отрезаются.
-- Zod зафиксирован на v3 (`overrides` в корневом `package.json`) — этого требуют `openapi-zod-client` и `@zodios/core`. Не поднимай Zod до 4 без отдельной задачи на замену генератора/клиента.
+- Для сохранения совместимости с прежними `.passthrough()` конфигурация `typed-openapi.config.mjs` задаёт `openapi.additionalPropertiesDefault: true`; generated object schemas используют `.catchall(z.unknown())`, поэтому незнакомые поля сохраняются.
+- Frontend transport обязан использовать экспортированный Axios singleton `api`; он обеспечивает cookies, bearer token, refresh/retry и `X-Idempotency-Key`. Оставляй Axios `validateStatus` по умолчанию: custom fetcher должен переводить Axios HTTP errors с `response` в FetcherResponse после interceptor, а network errors без response — пробрасывать.
+- Передавай в `createApiClient` абсолютный base URL (`new URL(API_BASE_URL, window.location.origin)`), так как runtime формирует `URL`; при относительном `/api` не добавляй этот префикс повторно в Axios.
+- Валидация включена для обеих сторон: `validate: "both"`. Изменение генератора или transport должно покрывать request/response validation, 204, HTTP errors, 401 refresh с тем же idempotency key и неизвестные поля.
 - Если новый метод не появился в `apiClient` — проверь, что модуль импортирован в `main.tsp`, и что операция внутри `interface` с `@route`.
 - `shared/api-spec/package.json` — исторический дубль зависимостей; рабочие скрипты — в `shared/package.json`.
 - Изменение формата существующего поля = breaking change для обоих приложений: правь фронт и бэк в одной задаче.

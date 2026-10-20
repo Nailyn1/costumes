@@ -73,8 +73,8 @@ interface CostumeOperations {
   @route("search-available")
   searchAvailable(
     @query q?: string,
-    @query startDate: plainDate,
-    @query endDate: plainDate
+    @query startDate: string,
+    @query endDate: string
   ): AvailableCostume[] | Common.Error;
 
   @get

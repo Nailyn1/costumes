@@ -2,7 +2,8 @@
 
 ## 1. Требования
 
-- Node.js 22 LTS (`.nvmrc`, `engines.node` в корневом `package.json`, `node:22-alpine` в обоих Dockerfile; локально сейчас 22.16).
+- Node.js 24.9+ LTS (`.nvmrc`, `engines.node` в корневом `package.json`, `node:24-alpine` в обоих Dockerfile). Локальная системная версия 22.16 ниже минимума; перед штатным запуском обнови Node до 24.9+.
+- Генераторы Nest CLI (`nest generate`, `nest upgrade`) требуют Node 24.15+ из-за `@nestjs/schematics`. При использовании менеджера версий `.nvmrc=24` выбирает актуальный выпуск ветки 24.x.
 - pnpm 10 (версия зафиксирована в `packageManager` корневого `package.json`; включается через `corepack enable`). Менеджер пакетов — только pnpm, `npm install` не использовать.
 - Docker Desktop — для Postgres и Redis.
 - ОС разработки — Windows (PowerShell / Git Bash). Учитывай CRLF/LF (задача [T-003](../tasks/backlog/T-003-okonchaniya-strok.md)).

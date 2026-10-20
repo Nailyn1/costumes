@@ -19,72 +19,66 @@ export interface GetParams {
 }
 export const visitsService = {
   getPreviewCode() {
-    return apiClient.VisitOperation_previewCode(undefined);
+    return apiClient.post("/visits/preview-code");
   },
   createVisit(data: CreateVisitRequestDto, sendNotification: boolean) {
-    return apiClient.VisitOperation_create(data, {
-      queries: { sendNotification },
+    return apiClient.post("/visits", {
+      body: data,
+      query: { sendNotification },
     });
   },
   getVisitNotWritten() {
-    return apiClient.VisitOperation_getNotWritten(undefined);
+    return apiClient.get("/visits/not_written");
   },
   markTagVisitWritten(orderId: number) {
-    return apiClient.VisitOperation_markTagWritten(undefined, {
-      params: { orderId },
-    });
+    return apiClient.post("/visits/{orderId}/mark-tag-written", { path: { orderId } });
   },
   getVisitsReserved(params?: GetReservedParams) {
-    return apiClient.VisitOperation_getReserved({
-      queries: params,
-    });
+    return apiClient.get("/visits/reserved", { query: params });
   },
   searchVisits(search: string) {
-    return apiClient.VisitOperation_search({ queries: { q: search } });
+    return apiClient.get("/visits/search", { query: { q: search } });
   },
   getVisitForIssue(visitId: number) {
-    return apiClient.VisitOperation_getForIssue({ params: { visitId } });
+    return apiClient.get("/visits/{visitId}/for-issue", { path: { visitId } });
   },
   cancelVisit(data: visitCancelRequestDto, visitId: number) {
-    return apiClient.VisitOperation_cancel(data, { params: { visitId } });
+    return apiClient.post("/visits/{visitId}/cancel", { body: data, path: { visitId } });
   },
   issueVisit(data: VisitIssueRequestDto, visitId: number) {
-    return apiClient.VisitOperation_issue(data, { params: { visitId } });
+    return apiClient.post("/visits/{visitId}/issue", { body: data, path: { visitId } });
   },
   returnSearchVisits(search: string) {
-    return apiClient.VisitOperation_searchForReturn({ queries: { q: search } });
+    return apiClient.get("/visits/return-search", { query: { q: search } });
   },
   getVisitForReturn(visitId: number) {
-    return apiClient.VisitOperation_getForReturn({ params: { visitId } });
+    return apiClient.get("/visits/{visitId}/for-return", { path: { visitId } });
   },
   completeReturnVisit(data: visitCompleteReturnRequestDto, visitId: number) {
-    return apiClient.VisitOperation_completeReturn(data, {
-      params: { visitId },
+    return apiClient.post("/visits/{visitId}/complete-return", {
+      body: data,
+      path: { visitId },
     });
   },
   getUnreturnedDeposits(params?: GetParams) {
-    return apiClient.VisitOperation_getUnreturnedDeposits({
-      queries: params,
-    });
+    return apiClient.get("/visits/unreturned-deposits", { query: params });
   },
   markDepositReturned(notes: string, visitId: number) {
-    return apiClient.VisitOperation_markDepositReturned(
-      { notes },
-      { params: { visitId } },
-    );
+    return apiClient.post("/visits/{visitId}/mark-deposit-returned", {
+      body: { notes },
+      path: { visitId },
+    });
   },
   getIssuedVisits(params?: GetParams) {
-    return apiClient.VisitOperation_getIssuedVisits({ queries: params });
+    return apiClient.get("/visits/issued", { query: params });
   },
   getVisitsNotification(params?: GetParams) {
-    return apiClient.VisitOperation_getVisitNotification({ queries: params });
+    return apiClient.get("/visits/notification", { query: params });
   },
   visitUnissue(visitId: number) {
-    return apiClient.VisitOperation_unissue(undefined, { params: { visitId } });
+    return apiClient.post("/visits/{visitId}/unissue", { path: { visitId } });
   },
   searchNotification(search: string) {
-    return apiClient.VisitOperation_searchNotification({
-      queries: { q: search },
-    });
+    return apiClient.get("/visits/notification-search", { query: { q: search } });
   },
 };

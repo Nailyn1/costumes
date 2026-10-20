@@ -79,7 +79,7 @@ function mockBackend(
   const costumeQueries: URLSearchParams[] = [];
   // Контракт preview-code возвращает JSON-строку, которую клиент разбирает как код.
   const previewCode = vi.fn(
-    () => HttpResponse.json("1648"),
+    () => HttpResponse.json("1648", { status: 201 }),
   );
   server.use(
     http.get(`${API_URL}/clients/search`, () => HttpResponse.json([aliya])),
@@ -98,7 +98,7 @@ function mockBackend(
       created.push(captured);
       return createVisit
         ? createVisit(captured)
-        : HttpResponse.json(createdVisit);
+        : HttpResponse.json(createdVisit, { status: 201 });
     }),
   );
   return { created, costumeQueries, previewCode };
@@ -128,7 +128,7 @@ async function pickChild(user: User, name: string) {
 async function findCostumeInput() {
   const title = await screen.findByText("Костюм", { selector: "p" });
   const block = title.parentElement?.parentElement as HTMLElement;
-  return within(block).getByRole("textbox");
+  return within(block).getByRole("combobox");
 }
 
 async function pickCostume(user: User, query: string, optionText: RegExp) {
@@ -345,7 +345,7 @@ describe("CreateBookingPage", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const { created } = mockBackend(() =>
       HttpResponse.json(
-        { statusCode: 400, message: "Клиент находится в чёрном списке" },
+        { statusCode: 400, message: "Клиент находится в чёрном списке", error: "Bad Request" },
         { status: 400 },
       ),
     );
@@ -411,7 +411,7 @@ describe("CreateBookingPage", () => {
           phone: "+77075554433",
           children: [],
           isBlacklisted: false,
-        });
+        }, { status: 201 });
       }),
     );
     const user = userEvent.setup();

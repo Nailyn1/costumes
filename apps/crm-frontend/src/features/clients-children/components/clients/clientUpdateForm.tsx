@@ -1,7 +1,7 @@
 import { Stack, Group, TextInput, Button } from "@mantine/core";
 import { IconCheck, IconX } from "@tabler/icons-react";
 import { useForm } from "@mantine/form";
-import { zodResolver } from "mantine-form-zod-resolver";
+import { schemaResolver } from "@mantine/form";
 import { IMaskInput } from "react-imask";
 import { UpdateClientRequestSchema } from "@costumes/shared";
 import { useUpdateClient } from "../../hooks/useClients";
@@ -19,7 +19,7 @@ export function ClientUpdateForm({
       name: client.name,
       phone: client.phone,
     },
-    validate: zodResolver(UpdateClientRequestSchema),
+    validate: schemaResolver(UpdateClientRequestSchema),
   });
 
   const handleSubmit = (values: typeof form.values) => {

@@ -3,9 +3,9 @@
 Внутренняя CRM точки проката детских костюмов: клиенты и дети, костюмы, бронирование (визиты и заказы), бирки, выдача, возврат, залоги, WhatsApp-уведомления клиентам. Одна точка, несколько сотрудников без ролей, работа с ПК и телефона. Пиковый сезон — новогодние праздники; система в проде с прошлого сезона (~500 аренд).
 
 Монорепозиторий (pnpm workspaces):
-- `apps/backend` — NestJS 11, Prisma 7, PostgreSQL 15, Redis 7, BullMQ, Socket.IO
-- `apps/crm-frontend` — React 19, Vite 7, Mantine 8, TanStack Query 5, Zustand 5
-- `shared` — контракт API: TypeSpec → OpenAPI → Zod-схемы + Zodios-клиент
+- `apps/backend` — NestJS 12, Prisma 7, PostgreSQL 15, Redis 7, BullMQ, Socket.IO
+- `apps/crm-frontend` — React 19, Vite 8, Mantine 9, TanStack Query 5, Zustand 5
+- `shared` — контракт API: TypeSpec → OpenAPI → Zod 4-схемы + typed-openapi-клиент
 
 ## Документация — читай перед работой
 

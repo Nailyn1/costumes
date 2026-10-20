@@ -79,7 +79,7 @@ export function NotificationCard({
     const result = phoneSchema.safeParse(cleanPhone);
 
     if (!result.success) {
-      setPhoneError(result.error.errors[0].message);
+      setPhoneError(result.error.issues[0]?.message ?? "Неверный формат телефона");
       return;
     }
 
@@ -165,7 +165,7 @@ export function NotificationCard({
             </Box>
           </Box>
 
-          <Collapse in={isExpanded}>
+          <Collapse expanded={isExpanded}>
             <Divider mb="sm" variant="dashed" />
             <Stack gap="sm">
               <Text size="sm" fw={500} ta="center" c="dimmed">

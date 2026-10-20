@@ -54,6 +54,7 @@ export class WhatsappProvider {
       this.logger.error(`Green-API Error: ${errorMessage}`);
       throw new Error(
         `Ошибка при отправке сообщения в WhatsApp: ${errorMessage}`,
+        { cause: error },
       );
     }
   }

@@ -17,9 +17,7 @@ describe('CostumesService', () => {
 
   it('creates a costume and returns the database generated inventory code', async () => {
     prisma.costume.create.mockResolvedValue(makeCostume());
-    await expect(
-      service().createCostume({ name: 'Эльза' } as never),
-    ).resolves.toEqual({
+    await expect(service().createCostume({ name: 'Эльза' })).resolves.toEqual({
       costumeId: 1,
       name: 'Эльза',
       inventoryCode: 'C-0001',
@@ -32,7 +30,7 @@ describe('CostumesService', () => {
   it('updates a costume name', async () => {
     prisma.costume.update.mockResolvedValue(makeCostume({ name: 'Анна' }));
     await expect(
-      service().updateCostume({ name: 'Анна' } as never, 1),
+      service().updateCostume({ name: 'Анна' }, 1),
     ).resolves.toMatchObject({
       name: 'Анна',
       inventoryCode: 'C-0001',
@@ -45,9 +43,9 @@ describe('CostumesService', () => {
 
   it('rejects updating a costume that was already deleted', async () => {
     prisma.costume.update.mockRejectedValue({ code: 'P2025' });
-    await expect(
-      service().updateCostume({ name: 'Анна' } as never, 1),
-    ).rejects.toThrow(new NotFoundException('Костюм с ID 1 не найден'));
+    await expect(service().updateCostume({ name: 'Анна' }, 1)).rejects.toThrow(
+      new NotFoundException('Костюм с ID 1 не найден'),
+    );
     expect(prisma.costume.update).toHaveBeenCalledWith({
       where: { id: 1, deletedAt: null },
       data: { name: 'Анна' },

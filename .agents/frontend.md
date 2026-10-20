@@ -1,6 +1,6 @@
 # Frontend: правила разработки (`apps/crm-frontend`)
 
-React 19, Vite 7, TypeScript (strict), Mantine 8 (`core`, `dates`, `form`, `hooks`, `notifications`), TanStack Query 5, Zustand 5, React Router 7, Zodios-клиент из `@costumes/shared`, Socket.IO-клиент, dayjs, `@tabler/icons-react`, Sentry.
+React 19, Vite 8, TypeScript (strict), Mantine 9 (`core`, `dates`, `form`, `hooks`, `notifications`), TanStack Query 5, Zustand 5, React Router 7, typed-openapi клиент из `@costumes/shared` через Axios singleton, Socket.IO-клиент, dayjs, `@tabler/icons-react`, Sentry.
 
 ## 1. Структура (feature-based)
 
@@ -19,7 +19,7 @@ src/
 │   ├── services/           # тонкие обёртки над apiClient
 │   └── types/              # локальные типы пропсов/форм (не API-типы!)
 ├── components/             # общий UI: MainLayout, AddButtonWithModal, ConfirmDeleteModal, MoneyInput, selection/*
-├── services/               # api.ts (axios), apiClient.ts (Zodios), interceptors.ts, socket.client.ts
+├── services/               # api.ts (axios), apiClient.ts (typed-openapi/Axios adapter), interceptors.ts, socket.client.ts
 ├── stores/                 # Zustand: auth.store.ts
 └── utils/                  # handleError.ts, formatters.ts
 ```
@@ -28,13 +28,13 @@ src/
 
 ## 2. Данные и API
 
-Цепочка всегда одна: **component → hook (React Query) → service → `apiClient` (Zodios) → backend**.
+Цепочка всегда одна: **component → hook (React Query) → service → `apiClient` (typed-openapi → Axios singleton) → backend**.
 
 ```ts
 // services/costumes.service.ts
 export const costumeService = {
   createCostume(data: CreateCostumesRequestDto) {
-    return apiClient.CostumeOperations_create(data);
+    return apiClient.post("/costumes", { body: data });
   },
 };
 
@@ -56,7 +56,7 @@ export function useCreateCostume() {
 
 Правила:
 - API-типы и схемы — **только из `@costumes/shared`**. Не дублируй их в `types/`.
-- Не вызывай `axios`/`api` напрямую — только `apiClient.<OperationId>` (имена операций — из TypeSpec `@route`/interface, напр. `CostumeOperations_create`).
+- Не вызывай `axios`/`api` напрямую — используй typed-openapi методы `apiClient.get/post/patch/delete` с путём и параметрами из OpenAPI; transport настроен поверх Axios singleton.
 - Query keys — фабрика `<domain>Keys` в файле хуков; инвалидация после мутаций — по префиксу (`["visits"]`, `costumesKeys.lists()`). Мутации, меняющие визиты, обычно инвалидируют и `["visits"]`, и `["costumes"]`.
 - Списки с подгрузкой — `useInfiniteQuery` + `hasMore`/`page` из ответа + `react-intersection-observer`.
 - Live-поиск: `useDebouncedValue(value, 300–500)`, `enabled: query.trim().length >= 2`, `placeholderData: keepPreviousData`.
@@ -77,7 +77,7 @@ export function useCreateCostume() {
 
 ## 4. Формы
 
-- Только `useForm` из `@mantine/form` + `zodResolver(<Schema>)` из `mantine-form-zod-resolver`; схема — из `@costumes/shared`.
+- Только `useForm` из `@mantine/form` + `schemaResolver(<Schema>)`; схема — из `@costumes/shared`.
 - Вложенные списки (дети/заказы в брони) — `form.insertListItem` / `removeListItem`.
 - Автоподсчёты (остаток, итоги) — вычисляй из `form.values` при рендере, не храни отдельно.
 

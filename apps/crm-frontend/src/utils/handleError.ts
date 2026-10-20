@@ -1,5 +1,6 @@
 import { AxiosError } from "axios";
 import * as Sentry from "@sentry/react";
+import { TypedStatusError } from "@costumes/shared";
 
 type HandleErrorOptions = {
   title: string;
@@ -21,7 +22,7 @@ export function handleError(
     console.error(`[${title}]:`, error);
   }
 
-  if (error instanceof AxiosError) {
+  if (error instanceof AxiosError || error instanceof TypedStatusError) {
     const status = error.response?.status;
 
     if (status && silentStatuses.includes(status)) {
@@ -29,8 +30,8 @@ export function handleError(
     }
 
     const message =
-      error.response?.data?.message ||
-      error.response?.data?.error ||
+      (error.response?.data as { message?: string; error?: string } | undefined)?.message ||
+      (error.response?.data as { message?: string; error?: string } | undefined)?.error ||
       error.message;
 
     Sentry.captureException(error, {

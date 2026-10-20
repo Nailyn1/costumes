@@ -307,7 +307,7 @@ describe('VisitOrderService', () => {
     it('rejects cancel', async () => {
       prismaMock.visit.findFirst.mockResolvedValue(null);
 
-      await expect(service.visitCancel(1, {} as never)).rejects.toThrow(
+      await expect(service.visitCancel(1, {})).rejects.toThrow(
         new NotFoundException('Визит с ID 1 не найден'),
       );
       expect(prismaMock.visit.findFirst).toHaveBeenCalledWith({
@@ -372,7 +372,7 @@ describe('VisitOrderService', () => {
 
       await service.visitCompleteReturn(1, {
         depositReturned: false,
-      } as never);
+      });
 
       expect(prismaMock.visit.findFirst).toHaveBeenCalledWith({
         where: { id: 1, deletedAt: null },
@@ -395,7 +395,7 @@ describe('VisitOrderService', () => {
         notes: null,
       });
 
-      await service.visitCancel(1, {} as never);
+      await service.visitCancel(1, {});
 
       expect(txMock.order.updateMany).toHaveBeenCalledWith({
         where: { visitId: 1, deletedAt: null },
@@ -465,7 +465,7 @@ describe('VisitOrderService', () => {
         orders: [],
         notes: null,
         deletedAt: new Date('2026-12-01T00:00:00Z'),
-      } as never);
+      });
       prismaMock.visit.findFirst.mockResolvedValue(null);
 
       await expect(service.visitForIssue(1)).rejects.toThrow(
@@ -730,7 +730,7 @@ describe('VisitOrderService remaining business rules', () => {
               prepaymentAmount: 1000,
             },
           ],
-        }) as never,
+        }),
         false,
       );
       expect(txMock.visit.create).toHaveBeenCalledTimes(1);
@@ -751,7 +751,7 @@ describe('VisitOrderService remaining business rules', () => {
           { childId: 1, costumeId: 1, rentPrice: 5000, prepaymentAmount: 5000 },
         ],
       });
-      await service.createVisit(data as never, false);
+      await service.createVisit(data, false);
       const createCalls = txMock.visit.create.mock.calls as unknown as Array<
         [{ data: { startDateTime: Date; endDateTime: Date } }]
       >;
@@ -780,7 +780,7 @@ describe('VisitOrderService remaining business rules', () => {
         makeCreateVisitRequest({
           issueTimeFrom: '18:30',
           returnTimeUntil: '18:00',
-        }) as never,
+        }),
         true,
       );
       const createCalls = txMock.visit.create.mock.calls as unknown as Array<
@@ -1161,10 +1161,10 @@ describe('VisitOrderService remaining business rules', () => {
           deposits: [],
         });
       await expect(
-        service.visitCompleteReturn(1, { depositReturned: false } as never),
+        service.visitCompleteReturn(1, { depositReturned: false }),
       ).rejects.toMatchObject({ status: 400 });
       await expect(
-        service.visitCompleteReturn(1, { depositReturned: false } as never),
+        service.visitCompleteReturn(1, { depositReturned: false }),
       ).rejects.toMatchObject({ status: 400 });
       expect(txMock.order.updateMany).not.toHaveBeenCalled();
     });
@@ -1179,7 +1179,7 @@ describe('VisitOrderService remaining business rules', () => {
       await service.visitCompleteReturn(1, {
         depositReturned: false,
         notes: 'всё цело',
-      } as never);
+      });
       expect(txMock.order.updateMany).toHaveBeenCalledWith({
         where: { visitId: 1, deletedAt: null },
         data: { status: 'returned' },
@@ -1198,7 +1198,7 @@ describe('VisitOrderService remaining business rules', () => {
         deposits: [makeDeposit({ type: 'cash' })],
       });
       txMock.visit.update.mockResolvedValue(makeVisit({ status: 'completed' }));
-      await service.visitCompleteReturn(1, { depositReturned: true } as never);
+      await service.visitCompleteReturn(1, { depositReturned: true });
       expect(txMock.deposit.update).toHaveBeenCalledWith({
         where: { id: 1, deletedAt: null },
         data: { returned: true },
@@ -1209,7 +1209,7 @@ describe('VisitOrderService remaining business rules', () => {
       prismaMock.visit.findFirst.mockResolvedValue(
         makeVisit({ notes: 'старое' }),
       );
-      await service.visitCancel(1, { reason: 'ошибка' } as never);
+      await service.visitCancel(1, { reason: 'ошибка' });
       expect(txMock.order.updateMany).toHaveBeenCalledWith({
         where: { visitId: 1, deletedAt: null },
         data: { status: 'cancelled' },
@@ -1227,7 +1227,7 @@ describe('VisitOrderService remaining business rules', () => {
       prismaMock.visit.findFirst.mockResolvedValue(
         makeVisit({ status: 'issued' }),
       );
-      await expect(service.visitCancel(1, {} as never)).rejects.toMatchObject({
+      await expect(service.visitCancel(1, {})).rejects.toMatchObject({
         status: 400,
       });
       expect(txMock.order.updateMany).not.toHaveBeenCalled();

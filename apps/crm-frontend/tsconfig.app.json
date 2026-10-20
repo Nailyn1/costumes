@@ -7,10 +7,10 @@
     "module": "ESNext",
     "types": ["vite/client"],
     "skipLibCheck": true,
-    "baseUrl": ".",
     "paths": {
       "@costumes/shared": ["../../shared/src/index.ts"],
-      "@costumes/shared/*": ["../../shared/src/*"]
+      "@costumes/shared/*": ["../../shared/src/*"],
+      "src/*": ["./src/*"]
     },
 
     /* Bundler mode */

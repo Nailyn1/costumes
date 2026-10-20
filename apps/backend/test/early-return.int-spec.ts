@@ -49,9 +49,10 @@ describe('early costume return (integration)', () => {
       orders: [{ childId, costumeId, rentPrice: 5000, prepaymentAmount: 1000 }],
     });
 
+    const firstVisitCode = await reserveVisitCode();
     await api
       .post('/visits?sendNotification=false')
-      .send(visitBody(await reserveVisitCode(), '2026-12-25'))
+      .send(visitBody(firstVisitCode, '2026-12-25'))
       .expect(201);
 
     const original = await t.prisma.visit.findFirstOrThrow({
@@ -73,9 +74,10 @@ describe('early costume return (integration)', () => {
     expect(returnedOrder.status).toBe('returned');
     expect(original.endDateTime.toISOString()).toBe('2026-12-25T19:00:00.000Z');
 
+    const secondVisitCode = await reserveVisitCode();
     const nextBooking = await api
       .post('/visits?sendNotification=false')
-      .send(visitBody(await reserveVisitCode(), '2026-12-23'))
+      .send(visitBody(secondVisitCode, '2026-12-23'))
       .expect(201);
 
     expect(nextBooking.status).toBe(201);

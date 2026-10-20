@@ -7,16 +7,16 @@ import type {
 
 export const authService = {
   login(data: LoginRequestDto): Promise<LoginSuccessResponseDto> {
-    return apiClient.AuthOperations_login(data);
+    return apiClient.post("/auth/login", { body: data });
   },
 
   logout() {
-    return apiClient.AuthOperations_logout(undefined);
+    return apiClient.post("/auth/logout");
   },
 
   refresh(): Promise<RefreshSuccessResponseDto> {
-    return apiClient.AuthOperations_refresh(undefined, {
-      headers: {
+    return apiClient.post("/auth/refresh", {
+      header: {
         Cookie: "",
       },
     });

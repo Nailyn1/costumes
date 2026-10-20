@@ -64,7 +64,7 @@ export const SelectionManager = memo(function SelectionManager({
           <>
             {!isCreating && renderSearch}
 
-            <Collapse in={isCreating}>
+            <Collapse expanded={isCreating}>
               <div key={isCreating ? "active" : "reset"}>{renderCreate}</div>
             </Collapse>
           </>

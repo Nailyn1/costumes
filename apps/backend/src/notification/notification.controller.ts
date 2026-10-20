@@ -62,9 +62,7 @@ export interface GreenApiStateWebhook {
 }
 
 export type GreenApiWebhook =
-  | GreenApiStatusWebhook
-  | GreenApiIncomingWebhook
-  | GreenApiStateWebhook;
+  GreenApiStatusWebhook | GreenApiIncomingWebhook | GreenApiStateWebhook;
 
 @Controller('webhooks/whatsapp')
 export class NotificationController {

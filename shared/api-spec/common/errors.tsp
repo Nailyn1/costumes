@@ -2,6 +2,7 @@ namespace Common;
 
 @error
 model Error{
-    code: int32;
+    statusCode: int32;
     message: string;
+    error?: string;
 }

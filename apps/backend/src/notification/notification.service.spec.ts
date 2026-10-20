@@ -327,7 +327,9 @@ describe('NotificationService', () => {
 
       expect(whatsapp.sendMessage).toHaveBeenCalledWith(
         '+77071234567',
-        expect.stringContaining('*1234*'),
+        expect.stringContaining(
+          '1. *Маша*: Эльза\n  Цена: 5000 | Внесено: 1000',
+        ),
       );
       expect(prisma.notification.update).toHaveBeenCalledWith({
         where: { id: 4 },

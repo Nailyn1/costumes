@@ -11,12 +11,12 @@
     "test:int": "pnpm --filter @costumes/backend test:int"
   },
   "devDependencies": {
-    "concurrently": "^9.2.1",
+    "concurrently": "^10.0.6",
     "typescript": "catalog:"
   },
   "private": true,
   "packageManager": "pnpm@10.18.3",
   "engines": {
-    "node": ">=22"
+    "node": ">=24.9.0"
   }
 }
