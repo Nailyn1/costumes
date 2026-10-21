@@ -58,8 +58,10 @@ import {
   validateVisitSettlement,
   VisitBalanceError,
   type VisitBalance,
+  type VisitMoneyOperationInput,
   type VisitSettlementKind,
 } from './domain/visit-balance';
+import { Visit, VisitRuleError, type VisitSnapshot } from './domain/visit';
 
 const VISIT_ISSUE_REJECT_MESSAGES: Record<
   Exclude<VisitStatus, 'reserved'>,
@@ -102,6 +104,69 @@ export class VisitOrderService {
         EXCEEDS_BALANCE: 'Сумма превышает текущий долг или переплату',
       };
       throw new BadRequestException(messages[error.code]);
+    }
+  }
+
+  private visitDomain(
+    snapshot: Omit<VisitSnapshot, 'moneyOperations'> & {
+      moneyOperations: ReadonlyArray<VisitMoneyOperationInput>;
+    },
+  ): Visit {
+    return Visit.from({
+      ...snapshot,
+      moneyOperations: snapshot.moneyOperations.map((operation) => ({
+        kind: operation.kind,
+        amount: operation.amount,
+        voided: Boolean(operation.voidedAt),
+      })),
+    });
+  }
+
+  private rethrowVisitRule(error: unknown): never {
+    if (!(error instanceof VisitRuleError)) throw error;
+    switch (error.code) {
+      case 'START_AFTER_RETURN':
+        throw new BadRequestException(
+          'Дата начала не может быть позже даты возврата',
+        );
+      case 'DUPLICATE_COSTUME':
+        throw new BadRequestException(
+          'Бронирование невозможно: один костюм указан в нескольких заказах одного визита',
+        );
+      case 'PREPAYMENT_EXCEEDS_RENT':
+        throw new BadRequestException(
+          `Цена аренды (${error.context.rentPrice}) не может быть меньше предоплаты (${error.context.prepaymentAmount})`,
+        );
+      case 'INVALID_ISSUE_PAYMENT':
+        throw new BadRequestException(
+          'Доплата должна быть неотрицательной суммой',
+        );
+      case 'CANNOT_ISSUE':
+        throw new BadRequestException(
+          VISIT_ISSUE_REJECT_MESSAGES[
+            error.context.status as Exclude<VisitStatus, 'reserved'>
+          ],
+        );
+      case 'CANNOT_UNISSUE':
+        throw new BadRequestException(
+          'Отменить выдачу можно только для визита со статусом "Выдан" (issued)',
+        );
+      case 'CANNOT_COMPLETE_RETURN':
+        throw new BadRequestException('Завершить можно только выданный визит');
+      case 'ORDERS_NOT_ISSUED':
+        throw new BadRequestException(
+          'Нельзя завершить визит: не все заказы в этом визите имеют статус "Выдан"',
+        );
+      case 'CANNOT_CANCEL':
+        throw new BadRequestException(
+          `Невозможно отменить визит в статусе "${error.context.status}". Отмена доступна только для статуса "reserved".`,
+        );
+      case 'BALANCE_NOT_AVAILABLE':
+        throw new BadRequestException('Баланс доступен после выдачи визита');
+      case 'CANNOT_SETTLE':
+        throw new BadRequestException(
+          'Погасить долг или вернуть переплату можно после завершения визита',
+        );
     }
   }
 
@@ -153,17 +218,14 @@ export class VisitOrderService {
       data.returnTimeUntil,
     );
 
-    if (fullStartDt > fullEndDt) {
-      throw new BadRequestException(
-        'Дата начала не может быть позже даты возврата',
-      );
-    }
-
-    const costumeIds = data.orders.map((order) => order.costumeId);
-    if (new Set(costumeIds).size !== costumeIds.length) {
-      throw new BadRequestException(
-        'Бронирование невозможно: один костюм указан в нескольких заказах одного визита',
-      );
+    try {
+      Visit.validateCreationStructure({
+        startDateTime: fullStartDt,
+        endDateTime: fullEndDt,
+        orders: data.orders,
+      });
+    } catch (error) {
+      this.rethrowVisitRule(error);
     }
 
     const redisKey = `visit_code_lock:${data.visitCode}`;
@@ -174,12 +236,10 @@ export class VisitOrderService {
       );
     }
 
-    for (const order of data.orders) {
-      if (order.rentPrice < order.prepaymentAmount) {
-        throw new BadRequestException(
-          `Цена аренды (${order.rentPrice}) не может быть меньше предоплаты (${order.prepaymentAmount})`,
-        );
-      }
+    try {
+      Visit.validateCreationMoney(data.orders);
+    } catch (error) {
+      this.rethrowVisitRule(error);
     }
 
     try {
@@ -474,10 +534,10 @@ export class VisitOrderService {
 
   async visitIssue(data: VisitIssueRequestDto, visitId: number): Promise<void> {
     const { deposit, additionalPayment } = data;
-    if (!Number.isSafeInteger(additionalPayment) || additionalPayment < 0) {
-      throw new BadRequestException(
-        'Доплата должна быть неотрицательной суммой',
-      );
+    try {
+      Visit.validateIssuePayment(additionalPayment);
+    } catch (error) {
+      this.rethrowVisitRule(error);
     }
 
     await this.prisma.$transaction(async (tx) => {
@@ -490,49 +550,43 @@ export class VisitOrderService {
         throw new NotFoundException(`Визит с ID ${visitId} не найден`);
       }
 
-      if (visit.status !== 'reserved') {
-        throw new BadRequestException(
-          VISIT_ISSUE_REJECT_MESSAGES[visit.status],
-        );
+      let decision;
+      try {
+        decision = this.visitDomain({
+          status: visit.status,
+          notes: visit.notes,
+          orders: visit.orders,
+          moneyOperations: [],
+        }).issue(additionalPayment, data.notes);
+      } catch (error) {
+        this.rethrowVisitRule(error);
       }
 
-      let remainingPayment = additionalPayment;
-
-      for (const order of visit.orders) {
-        const totalCost = order.rentPrice;
-        const alreadyPaid = order.prepaymentAmount;
-        const debt = totalCost - alreadyPaid;
-
-        const paymentForThisOrder = Math.min(remainingPayment, debt);
+      for (const orderPayment of decision.orderPayments) {
         await tx.order.update({
-          where: { id: order.id, deletedAt: null },
+          where: { id: orderPayment.orderId, deletedAt: null },
           data: {
-            status: 'issued',
-            finalPayment: paymentForThisOrder,
+            status: decision.orderStatus,
+            finalPayment: orderPayment.finalPayment,
           },
         });
-        remainingPayment -= paymentForThisOrder;
       }
 
-      if (additionalPayment > 0) {
+      if (decision.issuePayment !== null) {
         await tx.visitMoneyOperation.create({
           data: {
             visitId,
             kind: 'issue_payment',
-            amount: additionalPayment,
+            amount: decision.issuePayment,
           },
         });
       }
 
-      const updatedNotes = data.notes
-        ? `${visit.notes ? `${visit.notes}\n` : ''}${data.notes}`
-        : visit.notes;
-
       await tx.visit.update({
         where: { id: visitId },
         data: {
-          status: 'issued',
-          notes: updatedNotes,
+          status: decision.visitStatus,
+          notes: decision.notes,
         },
       });
 
@@ -569,16 +623,22 @@ export class VisitOrderService {
         throw new NotFoundException(`Визит с ID ${visitId} не найден`);
       }
 
-      if (visit.status !== 'issued') {
-        throw new BadRequestException(
-          'Отменить выдачу можно только для визита со статусом "Выдан" (issued)',
-        );
+      let decision;
+      try {
+        decision = this.visitDomain({
+          status: visit.status,
+          notes: visit.notes,
+          orders: [],
+          moneyOperations: [],
+        }).unissue();
+      } catch (error) {
+        this.rethrowVisitRule(error);
       }
 
       await tx.order.updateMany({
         where: { visitId: visitId, deletedAt: null },
         data: {
-          status: 'reserved',
+          status: decision.orderStatus,
           finalPayment: null,
         },
       });
@@ -586,7 +646,7 @@ export class VisitOrderService {
       await tx.visit.update({
         where: { id: visitId },
         data: {
-          status: 'reserved',
+          status: decision.visitStatus,
         },
       });
 
@@ -1123,34 +1183,24 @@ export class VisitOrderService {
       throw new NotFoundException(`Визит №${visitId} не найден`);
     }
 
-    if (visit.status !== 'issued') {
-      throw new BadRequestException('Завершить можно только выданный визит');
+    let decision;
+    try {
+      decision = this.visitDomain(visit).completeReturn(notes, settlement);
+    } catch (error) {
+      if (error instanceof VisitBalanceError && settlement) {
+        this.assertValidSettlement(
+          this.visitDomain(visit).balance(),
+          settlement,
+        );
+      }
+      this.rethrowVisitRule(error);
     }
-
-    const hasInvalidOrders = visit.orders.some(
-      (order) => order.status !== OrderStatus.issued,
-    );
-
-    if (hasInvalidOrders) {
-      throw new BadRequestException(
-        'Нельзя завершить визит: не все заказы в этом визите имеют статус "Выдан"',
-      );
-    }
-
-    const balance = calculateVisitBalance({
-      orders: visit.orders,
-      operations: visit.moneyOperations ?? [],
-    });
-    if (settlement) this.assertValidSettlement(balance, settlement);
 
     const updatedVisit = await this.prisma.$transaction(async (tx) => {
-      const newNotes = notes
-        ? `${visit.notes || ''}\n[Завершение]: ${notes}`.trim()
-        : visit.notes;
       const completedVisit = await tx.visit
         .update({
           where: { id: visitId, status: 'issued', deletedAt: null },
-          data: { status: 'completed', notes: newNotes },
+          data: { status: decision.visitStatus, notes: decision.notes },
         })
         .catch((error: unknown) => {
           if (
@@ -1161,14 +1211,18 @@ export class VisitOrderService {
           }
           throw error;
         });
-      if (settlement) {
+      if (decision.settlement) {
         await tx.visitMoneyOperation.create({
-          data: { visitId, kind: settlement.kind, amount: settlement.amount },
+          data: {
+            visitId,
+            kind: decision.settlement.kind,
+            amount: decision.settlement.amount,
+          },
         });
       }
       await tx.order.updateMany({
         where: { visitId: visitId, deletedAt: null },
-        data: { status: OrderStatus.returned },
+        data: { status: decision.orderStatus },
       });
 
       const deposit = visit.deposits[0];
@@ -1187,15 +1241,7 @@ export class VisitOrderService {
       visitCode: updatedVisit.visitCode,
       status: updatedVisit.status as 'completed',
       message: 'Визит успешно завершен, все костюмы возвращены',
-      balance: settlement
-        ? calculateVisitBalance({
-            orders: visit.orders,
-            operations: [
-              ...(visit.moneyOperations ?? []),
-              { kind: settlement.kind, amount: settlement.amount },
-            ],
-          })
-        : balance,
+      balance: decision.balance,
     };
   }
 
@@ -1208,13 +1254,11 @@ export class VisitOrderService {
       },
     });
     if (!visit) throw new NotFoundException(`Визит №${visitId} не найден`);
-    if (visit.status !== 'issued' && visit.status !== 'completed') {
-      throw new BadRequestException('Баланс доступен после выдачи визита');
+    try {
+      return this.visitDomain(visit).availableBalance();
+    } catch (error) {
+      this.rethrowVisitRule(error);
     }
-    return calculateVisitBalance({
-      orders: visit.orders,
-      operations: visit.moneyOperations,
-    });
   }
 
   async settleVisit(
@@ -1233,16 +1277,18 @@ export class VisitOrderService {
           });
           if (!visit)
             throw new NotFoundException(`Визит №${visitId} не найден`);
-          if (visit.status !== 'completed') {
-            throw new BadRequestException(
-              'Погасить долг или вернуть переплату можно после завершения визита',
-            );
+          let nextBalance;
+          try {
+            nextBalance = this.visitDomain(visit).settle(settlement);
+          } catch (error) {
+            if (error instanceof VisitBalanceError) {
+              this.assertValidSettlement(
+                this.visitDomain(visit).balance(),
+                settlement,
+              );
+            }
+            this.rethrowVisitRule(error);
           }
-          const balance = calculateVisitBalance({
-            orders: visit.orders,
-            operations: visit.moneyOperations,
-          });
-          this.assertValidSettlement(balance, settlement);
           await tx.visitMoneyOperation.create({
             data: {
               visitId,
@@ -1250,10 +1296,7 @@ export class VisitOrderService {
               amount: settlement.amount,
             },
           });
-          return calculateVisitBalance({
-            orders: visit.orders,
-            operations: [...visit.moneyOperations, settlement],
-          });
+          return nextBalance;
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
       );
@@ -1467,27 +1510,29 @@ export class VisitOrderService {
       throw new NotFoundException(`Визит с ID ${visitId} не найден`);
     }
 
-    if (visit.status !== 'reserved') {
-      throw new BadRequestException(
-        `Невозможно отменить визит в статусе "${visit.status}". Отмена доступна только для статуса "reserved".`,
-      );
+    let decision;
+    try {
+      decision = this.visitDomain({
+        status: visit.status,
+        notes: visit.notes,
+        orders: [],
+        moneyOperations: [],
+      }).cancel(reason);
+    } catch (error) {
+      this.rethrowVisitRule(error);
     }
 
     await this.prisma.$transaction(async (tx) => {
       await tx.order.updateMany({
         where: { visitId: visitId, deletedAt: null },
-        data: { status: 'cancelled' },
+        data: { status: decision.orderStatus },
       });
-
-      const updatedNotes = reason
-        ? `${visit.notes || ''}\n[Причина отмены]: ${reason}`.trim()
-        : visit.notes;
 
       await tx.visit.update({
         where: { id: visitId },
         data: {
-          status: 'cancelled',
-          notes: updatedNotes,
+          status: decision.visitStatus,
+          notes: decision.notes,
         },
       });
     });

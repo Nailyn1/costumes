@@ -364,6 +364,7 @@ describe('VisitOrderService', () => {
         notes: null,
         orders: [],
         deposits: [],
+        moneyOperations: [],
       });
       txMock.visit.update.mockResolvedValue({
         id: 1,
@@ -1180,11 +1181,17 @@ describe('VisitOrderService remaining business rules', () => {
     });
     it('rejects a non-issued visit and an order with an invalid status', async () => {
       prismaMock.visit.findFirst
-        .mockResolvedValueOnce({ ...makeVisit(), orders: [], deposits: [] })
+        .mockResolvedValueOnce({
+          ...makeVisit(),
+          orders: [],
+          deposits: [],
+          moneyOperations: [],
+        })
         .mockResolvedValueOnce({
           ...makeVisit({ status: 'issued' }),
           orders: [makeOrder()],
           deposits: [],
+          moneyOperations: [],
         });
       await expect(
         service.visitCompleteReturn(1, { depositReturned: false }),
@@ -1200,6 +1207,7 @@ describe('VisitOrderService remaining business rules', () => {
         ...makeVisit({ status: 'issued', notes: 'старое' }),
         orders: [makeOrder({ status: 'issued' })],
         deposits: [makeDeposit({ type: 'cash', returned: false })],
+        moneyOperations: [],
       });
       txMock.visit.update.mockResolvedValue(makeVisit({ status: 'completed' }));
       await service.visitCompleteReturn(1, {
@@ -1222,6 +1230,7 @@ describe('VisitOrderService remaining business rules', () => {
         ...makeVisit({ status: 'issued' }),
         orders: [],
         deposits: [makeDeposit({ type: 'cash' })],
+        moneyOperations: [],
       });
       txMock.visit.update.mockResolvedValue(makeVisit({ status: 'completed' }));
       await service.visitCompleteReturn(1, { depositReturned: true });

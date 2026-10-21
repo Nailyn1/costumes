@@ -12,7 +12,7 @@ src/
 ├── auth/                   # login / refresh / logout, JWT-стратегии, guards (HTTP + WS)
 ├── client-child/           # клиенты, дети, чёрный список (2 контроллера, 1 сервис)
 ├── costumes/               # костюмы, поиск, занятость
-├── visit-order/            # визиты и заказы: бронь, бирки, выдача, возврат, отмена, залоги; domain/visit-balance.ts — чистый расчёт аренды
+├── visit-order/            # визиты и заказы; domain/visit.ts — решения по переходам, domain/visit-balance.ts — расчёт аренды
 ├── notification/           # WhatsApp: сервис, BullMQ-процессор, Green-API провайдер, вебхук, WS-gateway
 ├── prisma/                 # PrismaService, seed.ts, generated/ (НЕ редактировать, НЕ коммитить)
 ├── redis/                  # Redis-провайдер, QueueModule, IdempotencyInterceptor
@@ -32,7 +32,7 @@ src/
 ## 2. Слои
 
 - **Controller** — только HTTP: роут, guard, парсинг params/query, вызов сервиса, возврат результата. Без бизнес-логики и без Prisma.
-- **Service** (`@Injectable()`) — бизнес-логика, Redis и очередь. Обычно обращается к Prisma напрямую. В `notification` используется узкий `NotificationRepository` для выборок и записи уведомлений; он не содержит бизнес-правил и не является общей абстракцией для всех модулей.
+- **Service** (`@Injectable()`) — координация правил, Redis и очереди. Обычно обращается к Prisma напрямую. `VisitOrderService` переводит ошибки чистой модели `Visit` в HTTP-исключения, загружает снимок визита и применяет решение в транзакции. В `notification` используется узкий `NotificationRepository` для выборок и записи уведомлений; он не содержит бизнес-правил и не является общей абстракцией для всех модулей.
 - Все защищённые эндпоинты — `@UseGuards(JwtAuthGuard)` на методе. Без `JwtAuthGuard` только `auth/login`, `auth/refresh` (свой `JwtRefreshGuard`) и вебхук `webhooks/whatsapp` (защищён `WebhookTokenGuard`, токен Green-API).
 
 ## 3. Контракт и валидация (критично)
@@ -64,6 +64,7 @@ src/
 - **Prisma Client, не raw SQL.** `$queryRaw` — только для аналитики, где Prisma не справляется.
 - **Транзакции** (`this.prisma.$transaction(async (tx) => ...)`) — для любой операции, меняющей больше одной таблицы/строки по смыслу (визит + заказы, выдача, возврат, отмена).
 - Денежные операции аренды хранятся в `VisitMoneyOperation` (`issue_payment`, `debt_payment`, `customer_refund`); сумма всегда положительна, отмена выдачи выставляет `voidedAt` у её платежа. `Order.finalPayment` не суммировать повторно: исторические значения уже перенесены миграцией. Расчёт баланса — чистая функция `visit-order/domain/visit-balance.ts`, залоги ведутся отдельно.
+- `visit-order/domain/visit.ts` принимает снимок со статусом, активными заказами и денежными операциями; не импортирует Prisma, Nest и DTO. Методы возвращают план перехода и записей, не меняя БД. Сервис сохраняет soft delete, CAS-проверку при завершении и Serializable-транзакцию при позднем расчёте. Для выдачи сохранено историческое правило: отдельно статусы заказов не проверяются; при возврате все активные заказы должны быть `issued`.
 - **Soft delete:** удаление = `deletedAt: new Date()`. В каждой выборке клиентов/детей/костюмов/визитов/заказов — `deletedAt: null` (включая вложенные `include: { orders: { where: { deletedAt: null } } }`). `deleteMany`/`delete` запрещены для доменных сущностей.
 - **Время:** `TZ=UTC`, местное время хранится как UTC «как есть» (см. [domain.md](./domain.md#время-и-даты-важно)). Склеивание даты и времени — `new Date(\`${date}T${time}:00Z\`)`. Даты наружу — `toISOString().split('T')[0]`.
 - **Миграции:**
