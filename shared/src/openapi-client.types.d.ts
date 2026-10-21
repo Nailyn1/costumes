@@ -81,7 +81,13 @@ export namespace Schemas {
     Record<string, unknown>;
   export type Clients_WhatsappAvailability = { status: "exists" | "absent" | "unknown" } & Record<string, unknown>;
   export type Clients_blacklistReason = Partial<{ blacklistReason: string }> & Record<string, unknown>;
-  export type Common_Error = { statusCode: number; message: string; error?: string } & Record<string, unknown>;
+  export type Common_Error = {
+    statusCode: number;
+    message: string;
+    error?: string;
+    code?: string;
+    fieldErrors?: Record<string, Array<string>>;
+  } & Record<string, unknown>;
   export type Costumes_AvailabilityPeriod = {
     visitCode: Costumes_VisitCode;
     clientName: string;

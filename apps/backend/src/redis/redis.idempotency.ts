@@ -75,13 +75,13 @@ export class IdempotencyInterceptor implements NestInterceptor {
 
       if (record.status === 'processing') {
         throw new ConflictException(
-          'Request with this key is already being processed',
+          'Запрос с этим ключом уже обрабатывается',
         );
       }
 
       if (record.requestHash !== currentRequestHash) {
         throw new BadRequestException(
-          'Idempotency Key used with different request body',
+          'Ключ запроса уже использован с другими данными',
         );
       }
 
@@ -112,7 +112,7 @@ export class IdempotencyInterceptor implements NestInterceptor {
     );
 
     if (!setOk) {
-      throw new ConflictException('Request already in progress');
+      throw new ConflictException('Запрос с этим ключом уже обрабатывается');
     }
 
     return next.handle().pipe(

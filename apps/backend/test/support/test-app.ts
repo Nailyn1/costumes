@@ -6,8 +6,7 @@ import argon2 from 'argon2';
 import cookieParser from 'cookie-parser';
 import Redis from 'ioredis';
 import { AppModule } from '../../src/app.module';
-import { PrismaClientExceptionFilter } from '../../src/common/filters/prisma-client-exception.filter';
-import { SentryInterceptor } from '../../src/common/interceptors/sentry.interceptor';
+import { ApiExceptionFilter } from '../../src/common/filters/api-exception.filter';
 import { ZodValidationPipe } from '../../src/common/pipes/zod-validation.pipe';
 import { NotificationProcessor } from '../../src/notification/notification.processor';
 import { WhatsappProvider } from '../../src/notification/whatsapp.provider';
@@ -70,9 +69,8 @@ export async function createTestApp(): Promise<TestApp> {
   const app = moduleRef.createNestApplication();
   // Держать в синхроне с bootstrap() в src/main.ts (CORS и логгер тестам не нужны).
   app.use(cookieParser());
-  app.useGlobalInterceptors(new SentryInterceptor());
   app.useGlobalFilters(
-    new PrismaClientExceptionFilter(app.get(HttpAdapterHost).httpAdapter),
+    new ApiExceptionFilter(app.get(HttpAdapterHost).httpAdapter),
   );
   app.useGlobalPipes(new ZodValidationPipe());
   await app.init();

@@ -21,9 +21,11 @@ describe('ZodValidationPipe', () => {
       >;
       expect(response).toMatchObject({
         statusCode: 400,
-        message: 'Validation failed',
+        message: 'Проверьте введённые данные',
+        code: 'VALIDATION_ERROR',
+        fieldErrors: { name: ['Укажите значение в правильном формате'] },
       });
-      expect(response.errors).toBeDefined();
+      expect(response.errors).toBeUndefined();
     }
   });
 });

@@ -150,7 +150,13 @@ export const Clients_blacklistReason = z.object({ blacklistReason: z.string() })
 
 export type Common_Error = __TypedOpenapi.Schemas.Common_Error;
 export const Common_Error = z
-  .object({ statusCode: z.number().int(), message: z.string(), error: z.string().optional() })
+  .object({
+    statusCode: z.number().int(),
+    message: z.string(),
+    error: z.string().optional(),
+    code: z.string().optional(),
+    fieldErrors: z.record(z.string(), z.array(z.string())).optional(),
+  })
   .catchall(z.unknown());
 
 export type Costumes_AvailabilityPeriod = __TypedOpenapi.Schemas.Costumes_AvailabilityPeriod;

@@ -10,15 +10,16 @@ function axiosError(status: number, message: string) {
   return new AxiosError("Request failed", "ERR_BAD_REQUEST", undefined, null, {
     status,
     statusText: "",
-    data: { message },
+    data: { statusCode: status, message },
     headers: {},
     config: { headers: new AxiosHeaders() },
   });
 }
 
-async function runMutation(error: Error) {
+async function runMutation(error: Error, meta?: Record<string, unknown>) {
   const observer = new MutationObserver(queryClient, {
     mutationFn: () => Promise.reject(error),
+    meta,
   });
   await observer.mutate().catch(() => {});
 }
@@ -45,7 +46,7 @@ describe("queryClient global error handling", () => {
     await runQuery(axiosError(500, "Сервер недоступен"));
 
     expect(notifications.show).toHaveBeenCalledWith(
-      expect.objectContaining({ message: "Сервер недоступен", color: "red" }),
+      expect.objectContaining({ title: "Не удалось загрузить данные", message: "Сервер недоступен", color: "red" }),
     );
   });
 
@@ -60,7 +61,7 @@ describe("queryClient global error handling", () => {
 
     expect(notifications.show).toHaveBeenCalledTimes(1);
     expect(notifications.show).toHaveBeenCalledWith(
-      expect.objectContaining({ message: "Клиент в чёрном списке" }),
+      expect.objectContaining({ title: "Не удалось выполнить действие", message: "Клиент в чёрном списке" }),
     );
   });
 
@@ -68,5 +69,14 @@ describe("queryClient global error handling", () => {
     await runMutation(axiosError(401, "Unauthorized"));
 
     expect(notifications.show).not.toHaveBeenCalled();
+  });
+
+  it("shows one Russian toast for an invalid login", async () => {
+    await runMutation(axiosError(401, "Неверный логин или пароль"), { showUnauthorized: true });
+
+    expect(notifications.show).toHaveBeenCalledTimes(1);
+    expect(notifications.show).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Не удалось выполнить действие", message: "Неверный логин или пароль", color: "red" }),
+    );
   });
 });

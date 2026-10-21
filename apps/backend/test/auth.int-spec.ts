@@ -26,7 +26,15 @@ describe('auth HTTP flow (integration)', () => {
       .post('/auth/login')
       .send({ login: 'short', password: 'short' })
       .expect(400);
-    expect(JSON.stringify(result.body)).toContain('Validation failed');
+    expect(result.body).toMatchObject({
+      statusCode: 400,
+      message: 'Проверьте введённые данные',
+      code: 'VALIDATION_ERROR',
+      fieldErrors: {
+        login: ['Значение слишком короткое или маленькое'],
+        password: ['Значение слишком короткое или маленькое'],
+      },
+    });
   });
 
   it('login, protected route, refresh and logout', async () => {

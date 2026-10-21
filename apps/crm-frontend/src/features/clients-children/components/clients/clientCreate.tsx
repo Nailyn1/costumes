@@ -6,6 +6,7 @@ import { CreateClientRequestSchema } from "@costumes/shared";
 import { IMaskInput } from "react-imask";
 import { useCreateClient } from "../../hooks/useClients";
 import type { ClientCreateFormProps } from "../../types/clientTypes";
+import { applyApiFieldErrors } from "src/utils/handleError";
 
 export function ClientCreateForm({ onCreated }: ClientCreateFormProps) {
   const createClientMutation = useCreateClient();
@@ -19,6 +20,7 @@ export function ClientCreateForm({ onCreated }: ClientCreateFormProps) {
     createClientMutation.mutate(
       { name: values.name, phone: values.phone },
       {
+        onError: (error) => applyApiFieldErrors(error, ["name", "phone"], form.setFieldError),
         onSuccess: (createdClient) => {
           onCreated({
             id: createdClient.clientId.toString(),

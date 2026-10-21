@@ -2,6 +2,7 @@ import { Stack, TextInput, Button } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { useCreateChild } from "../../hooks/useChild";
 import type { SelectedChild } from "../../types/clientTypes";
+import { applyApiFieldErrors } from "src/utils/handleError";
 
 interface ChildCreateFormProps {
   clientId: number;
@@ -27,6 +28,7 @@ export function ChildCreateForm({ clientId, onCreated }: ChildCreateFormProps) {
     createMutation.mutate(
       { clientId, name: values.name },
       {
+        onError: (error) => applyApiFieldErrors(error, ["name"], form.setFieldError),
         onSuccess: (data) => {
           onCreated({
             childId: data.childId,

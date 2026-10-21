@@ -6,6 +6,7 @@ import { IMaskInput } from "react-imask";
 import { UpdateClientRequestSchema } from "@costumes/shared";
 import { useUpdateClient } from "../../hooks/useClients";
 import type { ClientUpdateFormProps } from "../../types/clientTypes";
+import { applyApiFieldErrors } from "src/utils/handleError";
 
 export function ClientUpdateForm({
   client,
@@ -29,6 +30,7 @@ export function ClientUpdateForm({
         data: values,
       },
       {
+        onError: (error) => applyApiFieldErrors(error, ["name", "phone"], form.setFieldError),
         onSuccess: (res) => {
           onSuccess({
             ...client,

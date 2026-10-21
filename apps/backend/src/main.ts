@@ -5,10 +5,9 @@ import { AppModule } from './app.module';
 
 import cookieParser from 'cookie-parser';
 import { ZodValidationPipe } from './common/pipes/zod-validation.pipe';
-import { PrismaClientExceptionFilter } from './common/filters/prisma-client-exception.filter';
+import { ApiExceptionFilter } from './common/filters/api-exception.filter';
 import { Logger } from 'nestjs-pino';
 import { getAllowedOrigins } from './config/cors.config';
-import { SentryInterceptor } from './common/interceptors/sentry.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -21,8 +20,7 @@ async function bootstrap() {
     credentials: true,
     exposedHeaders: 'set-cookie',
   });
-  app.useGlobalInterceptors(new SentryInterceptor());
-  app.useGlobalFilters(new PrismaClientExceptionFilter(httpAdapter));
+  app.useGlobalFilters(new ApiExceptionFilter(httpAdapter));
   app.useGlobalPipes(new ZodValidationPipe());
   await app.listen(process.env.PORT ?? 5000);
 }

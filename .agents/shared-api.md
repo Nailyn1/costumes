@@ -31,6 +31,10 @@ shared/
 
 Цепочка: **`.tsp` → `tsp compile` → OpenAPI 3.1 → `typed-openapi` → `src/openapi-client.ts` → ручные экспорты в `src/schemas.ts` и `src/<domain>.ts` → `tsc --build` → `dist/`**. Zod 4 используется в обеих сборках; generated schemas валидируют входы и ответы.
 
+### Ошибки API
+
+`Common.Error` задаёт единый ответ HTTP-ошибки: обязательные `statusCode: number` (совпадает с HTTP-статусом) и короткое русское `message: string`, необязательные `code: string` (машинный код) и `fieldErrors: Record<string, string[]>` (путь поля → русские сообщения). Старое `error?: string` остаётся в контракте для совместимости. Для ошибок валидации `code = VALIDATION_ERROR`, а ошибки полей не содержат исходных пользовательских значений. Неожиданный 500 возвращает общее сообщение без внутренних подробностей. На frontend технические Zod-ошибки ответа не показываются сотруднику.
+
 Именование, которое получается на выходе:
 - generated schema: named export `Costumes_CreateCostumeRequest`;
 - ручной совместимый namespace `schemas.Costumes_CreateCostumeRequest` собран в `src/schemas.ts` и используется доменными экспортами.
