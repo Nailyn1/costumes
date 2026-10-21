@@ -14,6 +14,18 @@ export const CreateVisitResponseSchema = schemas.Visits_Visit;
 export const PreviewVisitCodeResponseSchema = schemas.Costumes_VisitCode;
 export const VisitCompleteReturnRequestSchema =
   schemas.Visits_CompleteReturnRequest;
+export type VisitBalanceDto = z.infer<typeof schemas.Visits_VisitBalance>;
+export const VisitBalanceSchema = schemas.Visits_VisitBalance;
+export type VisitSettlementRequestDto = z.infer<
+  typeof schemas.Visits_VisitSettlementRequest
+>;
+export const VisitSettlementRequestSchema =
+  schemas.Visits_VisitSettlementRequest;
+export type PaginatedUnsettledVisitBalancesResponseDto = z.infer<
+  typeof schemas.Visits_PaginatedUnsettledVisitBalancesResponse
+>;
+export const PaginatedUnsettledVisitBalancesResponseSchema =
+  schemas.Visits_PaginatedUnsettledVisitBalancesResponse;
 export const VisitCancelRequestSchema = schemas.Visits_VisitCancelRequest;
 
 export type OrdersNotWrittenResponseDto = z.infer<

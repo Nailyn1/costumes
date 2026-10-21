@@ -97,12 +97,26 @@ model Visit {
   orders          Order[]
   notifications Notification[]
   deposits        Deposit[]
+  moneyOperations VisitMoneyOperation[]
 
   createdAt       DateTime    @default(now()) @map("created_at")
   updatedAt       DateTime    @updatedAt @map("updated_at")
   deletedAt       DateTime?   @map("deleted_at")
 
   @@map("visits")
+}
+model VisitMoneyOperation {
+  id             Int                     @id @default(autoincrement())
+  visitId        Int                     @map("visit_id")
+  visit          Visit                   @relation(fields: [visitId], references: [id])
+  kind           VisitMoneyOperationKind
+  amount         Int
+  legacyImported Boolean                 @default(false) @map("legacy_imported")
+  createdAt      DateTime                @default(now()) @map("created_at")
+  voidedAt       DateTime?               @map("voided_at")
+
+  @@index([visitId, voidedAt])
+  @@map("visit_money_operations")
 }
 
 model Order {
@@ -183,6 +197,12 @@ enum DepositType {
   document
   cash
   none
+}
+
+enum VisitMoneyOperationKind {
+  issue_payment
+  debt_payment
+  customer_refund
 }
 
 

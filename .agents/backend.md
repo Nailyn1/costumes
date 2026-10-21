@@ -12,7 +12,7 @@ src/
 ├── auth/                   # login / refresh / logout, JWT-стратегии, guards (HTTP + WS)
 ├── client-child/           # клиенты, дети, чёрный список (2 контроллера, 1 сервис)
 ├── costumes/               # костюмы, поиск, занятость
-├── visit-order/            # визиты и заказы: бронь, бирки, выдача, возврат, отмена, залоги
+├── visit-order/            # визиты и заказы: бронь, бирки, выдача, возврат, отмена, залоги; domain/visit-balance.ts — чистый расчёт аренды
 ├── notification/           # WhatsApp: сервис, BullMQ-процессор, Green-API провайдер, вебхук, WS-gateway
 ├── prisma/                 # PrismaService, seed.ts, generated/ (НЕ редактировать, НЕ коммитить)
 ├── redis/                  # Redis-провайдер, QueueModule, IdempotencyInterceptor
@@ -63,6 +63,7 @@ src/
 - Клиент: `PrismaService` (наследник `PrismaClient`), импорт типов — `from '../prisma/generated/client'`.
 - **Prisma Client, не raw SQL.** `$queryRaw` — только для аналитики, где Prisma не справляется.
 - **Транзакции** (`this.prisma.$transaction(async (tx) => ...)`) — для любой операции, меняющей больше одной таблицы/строки по смыслу (визит + заказы, выдача, возврат, отмена).
+- Денежные операции аренды хранятся в `VisitMoneyOperation` (`issue_payment`, `debt_payment`, `customer_refund`); сумма всегда положительна, отмена выдачи выставляет `voidedAt` у её платежа. `Order.finalPayment` не суммировать повторно: исторические значения уже перенесены миграцией. Расчёт баланса — чистая функция `visit-order/domain/visit-balance.ts`, залоги ведутся отдельно.
 - **Soft delete:** удаление = `deletedAt: new Date()`. В каждой выборке клиентов/детей/костюмов/визитов/заказов — `deletedAt: null` (включая вложенные `include: { orders: { where: { deletedAt: null } } }`). `deleteMany`/`delete` запрещены для доменных сущностей.
 - **Время:** `TZ=UTC`, местное время хранится как UTC «как есть» (см. [domain.md](./domain.md#время-и-даты-важно)). Склеивание даты и времени — `new Date(\`${date}T${time}:00Z\`)`. Даты наружу — `toISOString().split('T')[0]`.
 - **Миграции:**

@@ -7,6 +7,10 @@ import { API_URL, server } from "../../test/server";
 import { ReturnPage } from "./ReturnPage";
 
 type DepositInfo = { type: "cash" | "document" | "none"; amount?: number };
+type Balance = { totalRent: number; totalPrepayment: number; totalReceived: number; totalRefunded: number; signedBalance: number; debt: number; refundDue: number };
+const paidBalance: Balance = { totalRent: 13000, totalPrepayment: 5000, totalReceived: 8000, totalRefunded: 0, signedBalance: 0, debt: 0, refundDue: 0 };
+const debtBalance: Balance = { ...paidBalance, totalReceived: 5000, signedBalance: 3000, debt: 3000 };
+const refundBalance: Balance = { ...paidBalance, totalReceived: 10000, signedBalance: -2000, refundDue: 2000 };
 
 const issuedVisit = {
   visitId: 1,
@@ -20,7 +24,7 @@ const issuedVisit = {
   deposit: { type: "cash", amount: 5000 } as DepositInfo,
 };
 
-function visitForReturn(deposit: DepositInfo) {
+function visitForReturn(deposit: DepositInfo, balance: Balance) {
   return {
     visitId: 1,
     visitCode: "1648",
@@ -29,6 +33,7 @@ function visitForReturn(deposit: DepositInfo) {
     endDateTime: "2026-12-21",
     notes: "",
     deposit,
+    balance,
     orders: [
       {
         orderId: 11,
@@ -64,11 +69,12 @@ const page = (items: unknown[]) => ({
 
 interface MockOptions {
   deposit?: DepositInfo;
+  balance?: Balance;
   completeReturn?: () => Response | Promise<Response>;
 }
 
 /** Бэкенд страницы возврата: список «Ожидают возврата», карточка визита и мутации. */
-function mockBackend({ deposit = { type: "cash", amount: 5000 }, completeReturn }: MockOptions = {}) {
+function mockBackend({ deposit = { type: "cash", amount: 5000 }, balance = paidBalance, completeReturn }: MockOptions = {}) {
   const completed: Array<Record<string, unknown>> = [];
   const unissued: string[] = [];
   const searchQueries: string[] = [];
@@ -91,18 +97,22 @@ function mockBackend({ deposit = { type: "cash", amount: 5000 }, completeReturn 
       ]);
     }),
     http.get(`${API_URL}/visits/1/for-return`, () =>
-      HttpResponse.json(visitForReturn(deposit)),
+      HttpResponse.json(visitForReturn(deposit, balance)),
     ),
     http.post(`${API_URL}/visits/1/complete-return`, async ({ request }) => {
       completed.push((await request.json()) as Record<string, unknown>);
       return completeReturn
         ? completeReturn()
-        : HttpResponse.json({
-            visitId: 1,
-            visitCode: "1648",
-            status: "completed",
-            message: "ok",
-          });
+        : HttpResponse.json(
+            {
+              visitId: 1,
+              visitCode: "1648",
+              status: "completed",
+              message: "ok",
+              balance,
+            },
+            { status: 201 },
+          );
     }),
     http.post(`${API_URL}/visits/1/unissue`, () => {
       unissued.push("1");
@@ -289,6 +299,47 @@ describe("ReturnPage: return modal", () => {
     expect(within(dialog).getByText("5000 ₸")).toBeInTheDocument();
   });
 
+  it("records an optional debt payment separately from the deposit during return", async () => {
+    const { completed } = mockBackend({ balance: debtBalance });
+    const user = userEvent.setup();
+    const dialog = await openReturnModal(user);
+
+    expect(within(dialog).getByText("Долг клиента: 3000 ₸")).toBeInTheDocument();
+    await user.click(within(dialog).getByLabelText("Принять оплату долга сейчас"));
+    await user.clear(within(dialog).getByLabelText("Получено от клиента"));
+    await user.type(within(dialog).getByLabelText("Получено от клиента"), "1200");
+    await selectAllCostumes(user, dialog);
+    await user.click(returnButton(dialog));
+
+    await waitFor(() => expect(completed).toHaveLength(1));
+    expect(completed[0]).toMatchObject({
+      depositReturned: true,
+      settlement: { kind: "debt_payment", amount: 1200 },
+    });
+  });
+
+  it("allows return with an unpaid balance", async () => {
+    const { completed } = mockBackend({ balance: debtBalance });
+    const user = userEvent.setup();
+    const dialog = await openReturnModal(user);
+    await selectAllCostumes(user, dialog);
+    await user.click(returnButton(dialog));
+    await waitFor(() => expect(completed).toHaveLength(1));
+    expect(completed[0]).not.toHaveProperty("settlement");
+  });
+
+  it("records a customer refund during return without treating it as a deposit", async () => {
+    const { completed } = mockBackend({ balance: refundBalance });
+    const user = userEvent.setup();
+    const dialog = await openReturnModal(user);
+    expect(within(dialog).getByText("Вернуть клиенту: 2000 ₸")).toBeInTheDocument();
+    await user.click(within(dialog).getByLabelText("Вернуть переплату сейчас"));
+    await selectAllCostumes(user, dialog);
+    await user.click(returnButton(dialog));
+    await waitFor(() => expect(completed).toHaveLength(1));
+    expect(completed[0]).toMatchObject({ settlement: { kind: "customer_refund", amount: 2000 } });
+  });
+
   it("keeps the modal open when the backend rejects the return", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const { completed } = mockBackend({
@@ -412,5 +463,32 @@ describe("ReturnPage: forgotten deposits", () => {
     );
     // список обновился после мутации
     expect(await screen.findByText("Нет забытых залогов")).toBeInTheDocument();
+  });
+});
+
+describe("ReturnPage: unsettled balances", () => {
+  it("shows completed overpayment and records a partial refund", async () => {
+    const settlements: Array<Record<string, unknown>> = [];
+    server.use(
+      http.get(`${API_URL}/visits/unsettled-balances`, () =>
+        HttpResponse.json(page([{ visitId: 1, visitCode: "1648", clientName: "Алия", clientPhone: "+77071234567", balance: refundBalance }])),
+      ),
+      http.get(`${API_URL}/visits/1/balance`, () => HttpResponse.json(refundBalance)),
+      http.post(`${API_URL}/visits/1/settlement`, async ({ request }) => {
+        settlements.push((await request.json()) as Record<string, unknown>);
+        return HttpResponse.json({ ...refundBalance, totalRefunded: 1000, signedBalance: -1000, refundDue: 1000 });
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithProviders(<ReturnPage />);
+    await user.click(screen.getByText("Незакрытые расчёты"));
+    expect(await screen.findByText("К возврату: 2000 ₸")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Открыть расчёт" }));
+    const dialog = await screen.findByRole("dialog");
+    await within(dialog).findByText("Вернуть клиенту: 2000 ₸");
+    await user.clear(within(dialog).getByLabelText("Выдано клиенту"));
+    await user.type(within(dialog).getByLabelText("Выдано клиенту"), "1000");
+    await user.click(within(dialog).getByRole("button", { name: "Записать возврат" }));
+    await waitFor(() => expect(settlements).toEqual([{ kind: "customer_refund", amount: 1000 }]));
   });
 });

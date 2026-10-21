@@ -116,7 +116,7 @@ model CreateVisitRequest {
 }
 
 model IssueVisitRequest {
-  additionalPayment: int32;
+  @minValue(0) additionalPayment: int32;
   deposit: {
     type: DepositType;
     amount?: int32;
@@ -127,6 +127,39 @@ model IssueVisitRequest {
 model CompleteReturnRequest {
   depositReturned: boolean;
   notes?: string;
+  settlement?: VisitSettlementRequest;
+}
+
+model VisitBalance {
+  @minValue(0) totalRent: int32;
+  @minValue(0) totalPrepayment: int32;
+  @minValue(0) totalReceived: int32;
+  @minValue(0) totalRefunded: int32;
+  @doc("Положительное значение — долг, отрицательное — сумма к возврату клиенту")
+  signedBalance: int32;
+  @minValue(0) debt: int32;
+  @minValue(0) refundDue: int32;
+}
+
+model VisitSettlementRequest {
+  kind: "debt_payment" | "customer_refund";
+  @minValue(1) amount: int32;
+}
+
+model UnsettledVisitBalance {
+  visitId: int32;
+  visitCode: VisitCode;
+  clientName: CostumeApp.Clients.ClientName;
+  clientPhone: CostumeApp.Clients.PhoneString;
+  balance: VisitBalance;
+}
+
+model PaginatedUnsettledVisitBalancesResponse {
+  items: UnsettledVisitBalance[];
+  total: int32;
+  page: int32;
+  limit: int32;
+  hasMore: boolean;
 }
 
 model GetReservedResponse {
@@ -192,6 +225,7 @@ model VisitForReturnResponse {
   notes: string;
   orders: VisitReturnOrder[];
   deposit: VisitDepositInfo;
+  balance: VisitBalance;
 }
 
 model VisitReturnOrder {
@@ -215,6 +249,7 @@ model CompleteReturnResponse {
   visitCode: VisitCode;
   status: VisitStatus;
   message: string;
+  balance: VisitBalance;
 }
 
 model MarkDepositReturnedResponse {
@@ -342,6 +377,13 @@ getReserved(
     @body body: VisitReturnSearchResponse[];
   } | Common.Error;
 
+  @get
+  @route("unsettled-balances")
+  getUnsettledBalances(@query page?: int32, @query limit?: int32): {
+    @statusCode statusCode: 200;
+    @body body: PaginatedUnsettledVisitBalancesResponse;
+  } | Common.Error;
+
 
   @get
   @route("{visitId}/for-issue")
@@ -382,8 +424,22 @@ getReserved(
   @post
   @route("{visitId}/complete-return")
   completeReturn(@path visitId: int32, @body body: CompleteReturnRequest): {
-    @statusCode statusCode: 200;
+    @statusCode statusCode: 201;
     @body body: CompleteReturnResponse;
+  } | Common.Error;
+
+  @get
+  @route("{visitId}/balance")
+  getBalance(@path visitId: int32): {
+    @statusCode statusCode: 200;
+    @body body: VisitBalance;
+  } | Common.Error;
+
+  @post
+  @route("{visitId}/settlement")
+  settle(@path visitId: int32, @body body: VisitSettlementRequest): {
+    @statusCode statusCode: 200;
+    @body body: VisitBalance;
   } | Common.Error;
 
  

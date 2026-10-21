@@ -24,12 +24,15 @@ import {
   MarkDepositReturnedDto,
   OrdersNotWrittenResponseDto,
   OrdersNotWrittenResponseSchema,
+  PaginatedUnsettledVisitBalancesResponseDto,
   searchNotificationDto,
+  VisitBalanceDto,
   visitCancelRequestDto,
   visitCompleteReturnRequestDto,
   visitCompleteReturnResponseDto,
   visitIssuedResponseDto,
   VisitIssueRequestDto,
+  VisitSettlementRequestDto,
   visitNotificationResponseDto,
 } from '@costumes/shared';
 import { OrderStatus, Prisma, VisitStatus } from '../prisma/generated/client';
@@ -50,6 +53,13 @@ import {
   scoreTextMatch,
   sortBySearchScore,
 } from '../common/utils/search.utils';
+import {
+  calculateVisitBalance,
+  validateVisitSettlement,
+  VisitBalanceError,
+  type VisitBalance,
+  type VisitSettlementKind,
+} from './domain/visit-balance';
 
 const VISIT_ISSUE_REJECT_MESSAGES: Record<
   Exclude<VisitStatus, 'reserved'>,
@@ -75,6 +85,24 @@ export class VisitOrderService {
 
   private parseDateTime(dateStr: string, timeStr: string): Date {
     return new Date(`${dateStr}T${timeStr}:00Z`);
+  }
+
+  private assertValidSettlement(
+    balance: VisitBalance,
+    settlement: { kind: VisitSettlementKind; amount: number },
+  ): void {
+    try {
+      validateVisitSettlement(balance, settlement.kind, settlement.amount);
+    } catch (error) {
+      if (!(error instanceof VisitBalanceError)) throw error;
+      const messages: Record<VisitBalanceError['code'], string> = {
+        INVALID_AMOUNT: 'Сумма расчёта должна быть положительным целым числом',
+        NO_DEBT: 'У визита нет долга для оплаты',
+        NO_REFUND_DUE: 'У визита нет переплаты для возврата',
+        EXCEEDS_BALANCE: 'Сумма превышает текущий долг или переплату',
+      };
+      throw new BadRequestException(messages[error.code]);
+    }
   }
 
   async generatePreviewCode(): Promise<string> {
@@ -446,6 +474,11 @@ export class VisitOrderService {
 
   async visitIssue(data: VisitIssueRequestDto, visitId: number): Promise<void> {
     const { deposit, additionalPayment } = data;
+    if (!Number.isSafeInteger(additionalPayment) || additionalPayment < 0) {
+      throw new BadRequestException(
+        'Доплата должна быть неотрицательной суммой',
+      );
+    }
 
     await this.prisma.$transaction(async (tx) => {
       const visit = await tx.visit.findFirst({
@@ -479,6 +512,16 @@ export class VisitOrderService {
           },
         });
         remainingPayment -= paymentForThisOrder;
+      }
+
+      if (additionalPayment > 0) {
+        await tx.visitMoneyOperation.create({
+          data: {
+            visitId,
+            kind: 'issue_payment',
+            amount: additionalPayment,
+          },
+        });
       }
 
       const updatedNotes = data.notes
@@ -550,6 +593,10 @@ export class VisitOrderService {
       await tx.deposit.updateMany({
         where: { visitId, deletedAt: null },
         data: { deletedAt: new Date() },
+      });
+      await tx.visitMoneyOperation.updateMany({
+        where: { visitId, kind: 'issue_payment', voidedAt: null },
+        data: { voidedAt: new Date() },
       });
     });
   }
@@ -948,6 +995,7 @@ export class VisitOrderService {
       include: {
         client: true,
         deposits: { where: { deletedAt: null }, take: 1 },
+        moneyOperations: { where: { voidedAt: null } },
         orders: {
           where: { deletedAt: null },
           include: {
@@ -973,8 +1021,8 @@ export class VisitOrderService {
         name: visit.client.name,
         phone: visit.client.phone,
       },
-      startDateTime: visit.startDateTime.toISOString(),
-      endDateTime: visit.endDateTime.toISOString(),
+      startDateTime: visit.startDateTime.toISOString().split('T')[0],
+      endDateTime: visit.endDateTime.toISOString().split('T')[0],
       notes: visit.notes || '',
       orders: visit.orders.map((order) => ({
         orderId: order.id,
@@ -990,6 +1038,10 @@ export class VisitOrderService {
         type: deposit?.type || 'none',
         amount: deposit?.amount || 0,
       },
+      balance: calculateVisitBalance({
+        orders: visit.orders,
+        operations: visit.moneyOperations,
+      }),
     };
   }
 
@@ -1052,9 +1104,10 @@ export class VisitOrderService {
     visitId: number,
     data: visitCompleteReturnRequestDto,
   ): Promise<visitCompleteReturnResponseDto> {
-    const { depositReturned, notes } = data as unknown as {
+    const { depositReturned, notes, settlement } = data as unknown as {
       depositReturned: boolean;
       notes?: string;
+      settlement?: { kind: VisitSettlementKind; amount: number };
     };
 
     const visit = await this.prisma.visit.findFirst({
@@ -1062,6 +1115,7 @@ export class VisitOrderService {
       include: {
         orders: { where: { deletedAt: null } },
         deposits: { where: { deletedAt: null }, take: 1 },
+        moneyOperations: { where: { voidedAt: null } },
       },
     });
 
@@ -1083,7 +1137,35 @@ export class VisitOrderService {
       );
     }
 
+    const balance = calculateVisitBalance({
+      orders: visit.orders,
+      operations: visit.moneyOperations ?? [],
+    });
+    if (settlement) this.assertValidSettlement(balance, settlement);
+
     const updatedVisit = await this.prisma.$transaction(async (tx) => {
+      const newNotes = notes
+        ? `${visit.notes || ''}\n[Завершение]: ${notes}`.trim()
+        : visit.notes;
+      const completedVisit = await tx.visit
+        .update({
+          where: { id: visitId, status: 'issued', deletedAt: null },
+          data: { status: 'completed', notes: newNotes },
+        })
+        .catch((error: unknown) => {
+          if (
+            error instanceof Prisma.PrismaClientKnownRequestError &&
+            error.code === 'P2025'
+          ) {
+            throw new ConflictException('Визит уже завершён. Обновите данные');
+          }
+          throw error;
+        });
+      if (settlement) {
+        await tx.visitMoneyOperation.create({
+          data: { visitId, kind: settlement.kind, amount: settlement.amount },
+        });
+      }
       await tx.order.updateMany({
         where: { visitId: visitId, deletedAt: null },
         data: { status: OrderStatus.returned },
@@ -1097,17 +1179,7 @@ export class VisitOrderService {
         });
       }
 
-      const newNotes = notes
-        ? `${visit.notes || ''}\n[Завершение]: ${notes}`.trim()
-        : visit.notes;
-
-      return await tx.visit.update({
-        where: { id: visitId },
-        data: {
-          status: 'completed',
-          notes: newNotes,
-        },
-      });
+      return completedVisit;
     });
 
     return {
@@ -1115,6 +1187,129 @@ export class VisitOrderService {
       visitCode: updatedVisit.visitCode,
       status: updatedVisit.status as 'completed',
       message: 'Визит успешно завершен, все костюмы возвращены',
+      balance: settlement
+        ? calculateVisitBalance({
+            orders: visit.orders,
+            operations: [
+              ...(visit.moneyOperations ?? []),
+              { kind: settlement.kind, amount: settlement.amount },
+            ],
+          })
+        : balance,
+    };
+  }
+
+  async getVisitBalance(visitId: number): Promise<VisitBalanceDto> {
+    const visit = await this.prisma.visit.findFirst({
+      where: { id: visitId, deletedAt: null },
+      include: {
+        orders: { where: { deletedAt: null } },
+        moneyOperations: { where: { voidedAt: null } },
+      },
+    });
+    if (!visit) throw new NotFoundException(`Визит №${visitId} не найден`);
+    if (visit.status !== 'issued' && visit.status !== 'completed') {
+      throw new BadRequestException('Баланс доступен после выдачи визита');
+    }
+    return calculateVisitBalance({
+      orders: visit.orders,
+      operations: visit.moneyOperations,
+    });
+  }
+
+  async settleVisit(
+    visitId: number,
+    settlement: VisitSettlementRequestDto,
+  ): Promise<VisitBalanceDto> {
+    try {
+      return await this.prisma.$transaction(
+        async (tx) => {
+          const visit = await tx.visit.findFirst({
+            where: { id: visitId, deletedAt: null },
+            include: {
+              orders: { where: { deletedAt: null } },
+              moneyOperations: { where: { voidedAt: null } },
+            },
+          });
+          if (!visit)
+            throw new NotFoundException(`Визит №${visitId} не найден`);
+          if (visit.status !== 'completed') {
+            throw new BadRequestException(
+              'Погасить долг или вернуть переплату можно после завершения визита',
+            );
+          }
+          const balance = calculateVisitBalance({
+            orders: visit.orders,
+            operations: visit.moneyOperations,
+          });
+          this.assertValidSettlement(balance, settlement);
+          await tx.visitMoneyOperation.create({
+            data: {
+              visitId,
+              kind: settlement.kind,
+              amount: settlement.amount,
+            },
+          });
+          return calculateVisitBalance({
+            orders: visit.orders,
+            operations: [...visit.moneyOperations, settlement],
+          });
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2034'
+      ) {
+        throw new ConflictException(
+          'Баланс изменился. Обновите данные и повторите расчёт',
+        );
+      }
+      throw error;
+    }
+  }
+
+  async listUnsettledVisitBalances(
+    page = 1,
+    limit = 20,
+  ): Promise<PaginatedUnsettledVisitBalancesResponseDto> {
+    const visits = await this.prisma.visit.findMany({
+      where: { status: 'completed', deletedAt: null },
+      orderBy: { id: 'desc' },
+      select: {
+        id: true,
+        visitCode: true,
+        client: { select: { name: true, phone: true } },
+        orders: {
+          where: { deletedAt: null },
+          select: { rentPrice: true, prepaymentAmount: true },
+        },
+        moneyOperations: {
+          where: { voidedAt: null },
+          select: { kind: true, amount: true },
+        },
+      },
+    });
+    const unsettled = visits
+      .map((visit) => ({
+        visitId: visit.id,
+        visitCode: visit.visitCode,
+        clientName: visit.client.name,
+        clientPhone: visit.client.phone,
+        balance: calculateVisitBalance({
+          orders: visit.orders,
+          operations: visit.moneyOperations,
+        }),
+      }))
+      .filter((visit) => visit.balance.signedBalance !== 0);
+    const skip = (page - 1) * limit;
+    return {
+      items: unsettled.slice(skip, skip + limit),
+      total: unsettled.length,
+      page,
+      limit,
+      hasMore: skip + limit < unsettled.length,
     };
   }
 

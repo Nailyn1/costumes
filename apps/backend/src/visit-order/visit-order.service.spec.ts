@@ -326,6 +326,7 @@ describe('VisitOrderService', () => {
         include: {
           orders: { where: { deletedAt: null } },
           deposits: { where: { deletedAt: null }, take: 1 },
+          moneyOperations: { where: { voidedAt: null } },
         },
       });
     });
@@ -379,6 +380,7 @@ describe('VisitOrderService', () => {
         include: {
           orders: { where: { deletedAt: null } },
           deposits: { where: { deletedAt: null }, take: 1 },
+          moneyOperations: { where: { voidedAt: null } },
         },
       });
       expect(txMock.order.updateMany).toHaveBeenCalledWith(
@@ -993,7 +995,23 @@ describe('VisitOrderService remaining business rules', () => {
   });
 
   describe('issue and unissue', () => {
-    it.todo('T-028: define and validate underpayment and overpayment on issue');
+    it('records the full overpayment even when order allocation is capped', async () => {
+      txMock.visit.findFirst.mockResolvedValue({
+        ...makeVisit(),
+        orders: [makeOrder({ id: 1, rentPrice: 5000, prepaymentAmount: 1000 })],
+      });
+      await service.visitIssue(
+        { additionalPayment: 5000, deposit: { type: 'none' } } as never,
+        1,
+      );
+      expect(txMock.order.update).toHaveBeenCalledWith({
+        where: { id: 1, deletedAt: null },
+        data: { status: 'issued', finalPayment: 4000 },
+      });
+      expect(txMock.visitMoneyOperation.create).toHaveBeenCalledWith({
+        data: { visitId: 1, kind: 'issue_payment', amount: 5000 },
+      });
+    });
     it('allocates payment, records a cash deposit and appends issue notes', async () => {
       txMock.visit.findFirst.mockResolvedValue({
         ...makeVisit({ notes: 'старое' }),
@@ -1025,6 +1043,9 @@ describe('VisitOrderService remaining business rules', () => {
       expect(txMock.deposit.create).toHaveBeenCalledWith({
         data: { visitId: 1, type: 'cash', amount: 5000, returned: false },
       });
+      expect(txMock.visitMoneyOperation.create).toHaveBeenCalledWith({
+        data: { visitId: 1, kind: 'issue_payment', amount: 6000 },
+      });
     });
 
     it.each(['document', 'none'])(
@@ -1041,6 +1062,7 @@ describe('VisitOrderService remaining business rules', () => {
         expect(txMock.deposit.create).toHaveBeenCalledWith({
           data: { visitId: 1, type, amount: 0, returned: false },
         });
+        expect(txMock.visitMoneyOperation.create).not.toHaveBeenCalled();
       },
     );
 
@@ -1074,6 +1096,10 @@ describe('VisitOrderService remaining business rules', () => {
       expect(txMock.deposit.updateMany).toHaveBeenCalledWith({
         where: { visitId: 1, deletedAt: null },
         data: { deletedAt: expect.any(Date) as Date },
+      });
+      expect(txMock.visitMoneyOperation.updateMany).toHaveBeenCalledWith({
+        where: { visitId: 1, kind: 'issue_payment', voidedAt: null },
+        data: { voidedAt: expect.any(Date) as Date },
       });
     });
 
@@ -1186,7 +1212,7 @@ describe('VisitOrderService remaining business rules', () => {
       });
       expect(txMock.deposit.update).not.toHaveBeenCalled();
       expect(txMock.visit.update).toHaveBeenCalledWith({
-        where: { id: 1 },
+        where: { id: 1, status: 'issued', deletedAt: null },
         data: { status: 'completed', notes: 'старое\n[Завершение]: всё цело' },
       });
     });

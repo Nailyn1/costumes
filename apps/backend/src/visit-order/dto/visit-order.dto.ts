@@ -5,6 +5,7 @@ import {
   VisitCancelRequestSchema,
   VisitCompleteReturnRequestSchema,
   VisitIssueRequestSchema,
+  VisitSettlementRequestSchema,
 } from '@costumes/shared';
 import { createZodDto } from '../../common/zod-dto';
 import { z } from 'zod';
@@ -35,4 +36,8 @@ export class CompleteReturnRequest extends createZodDto(
 
 export class VisitCancelRequest extends createZodDto(
   VisitCancelRequestSchema,
+) {}
+
+export class VisitSettlementRequest extends createZodDto(
+  VisitSettlementRequestSchema,
 ) {}

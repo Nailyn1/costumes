@@ -3,6 +3,7 @@ import {
   type visitCancelRequestDto,
   type visitCompleteReturnRequestDto,
   type VisitIssueRequestDto,
+  type VisitSettlementRequestDto,
 } from "@costumes/shared";
 import { apiClient } from "src/services/apiClient";
 
@@ -71,6 +72,18 @@ export const visitsService = {
   },
   getIssuedVisits(params?: GetParams) {
     return apiClient.get("/visits/issued", { query: params });
+  },
+  getUnsettledBalances(params?: GetParams) {
+    return apiClient.get("/visits/unsettled-balances", { query: params });
+  },
+  getVisitBalance(visitId: number) {
+    return apiClient.get("/visits/{visitId}/balance", { path: { visitId } });
+  },
+  settleVisit(visitId: number, data: VisitSettlementRequestDto) {
+    return apiClient.post("/visits/{visitId}/settlement", {
+      path: { visitId },
+      body: data,
+    });
   },
   getVisitsNotification(params?: GetParams) {
     return apiClient.get("/visits/notification", { query: params });

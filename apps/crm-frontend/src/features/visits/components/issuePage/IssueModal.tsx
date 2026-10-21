@@ -24,6 +24,7 @@ import { MoneyInput } from "src/components/MoneyInput";
 import { formatPhoneNumber, formatStayDates } from "src/utils/formatters";
 import { useForm } from "@mantine/form";
 import { useState } from "react";
+import { issueBalance } from "../../utils/visitBalance";
 
 interface IssueModalProps {
   opened: boolean;
@@ -59,6 +60,14 @@ export function IssueModal({
 
   const [isCanceling, setIsCanceling] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
+  const actualPayment = data
+    ? form.values.extraPayment === ""
+      ? data.remainingToPay
+      : Number(form.values.extraPayment) || 0
+    : 0;
+  const balanceAfterIssue = data
+    ? issueBalance(data.remainingToPay, actualPayment)
+    : null;
 
   const handleClose = () => {
     form.reset();
@@ -266,6 +275,16 @@ export function IssueModal({
                     />
                   </Box>
                 </SimpleGrid>
+
+                {balanceAfterIssue && (
+                  <Text fw={600} c={balanceAfterIssue.debt > 0 ? "orange.9" : balanceAfterIssue.refundDue > 0 ? "red.8" : "green.8"}>
+                    {balanceAfterIssue.debt > 0
+                      ? `После выдачи останется долг: ${balanceAfterIssue.debt} ₸`
+                      : balanceAfterIssue.refundDue > 0
+                        ? `Вернуть клиенту: ${balanceAfterIssue.refundDue} ₸`
+                        : "Аренда оплачена полностью"}
+                  </Text>
+                )}
 
                 {form.values.depositType === "cash" && (
                   <MoneyInput

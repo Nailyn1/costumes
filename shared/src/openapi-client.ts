@@ -224,14 +224,42 @@ export const Costumes_UpdateCostumeRequest = z
   .partial()
   .catchall(z.unknown());
 
+export type Visits_VisitSettlementRequest = __TypedOpenapi.Schemas.Visits_VisitSettlementRequest;
+export const Visits_VisitSettlementRequest = z
+  .object({ kind: z.enum(["debt_payment", "customer_refund"]), amount: z.number().int().min(1) })
+  .catchall(z.unknown());
+
 export type Visits_CompleteReturnRequest = __TypedOpenapi.Schemas.Visits_CompleteReturnRequest;
 export const Visits_CompleteReturnRequest = z
-  .object({ depositReturned: z.boolean(), notes: z.string().optional() })
+  .object({
+    depositReturned: z.boolean(),
+    notes: z.string().optional(),
+    settlement: Visits_VisitSettlementRequest.optional(),
+  })
+  .catchall(z.unknown());
+
+export type Visits_VisitBalance = __TypedOpenapi.Schemas.Visits_VisitBalance;
+export const Visits_VisitBalance = z
+  .object({
+    totalRent: z.number().int().min(0),
+    totalPrepayment: z.number().int().min(0),
+    totalReceived: z.number().int().min(0),
+    totalRefunded: z.number().int().min(0),
+    signedBalance: z.number().int(),
+    debt: z.number().int().min(0),
+    refundDue: z.number().int().min(0),
+  })
   .catchall(z.unknown());
 
 export type Visits_CompleteReturnResponse = __TypedOpenapi.Schemas.Visits_CompleteReturnResponse;
 export const Visits_CompleteReturnResponse = z
-  .object({ visitId: z.number().int(), visitCode: Costumes_VisitCode, status: Visits_VisitStatus, message: z.string() })
+  .object({
+    visitId: z.number().int(),
+    visitCode: Costumes_VisitCode,
+    status: Visits_VisitStatus,
+    message: z.string(),
+    balance: Visits_VisitBalance,
+  })
   .catchall(z.unknown());
 
 export type Visits_CreateVisitRequest = __TypedOpenapi.Schemas.Visits_CreateVisitRequest;
@@ -361,7 +389,7 @@ export const Visits_GetUnreturnedDepositsResponse = z
 export type Visits_IssueVisitRequest = __TypedOpenapi.Schemas.Visits_IssueVisitRequest;
 export const Visits_IssueVisitRequest = z
   .object({
-    additionalPayment: z.number().int(),
+    additionalPayment: z.number().int().min(0),
     deposit: z.object({ type: Visits_DepositType, amount: z.number().int().optional() }).catchall(z.unknown()),
     notes: z.string().optional(),
   })
@@ -425,6 +453,29 @@ export type Visits_PaginatedReservedResponse = __TypedOpenapi.Schemas.Visits_Pag
 export const Visits_PaginatedReservedResponse = z
   .object({
     items: z.array(Visits_GetReservedResponse),
+    total: z.number().int(),
+    page: z.number().int(),
+    limit: z.number().int(),
+    hasMore: z.boolean(),
+  })
+  .catchall(z.unknown());
+
+export type Visits_UnsettledVisitBalance = __TypedOpenapi.Schemas.Visits_UnsettledVisitBalance;
+export const Visits_UnsettledVisitBalance = z
+  .object({
+    visitId: z.number().int(),
+    visitCode: Costumes_VisitCode,
+    clientName: Clients_ClientName,
+    clientPhone: Clients_PhoneString,
+    balance: Visits_VisitBalance,
+  })
+  .catchall(z.unknown());
+
+export type Visits_PaginatedUnsettledVisitBalancesResponse =
+  __TypedOpenapi.Schemas.Visits_PaginatedUnsettledVisitBalancesResponse;
+export const Visits_PaginatedUnsettledVisitBalancesResponse = z
+  .object({
+    items: z.array(Visits_UnsettledVisitBalance),
     total: z.number().int(),
     page: z.number().int(),
     limit: z.number().int(),
@@ -518,6 +569,7 @@ export const Visits_VisitForReturnResponse = z
     notes: z.string(),
     orders: z.array(Visits_VisitReturnOrder),
     deposit: Visits_VisitDepositInfo,
+    balance: Visits_VisitBalance,
   })
   .catchall(z.unknown());
 
@@ -929,6 +981,18 @@ export const get_VisitOperation_getUnreturnedDeposits = {
   responses: { 200: Visits_GetUnreturnedDepositsResponse, default: Common_Error },
 };
 
+export type get_VisitOperation_getUnsettledBalances = __TypedOpenapi.Endpoints.get_VisitOperation_getUnsettledBalances;
+export const get_VisitOperation_getUnsettledBalances = {
+  method: z.literal("GET"),
+  path: z.literal("/visits/unsettled-balances"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: {
+    query: z.strictObject({ page: z.coerce.number().int(), limit: z.coerce.number().int() }).partial().optional(),
+  },
+  responses: { 200: Visits_PaginatedUnsettledVisitBalancesResponse, default: Common_Error },
+};
+
 export type post_VisitOperation_markTagWritten = __TypedOpenapi.Endpoints.post_VisitOperation_markTagWritten;
 export const post_VisitOperation_markTagWritten = {
   method: z.literal("POST"),
@@ -937,6 +1001,16 @@ export const post_VisitOperation_markTagWritten = {
   responseFormat: z.literal("json"),
   parameters: { path: z.strictObject({ orderId: z.coerce.number().int() }) },
   responses: { 204: z.unknown(), default: Common_Error },
+};
+
+export type get_VisitOperation_getBalance = __TypedOpenapi.Endpoints.get_VisitOperation_getBalance;
+export const get_VisitOperation_getBalance = {
+  method: z.literal("GET"),
+  path: z.literal("/visits/{visitId}/balance"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { path: z.strictObject({ visitId: z.coerce.number().int() }) },
+  responses: { 200: Visits_VisitBalance, default: Common_Error },
 };
 
 export type post_VisitOperation_cancel = __TypedOpenapi.Endpoints.post_VisitOperation_cancel;
@@ -960,7 +1034,7 @@ export const post_VisitOperation_completeReturn = {
   requestFormat: z.literal("json"),
   responseFormat: z.literal("json"),
   parameters: { path: z.strictObject({ visitId: z.coerce.number().int() }), body: Visits_CompleteReturnRequest },
-  responses: { 200: Visits_CompleteReturnResponse, default: Common_Error },
+  responses: { 201: Visits_CompleteReturnResponse, default: Common_Error },
 };
 
 export type get_VisitOperation_getForIssue = __TypedOpenapi.Endpoints.get_VisitOperation_getForIssue;
@@ -1006,6 +1080,16 @@ export const post_VisitOperation_markDepositReturned = {
   responses: { 200: Visits_MarkDepositReturnedResponse, default: Common_Error },
 };
 
+export type post_VisitOperation_settle = __TypedOpenapi.Endpoints.post_VisitOperation_settle;
+export const post_VisitOperation_settle = {
+  method: z.literal("POST"),
+  path: z.literal("/visits/{visitId}/settlement"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { path: z.strictObject({ visitId: z.coerce.number().int() }), body: Visits_VisitSettlementRequest },
+  responses: { 200: Visits_VisitBalance, default: Common_Error },
+};
+
 export type post_VisitOperation_unissue = __TypedOpenapi.Endpoints.post_VisitOperation_unissue;
 export const post_VisitOperation_unissue = {
   method: z.literal("POST"),
@@ -1035,6 +1119,7 @@ export const EndpointByMethod = {
     "/visits/{visitId}/complete-return": post_VisitOperation_completeReturn,
     "/visits/{visitId}/issue": post_VisitOperation_issue,
     "/visits/{visitId}/mark-deposit-returned": post_VisitOperation_markDepositReturned,
+    "/visits/{visitId}/settlement": post_VisitOperation_settle,
     "/visits/{visitId}/unissue": post_VisitOperation_unissue,
   },
   patch: {
@@ -1066,6 +1151,8 @@ export const EndpointByMethod = {
     "/visits/return-search": get_VisitOperation_searchForReturn,
     "/visits/search": get_VisitOperation_search,
     "/visits/unreturned-deposits": get_VisitOperation_getUnreturnedDeposits,
+    "/visits/unsettled-balances": get_VisitOperation_getUnsettledBalances,
+    "/visits/{visitId}/balance": get_VisitOperation_getBalance,
     "/visits/{visitId}/for-issue": get_VisitOperation_getForIssue,
     "/visits/{visitId}/for-return": get_VisitOperation_getForReturn,
   },
@@ -1127,6 +1214,7 @@ export const endpointParameterStyles = {
     "/visits/{visitId}/mark-deposit-returned": {
       path: { visitId: { style: "simple", explode: false, allowReserved: false } },
     },
+    "/visits/{visitId}/settlement": { path: { visitId: { style: "simple", explode: false, allowReserved: false } } },
     "/visits/{visitId}/unissue": { path: { visitId: { style: "simple", explode: false, allowReserved: false } } },
   },
   patch: {
@@ -1199,6 +1287,13 @@ export const endpointParameterStyles = {
         limit: { style: "form", explode: false, allowReserved: false },
       },
     },
+    "/visits/unsettled-balances": {
+      query: {
+        page: { style: "form", explode: false, allowReserved: false },
+        limit: { style: "form", explode: false, allowReserved: false },
+      },
+    },
+    "/visits/{visitId}/balance": { path: { visitId: { style: "simple", explode: false, allowReserved: false } } },
     "/visits/{visitId}/for-issue": { path: { visitId: { style: "simple", explode: false, allowReserved: false } } },
     "/visits/{visitId}/for-return": { path: { visitId: { style: "simple", explode: false, allowReserved: false } } },
   },

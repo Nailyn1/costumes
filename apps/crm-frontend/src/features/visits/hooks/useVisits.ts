@@ -17,6 +17,7 @@ import type {
   visitCompleteReturnRequestDto,
   visitIssuedResponseDto,
   VisitIssueRequestDto,
+  VisitSettlementRequestDto,
 } from "@costumes/shared";
 import { notifications } from "@mantine/notifications";
 
@@ -234,6 +235,8 @@ export function useUnissueVisit() {
         queryKey: ["visit", "for-return", variables.visitId],
       });
 
+      queryClient.invalidateQueries({ queryKey: ["visits", "unsettled-balances"] });
+
       notifications.show({
         title: "Отмена выдачи",
         message: "Визит успешно возвращен в список ожидающих выдачи",
@@ -318,6 +321,8 @@ export function useCompleteReturnVisit() {
         queryKey: ["visit", "for-return", variables.visitId],
       });
 
+      queryClient.invalidateQueries({ queryKey: ["visits", "unsettled-balances"] });
+
       notifications.show({
         title: "Возврат оформлен",
         message: "",
@@ -367,6 +372,44 @@ export function useMarkDepositReturned() {
         message: "",
         color: "green",
       });
+    },
+  });
+}
+
+export function useUnsettledBalances(enabled = true) {
+  return useInfiniteQuery({
+    queryKey: ["visits", "unsettled-balances"],
+    queryFn: ({ pageParam }) =>
+      visitsService.getUnsettledBalances({ page: pageParam }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.hasMore ? lastPage.page + 1 : undefined,
+    enabled,
+    refetchInterval: 15000,
+    refetchOnWindowFocus: true,
+  });
+}
+
+export function useVisitBalance(visitId: number | null) {
+  return useQuery({
+    queryKey: ["visit", "balance", visitId],
+    queryFn: () => {
+      if (!visitId) throw new Error("visitId обязателен для выполнения запроса");
+      return visitsService.getVisitBalance(visitId);
+    },
+    enabled: !!visitId,
+  });
+}
+
+export function useSettleVisit() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ visitId, data }: { visitId: number; data: VisitSettlementRequestDto }) =>
+      visitsService.settleVisit(visitId, data),
+    onSuccess: (_, { visitId }) => {
+      queryClient.invalidateQueries({ queryKey: ["visit", "balance", visitId] });
+      queryClient.invalidateQueries({ queryKey: ["visits", "unsettled-balances"] });
+      notifications.show({ title: "Расчёт записан", message: "Баланс визита обновлён", color: "green" });
     },
   });
 }

@@ -21,6 +21,7 @@ import {
   MarkDepositReturnedRequest,
   VisitCancelRequest,
   VisitIssueRequest,
+  VisitSettlementRequest,
 } from './dto/visit-order.dto';
 import {
   CreateVisitResponseDto,
@@ -32,7 +33,9 @@ import {
   IssuedForReturnDto,
   MarkDepositReturnedDto,
   OrdersNotWrittenResponseDto,
+  PaginatedUnsettledVisitBalancesResponseDto,
   searchNotificationDto,
+  VisitBalanceDto,
   visitCompleteReturnResponseDto,
   visitIssuedResponseDto,
   visitNotificationResponseDto,
@@ -140,6 +143,33 @@ export class VisitController {
   @UseGuards(JwtAuthGuard)
   async getAllVisits(): Promise<IssuedForReturnDto[]> {
     return await this.visitOrderService.visitsIssuedForReturn();
+  }
+
+  @Get('unsettled-balances')
+  @UseGuards(JwtAuthGuard)
+  async getUnsettledBalances(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number = 1,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number = 20,
+  ): Promise<PaginatedUnsettledVisitBalancesResponseDto> {
+    return this.visitOrderService.listUnsettledVisitBalances(page, limit);
+  }
+
+  @Get(':visitId/balance')
+  @UseGuards(JwtAuthGuard)
+  async getBalance(
+    @Param('visitId', ParseIntPipe) visitId: number,
+  ): Promise<VisitBalanceDto> {
+    return this.visitOrderService.getVisitBalance(visitId);
+  }
+
+  @Post(':visitId/settlement')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async settleVisit(
+    @Param('visitId', ParseIntPipe) visitId: number,
+    @Body() dto: VisitSettlementRequest,
+  ): Promise<VisitBalanceDto> {
+    return this.visitOrderService.settleVisit(visitId, dto);
   }
 
   @Post(':orderId/mark-tag-written')

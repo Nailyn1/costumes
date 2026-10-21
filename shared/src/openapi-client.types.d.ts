@@ -126,12 +126,33 @@ export namespace Schemas {
     hasMore: boolean;
   } & Record<string, unknown>;
   export type Costumes_UpdateCostumeRequest = Partial<{ name: string }> & Record<string, unknown>;
-  export type Visits_CompleteReturnRequest = { depositReturned: boolean; notes?: string } & Record<string, unknown>;
+  export type Visits_VisitSettlementRequest = { kind: "debt_payment" | "customer_refund"; amount: number } & Record<
+    string,
+    unknown
+  >;
+  export type Visits_CompleteReturnRequest = {
+    depositReturned: boolean;
+    notes?: string;
+    settlement?: Visits_VisitSettlementRequest;
+  } & Record<string, unknown>;
+  export type Visits_VisitBalance = {
+    totalRent: number;
+    totalPrepayment: number;
+    totalReceived: number;
+    totalRefunded: number;
+    /**
+     * Положительное значение — долг, отрицательное — сумма к возврату клиенту
+     */
+    signedBalance: number;
+    debt: number;
+    refundDue: number;
+  } & Record<string, unknown>;
   export type Visits_CompleteReturnResponse = {
     visitId: number;
     visitCode: Costumes_VisitCode;
     status: Visits_VisitStatus;
     message: string;
+    balance: Visits_VisitBalance;
   } & Record<string, unknown>;
   export type Visits_CreateVisitRequest = {
     clientId: number;
@@ -267,6 +288,20 @@ export namespace Schemas {
     limit: number;
     hasMore: boolean;
   } & Record<string, unknown>;
+  export type Visits_UnsettledVisitBalance = {
+    visitId: number;
+    visitCode: Costumes_VisitCode;
+    clientName: Clients_ClientName;
+    clientPhone: Clients_PhoneString;
+    balance: Visits_VisitBalance;
+  } & Record<string, unknown>;
+  export type Visits_PaginatedUnsettledVisitBalancesResponse = {
+    items: Array<Visits_UnsettledVisitBalance>;
+    total: number;
+    page: number;
+    limit: number;
+    hasMore: boolean;
+  } & Record<string, unknown>;
   export type Visits_TagStatus = "written" | "not_written";
   export type Visits_VisitOrder = {
     orderId: number;
@@ -336,6 +371,7 @@ export namespace Schemas {
     notes: string;
     orders: Array<Visits_VisitReturnOrder>;
     deposit: Visits_VisitDepositInfo;
+    balance: Visits_VisitBalance;
   } & Record<string, unknown>;
   export type Visits_VisitReturnSearchResponse = {
     visitId: number;
@@ -697,6 +733,16 @@ export namespace Endpoints {
     };
     responses: { 200: Schemas.Visits_GetUnreturnedDepositsResponse; default: Schemas.Common_Error };
   };
+  export type get_VisitOperation_getUnsettledBalances = {
+    method: "GET";
+    path: "/visits/unsettled-balances";
+    requestFormat: "json";
+    responseFormat: "json";
+    parameters: {
+      query?: Partial<{ page: number; limit: number }>;
+    };
+    responses: { 200: Schemas.Visits_PaginatedUnsettledVisitBalancesResponse; default: Schemas.Common_Error };
+  };
   export type post_VisitOperation_markTagWritten = {
     method: "POST";
     path: "/visits/{orderId}/mark-tag-written";
@@ -706,6 +752,16 @@ export namespace Endpoints {
       path: { orderId: number };
     };
     responses: { 204: unknown; default: Schemas.Common_Error };
+  };
+  export type get_VisitOperation_getBalance = {
+    method: "GET";
+    path: "/visits/{visitId}/balance";
+    requestFormat: "json";
+    responseFormat: "json";
+    parameters: {
+      path: { visitId: number };
+    };
+    responses: { 200: Schemas.Visits_VisitBalance; default: Schemas.Common_Error };
   };
   /**
    * Отмена визита и всех связанных заказов
@@ -746,7 +802,7 @@ export namespace Endpoints {
 
       body: Schemas.Visits_CompleteReturnRequest;
     };
-    responses: { 200: Schemas.Visits_CompleteReturnResponse; default: Schemas.Common_Error };
+    responses: { 201: Schemas.Visits_CompleteReturnResponse; default: Schemas.Common_Error };
   };
   export type get_VisitOperation_getForIssue = {
     method: "GET";
@@ -792,6 +848,18 @@ export namespace Endpoints {
     };
     responses: { 200: Schemas.Visits_MarkDepositReturnedResponse; default: Schemas.Common_Error };
   };
+  export type post_VisitOperation_settle = {
+    method: "POST";
+    path: "/visits/{visitId}/settlement";
+    requestFormat: "json";
+    responseFormat: "json";
+    parameters: {
+      path: { visitId: number };
+
+      body: Schemas.Visits_VisitSettlementRequest;
+    };
+    responses: { 200: Schemas.Visits_VisitBalance; default: Schemas.Common_Error };
+  };
   export type post_VisitOperation_unissue = {
     method: "POST";
     path: "/visits/{visitId}/unissue";
@@ -823,6 +891,7 @@ export type EndpointByMethod = {
     "/visits/{visitId}/complete-return": Endpoints.post_VisitOperation_completeReturn;
     "/visits/{visitId}/issue": Endpoints.post_VisitOperation_issue;
     "/visits/{visitId}/mark-deposit-returned": Endpoints.post_VisitOperation_markDepositReturned;
+    "/visits/{visitId}/settlement": Endpoints.post_VisitOperation_settle;
     "/visits/{visitId}/unissue": Endpoints.post_VisitOperation_unissue;
   };
   patch: {
@@ -854,6 +923,8 @@ export type EndpointByMethod = {
     "/visits/return-search": Endpoints.get_VisitOperation_searchForReturn;
     "/visits/search": Endpoints.get_VisitOperation_search;
     "/visits/unreturned-deposits": Endpoints.get_VisitOperation_getUnreturnedDeposits;
+    "/visits/unsettled-balances": Endpoints.get_VisitOperation_getUnsettledBalances;
+    "/visits/{visitId}/balance": Endpoints.get_VisitOperation_getBalance;
     "/visits/{visitId}/for-issue": Endpoints.get_VisitOperation_getForIssue;
     "/visits/{visitId}/for-return": Endpoints.get_VisitOperation_getForReturn;
   };
