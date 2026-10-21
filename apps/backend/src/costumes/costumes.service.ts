@@ -15,10 +15,12 @@ import {
 } from '@costumes/shared';
 import { Prisma } from '../prisma/generated/client';
 import {
+  buildExactTextFilter,
   buildIdentifierFilters,
   buildWordStartFilters,
   isSearchQueryReady,
   maxScore,
+  mergeUniqueById,
   normalizeSearchQuery,
   scoreIdentifierMatch,
   scoreTextMatch,
@@ -106,22 +108,39 @@ export class CostumesService {
       })),
     ];
 
-    const costumes = await this.prisma.costume.findMany({
-      where: {
-        OR: searchFilters,
-        deletedAt: null,
-      },
-      include: {
-        orders: {
-          where: { deletedAt: null },
-          include: {
-            child: true,
-            visit: true,
-          },
+    const include = {
+      orders: {
+        where: { deletedAt: null },
+        include: {
+          child: true,
+          visit: true,
         },
       },
-      take: 20,
-    });
+    } satisfies Prisma.CostumeInclude;
+    const exactText = buildExactTextFilter(search);
+    const exactFilters: Prisma.CostumeWhereInput[] = [
+      { name: exactText },
+      { inventoryCode: exactText },
+      { orders: { some: { deletedAt: null, child: { name: exactText } } } },
+      {
+        orders: {
+          some: { deletedAt: null, visit: { visitCode: exactText } },
+        },
+      },
+    ];
+    const [exactCostumes, broadCostumes] = await Promise.all([
+      this.prisma.costume.findMany({
+        where: { OR: exactFilters, deletedAt: null },
+        include,
+        take: 20,
+      }),
+      this.prisma.costume.findMany({
+        where: { OR: searchFilters, deletedAt: null },
+        include,
+        take: 20,
+      }),
+    ]);
+    const costumes = mergeUniqueById(exactCostumes, broadCostumes);
 
     return sortBySearchScore(costumes, (costume) =>
       maxScore([
@@ -134,12 +153,14 @@ export class CostumesService {
           ]),
         ),
       ]),
-    ).map((c) => ({
-      costumeId: c.id,
-      name: c.name,
-      inventoryCode: c.inventoryCode,
-      display: `${c.name} (${c.inventoryCode})`,
-    }));
+    )
+      .slice(0, 20)
+      .map((c) => ({
+        costumeId: c.id,
+        name: c.name,
+        inventoryCode: c.inventoryCode,
+        display: `${c.name} (${c.inventoryCode})`,
+      }));
   }
 
   async searchCostumeAvailable(
@@ -172,44 +193,56 @@ export class CostumesService {
       })),
     ];
 
-    const costumes = await this.prisma.costume.findMany({
-      where: {
-        OR: searchFilters,
-        deletedAt: null,
-      },
-      include: {
-        orders: {
-          where: {
+    const include = {
+      orders: {
+        where: {
+          deletedAt: null,
+          status: { in: ['reserved', 'issued'] },
+          visit: {
             deletedAt: null,
-            status: { in: ['reserved', 'issued'] },
-            visit: {
-              deletedAt: null,
-              status: { not: 'cancelled' },
-              AND: [
-                { startDateTime: { lt: requestedEnd } },
-                { endDateTime: { gt: requestedStart } },
-              ],
-            },
-          },
-          include: {
-            visit: true,
+            status: { not: 'cancelled' },
+            AND: [
+              { startDateTime: { lt: requestedEnd } },
+              { endDateTime: { gt: requestedStart } },
+            ],
           },
         },
+        include: {
+          visit: true,
+        },
       },
-      take: 30,
-    });
+    } satisfies Prisma.CostumeInclude;
+    const exactText = buildExactTextFilter(search);
+    const [exactCostumes, broadCostumes] = await Promise.all([
+      this.prisma.costume.findMany({
+        where: {
+          OR: [{ name: exactText }, { inventoryCode: exactText }],
+          deletedAt: null,
+        },
+        include,
+        take: 30,
+      }),
+      this.prisma.costume.findMany({
+        where: { OR: searchFilters, deletedAt: null },
+        include,
+        take: 30,
+      }),
+    ]);
+    const costumes = mergeUniqueById(exactCostumes, broadCostumes);
 
     return sortBySearchScore(costumes, (costume) =>
       maxScore([
         scoreTextMatch(costume.name, search),
         scoreIdentifierMatch(costume.inventoryCode, search),
       ]),
-    ).map((c) => ({
-      costumeId: c.id,
-      name: c.name,
-      inventoryCode: c.inventoryCode,
-      status: c.orders.length > 0 ? 'issued' : 'available',
-    }));
+    )
+      .slice(0, 30)
+      .map((c) => ({
+        costumeId: c.id,
+        name: c.name,
+        inventoryCode: c.inventoryCode,
+        status: c.orders.length > 0 ? 'issued' : 'available',
+      }));
   }
 
   async costumesAvailability(

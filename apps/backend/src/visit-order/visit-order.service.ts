@@ -36,11 +36,14 @@ import { OrderStatus, Prisma, VisitStatus } from '../prisma/generated/client';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { buildVisitMessage } from '../common/utils/visit-message.utils';
 import {
+  buildExactPhoneFilter,
+  buildExactTextFilter,
   buildIdentifierFilters,
   buildPhoneFilters,
   buildWordStartFilters,
   isSearchQueryReady,
   maxScore,
+  mergeUniqueById,
   normalizeSearchQuery,
   scoreIdentifierMatch,
   scorePhoneMatch,
@@ -666,24 +669,48 @@ export class VisitOrderService {
       })),
     ];
 
-    const visits = await this.prisma.visit.findMany({
-      where: {
-        status: 'reserved',
-        deletedAt: null,
-        OR: searchFilters,
+    const include = {
+      client: true,
+      orders: {
+        where: { deletedAt: null },
+        include: {
+          child: true,
+          costume: true,
+        },
       },
-      include: {
-        client: true,
+    } as const;
+    const exactText = buildExactTextFilter(search);
+    const exactPhone = buildExactPhoneFilter(search);
+    const exactFilters: Prisma.VisitWhereInput[] = [
+      { visitCode: exactText },
+      { client: { name: exactText } },
+      ...(exactPhone ? [{ client: { phone: exactPhone } }] : []),
+      {
         orders: {
-          where: { deletedAt: null },
-          include: {
-            child: true,
-            costume: true,
+          some: {
+            deletedAt: null,
+            OR: [
+              { child: { name: exactText } },
+              { costume: { name: exactText } },
+              { costume: { inventoryCode: exactText } },
+            ],
           },
         },
       },
-      take: 50,
-    });
+    ];
+    const [exactVisits, broadVisits] = await Promise.all([
+      this.prisma.visit.findMany({
+        where: { status: 'reserved', deletedAt: null, OR: exactFilters },
+        include,
+        take: 50,
+      }),
+      this.prisma.visit.findMany({
+        where: { status: 'reserved', deletedAt: null, OR: searchFilters },
+        include,
+        take: 50,
+      }),
+    ]);
+    const visits = mergeUniqueById(exactVisits, broadVisits);
 
     return sortBySearchScore(visits, (visit) =>
       maxScore([
@@ -698,17 +725,19 @@ export class VisitOrderService {
           ]),
         ),
       ]),
-    ).map((visit) => ({
-      visitId: visit.id,
-      visitCode: visit.visitCode,
-      clientName: visit.client.name,
-      clientPhone: visit.client.phone,
-      startDateTime: visit.startDateTime.toISOString().split('T')[0],
-      childrenNames: Array.from(
-        new Set(visit.orders.map((o) => o.child.name)),
-      ).join(', '),
-      costumesNames: visit.orders.map((o) => o.costume.name).join(', '),
-    }));
+    )
+      .slice(0, 50)
+      .map((visit) => ({
+        visitId: visit.id,
+        visitCode: visit.visitCode,
+        clientName: visit.client.name,
+        clientPhone: visit.client.phone,
+        startDateTime: visit.startDateTime.toISOString().split('T')[0],
+        childrenNames: Array.from(
+          new Set(visit.orders.map((o) => o.child.name)),
+        ).join(', '),
+        costumesNames: visit.orders.map((o) => o.costume.name).join(', '),
+      }));
   }
 
   async visitForIssue(visitId: number): Promise<GetVisitForIssueDto> {
@@ -836,24 +865,48 @@ export class VisitOrderService {
       })),
     ];
 
-    const visits = await this.prisma.visit.findMany({
-      where: {
-        status: 'issued',
-        deletedAt: null,
-        OR: searchFilters,
+    const include = {
+      client: true,
+      orders: {
+        where: { deletedAt: null },
+        include: {
+          child: true,
+          costume: true,
+        },
       },
-      include: {
-        client: true,
+    } as const;
+    const exactText = buildExactTextFilter(search);
+    const exactPhone = buildExactPhoneFilter(search);
+    const exactFilters: Prisma.VisitWhereInput[] = [
+      { visitCode: exactText },
+      { client: { name: exactText } },
+      ...(exactPhone ? [{ client: { phone: exactPhone } }] : []),
+      {
         orders: {
-          where: { deletedAt: null },
-          include: {
-            child: true,
-            costume: true,
+          some: {
+            deletedAt: null,
+            OR: [
+              { child: { name: exactText } },
+              { costume: { name: exactText } },
+              { costume: { inventoryCode: exactText } },
+            ],
           },
         },
       },
-      take: 50,
-    });
+    ];
+    const [exactVisits, broadVisits] = await Promise.all([
+      this.prisma.visit.findMany({
+        where: { status: 'issued', deletedAt: null, OR: exactFilters },
+        include,
+        take: 50,
+      }),
+      this.prisma.visit.findMany({
+        where: { status: 'issued', deletedAt: null, OR: searchFilters },
+        include,
+        take: 50,
+      }),
+    ]);
+    const visits = mergeUniqueById(exactVisits, broadVisits);
 
     return sortBySearchScore(visits, (visit) =>
       maxScore([
@@ -868,19 +921,21 @@ export class VisitOrderService {
           ]),
         ),
       ]),
-    ).map((visit) => {
-      const childrenSet = new Set(visit.orders.map((o) => o.child.name));
-      const costumesSet = new Set(visit.orders.map((o) => o.costume.name));
-      return {
-        visitId: visit.id,
-        visitCode: visit.visitCode,
-        childrenNames: Array.from(childrenSet).join(', '),
-        costumesNames: Array.from(costumesSet).join(', '),
-        returnDate: visit.endDateTime.toISOString().split('T')[0],
-        clientPhone: visit.client.phone,
-        clientName: visit.client.name,
-      };
-    });
+    )
+      .slice(0, 50)
+      .map((visit) => {
+        const childrenSet = new Set(visit.orders.map((o) => o.child.name));
+        const costumesSet = new Set(visit.orders.map((o) => o.costume.name));
+        return {
+          visitId: visit.id,
+          visitCode: visit.visitCode,
+          childrenNames: Array.from(childrenSet).join(', '),
+          costumesNames: Array.from(costumesSet).join(', '),
+          returnDate: visit.endDateTime.toISOString().split('T')[0],
+          clientPhone: visit.client.phone,
+          clientName: visit.client.name,
+        };
+      });
   }
 
   async visitsForReturn(visitId: number): Promise<GetVisitsForReturnDto> {

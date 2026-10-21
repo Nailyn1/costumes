@@ -20,10 +20,13 @@ import {
 import { Prisma } from '../prisma/generated/client';
 import { NotificationRepository } from '../notification/notification.repository';
 import {
+  buildExactPhoneFilter,
+  buildExactTextFilter,
   buildPhoneFilters,
   buildWordStartFilters,
   isSearchQueryReady,
   maxScore,
+  mergeUniqueById,
   normalizeSearchQuery,
   scorePhoneMatch,
   scoreTextMatch,
@@ -242,23 +245,36 @@ export class ClientChildService {
       })),
     ];
 
-    const clients = await this.prisma.client.findMany({
-      where: {
-        deletedAt: null,
-        OR: searchFilters,
+    const select = {
+      id: true,
+      name: true,
+      phone: true,
+      children: {
+        where: { deletedAt: null },
+        select: { name: true, id: true },
       },
-      select: {
-        id: true,
-        name: true,
-        phone: true,
-        children: {
-          where: { deletedAt: null },
-          select: { name: true, id: true },
-        },
-        isBlacklisted: true,
-      },
-      take: 30,
-    });
+      isBlacklisted: true,
+    } as const;
+    const exactName = buildExactTextFilter(search);
+    const exactPhone = buildExactPhoneFilter(search);
+    const exactFilters: Prisma.ClientWhereInput[] = [
+      { name: exactName },
+      { children: { some: { deletedAt: null, name: exactName } } },
+      ...(exactPhone ? [{ phone: exactPhone }] : []),
+    ];
+    const [exactClients, broadClients] = await Promise.all([
+      this.prisma.client.findMany({
+        where: { deletedAt: null, OR: exactFilters },
+        select,
+        take: 10,
+      }),
+      this.prisma.client.findMany({
+        where: { deletedAt: null, OR: searchFilters },
+        select,
+        take: 30,
+      }),
+    ]);
+    const clients = mergeUniqueById(exactClients, broadClients);
 
     const matches = sortBySearchScore(clients, (client) =>
       maxScore([

@@ -40,6 +40,22 @@ export function buildWordStartFilters(
   ];
 }
 
+export function buildExactTextFilter(
+  query: NormalizedSearchQuery,
+): Prisma.StringFilter {
+  return { equals: query.raw, mode: 'insensitive' };
+}
+
+export function buildExactPhoneFilter(
+  query: NormalizedSearchQuery,
+): Prisma.StringFilter | null {
+  if (query.digits.length < 2) return null;
+  const digits = query.digits.startsWith('8')
+    ? `7${query.digits.slice(1)}`
+    : query.digits;
+  return { equals: `+${digits}` };
+}
+
 export function buildIdentifierFilters(
   query: NormalizedSearchQuery,
 ): Prisma.StringFilter[] {
@@ -138,6 +154,15 @@ export function scorePhoneMatch(
 
 export function maxScore(scores: number[]): number {
   return scores.reduce((max, score) => Math.max(max, score), 0);
+}
+
+export function mergeUniqueById<T extends { id: number }>(
+  exact: T[],
+  broad: T[],
+): T[] {
+  return [
+    ...new Map([...exact, ...broad].map((item) => [item.id, item])).values(),
+  ];
 }
 
 export function sortBySearchScore<T>(

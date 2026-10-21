@@ -297,7 +297,7 @@ describe('ClientChildService', () => {
           children: [{ childId: 1, name: 'Маша' }],
         },
       ]);
-      const [query] = prisma.client.findMany.mock.calls[0] as unknown as [
+      const [query] = prisma.client.findMany.mock.calls[1] as unknown as [
         {
           where: {
             deletedAt: null;
@@ -317,6 +317,13 @@ describe('ClientChildService', () => {
       ).toBe(true);
       expect(query.select.children.where).toEqual({ deletedAt: null });
       expect(query.take).toBe(30);
+      const [exactQuery] = prisma.client.findMany.mock.calls[0] as unknown as [
+        { where: { deletedAt: null }; take: number },
+      ];
+      expect(exactQuery).toMatchObject({
+        where: { deletedAt: null },
+        take: 10,
+      });
       expect(
         notificationRepository.findClientIdsWithConfirmedWhatsapp,
       ).toHaveBeenCalledWith([7]);
@@ -368,7 +375,7 @@ describe('ClientChildService', () => {
 
       await service.searchClients('+7707');
 
-      const [query] = prisma.client.findMany.mock.calls[0] as unknown as [
+      const [query] = prisma.client.findMany.mock.calls[1] as unknown as [
         { where: { deletedAt: null; OR: { phone?: object }[] } },
       ];
       expect(query.where.deletedAt).toBeNull();
@@ -384,7 +391,7 @@ describe('ClientChildService', () => {
       const results = await service.searchClients('87071234567');
 
       expect(results).toHaveLength(1);
-      const [query] = prisma.client.findMany.mock.calls[0] as unknown as [
+      const [query] = prisma.client.findMany.mock.calls[1] as unknown as [
         { where: { OR: { phone?: { contains?: string } }[] } },
       ];
       expect(query.where.OR).toContainEqual({
@@ -394,9 +401,6 @@ describe('ClientChildService', () => {
         phone: { contains: '77071234567' },
       });
     });
-
-    // Поведение поиска по подстроке имени зафиксировано в search.utils.spec.ts.
-    it.todo('ranks "Арина" above "Марина" for query "Арина" (T-034)');
   });
 
   describe('listClients', () => {

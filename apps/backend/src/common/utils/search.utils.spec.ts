@@ -1,9 +1,12 @@
 import {
   buildIdentifierFilters,
+  buildExactPhoneFilter,
+  buildExactTextFilter,
   buildPhoneFilters,
   buildWordStartFilters,
   isSearchQueryReady,
   maxScore,
+  mergeUniqueById,
   normalizeSearchQuery,
   scoreIdentifierMatch,
   scorePhoneMatch,
@@ -83,9 +86,6 @@ describe('scoreTextMatch', () => {
   it('matches the exact name "Арина"', () => {
     expect(scoreTextMatch('Арина', q('арина'))).toBe(100);
   });
-
-  // T-034: умный поиск — опечатки/«похожие» имена пока не обрабатываются.
-  it.todo('ranks "Арина" above "Марина" for the query "Арина" (T-034)');
 });
 
 describe('scoreIdentifierMatch', () => {
@@ -116,6 +116,16 @@ describe('scorePhoneMatch', () => {
 });
 
 describe('where-filters', () => {
+  it('builds exact filters for names and canonical phone numbers', () => {
+    expect(buildExactTextFilter(q('Арина'))).toEqual({
+      equals: 'Арина',
+      mode: 'insensitive',
+    });
+    expect(buildExactPhoneFilter(q('87071234567'))).toEqual({
+      equals: '+77071234567',
+    });
+    expect(buildExactPhoneFilter(q('Арина'))).toBeNull();
+  });
   it('buildWordStartFilters: prefix + after each separator, insensitive', () => {
     const filters = buildWordStartFilters(q('Аня'));
 
@@ -150,6 +160,11 @@ describe('where-filters', () => {
 });
 
 describe('maxScore / sortBySearchScore', () => {
+  it('merges exact and broad candidates without duplicates', () => {
+    expect(
+      mergeUniqueById([{ id: 2 }, { id: 3 }], [{ id: 1 }, { id: 2 }]),
+    ).toEqual([{ id: 2 }, { id: 3 }, { id: 1 }]);
+  });
   it('maxScore picks the best score, 0 for empty', () => {
     expect(maxScore([0, 85, 45])).toBe(85);
     expect(maxScore([])).toBe(0);
