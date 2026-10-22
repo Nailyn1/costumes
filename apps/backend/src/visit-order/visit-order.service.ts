@@ -34,8 +34,14 @@ import {
   VisitIssueRequestDto,
   VisitSettlementRequestDto,
   visitNotificationResponseDto,
+  VisitHistoryPayloadDto,
+  VisitHistoryPayloadSchema,
+  VisitHistoryEventSchema,
+  PaginatedVisitHistoryResponseDto,
+  PaginatedVisitHistoryResponseSchema,
 } from '@costumes/shared';
 import { OrderStatus, Prisma, VisitStatus } from '../prisma/generated/client';
+import { randomUUID } from 'node:crypto';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { buildVisitMessage } from '../common/utils/visit-message.utils';
 import {
@@ -75,6 +81,43 @@ const VISIT_ISSUE_REJECT_MESSAGES: Record<
 interface PinoLoggerWithId {
   id?: string;
 }
+
+export type VisitAuditActor =
+  { source: 'user'; userId: number } | { source: 'system' };
+
+type VisitAuditAction = VisitHistoryPayloadDto['kind'];
+type VisitAuditEventInput = {
+  [Action in VisitAuditAction]: {
+    action: Action;
+    entityType: 'visit' | 'order';
+    entityId: number;
+    visitId: number;
+    orderId?: number;
+    payload: Extract<VisitHistoryPayloadDto, { kind: Action }>;
+  };
+}[VisitAuditAction];
+
+type JsonValue =
+  string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+
+function toJsonValue(value: unknown): JsonValue {
+  if (
+    value === null ||
+    typeof value === 'string' ||
+    typeof value === 'number' ||
+    typeof value === 'boolean'
+  ) {
+    return value;
+  }
+  if (Array.isArray(value)) return value.map(toJsonValue);
+  if (typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, child]) => [key, toJsonValue(child)]),
+    );
+  }
+  throw new InternalServerErrorException('Некорректные данные истории визита');
+}
+
 @Injectable()
 export class VisitOrderService {
   constructor(
@@ -84,6 +127,56 @@ export class VisitOrderService {
     @InjectPinoLogger(VisitOrderService.name)
     private readonly logger: PinoLogger,
   ) {}
+
+  private async recordAuditEvents(
+    tx: Prisma.TransactionClient,
+    actor: VisitAuditActor,
+    commandId: string,
+    events: VisitAuditEventInput[],
+  ): Promise<void> {
+    const actorUser =
+      actor.source === 'user'
+        ? await tx.user.findUnique({
+            where: { id: actor.userId },
+            select: { id: true, name: true },
+          })
+        : null;
+    if (actor.source === 'user' && !actorUser) {
+      throw new NotFoundException('Сотрудник из токена не найден');
+    }
+    const actorUserId = actorUser?.id ?? null;
+    const actorNameSnapshot = actorUser?.name ?? 'Система';
+
+    for (const event of events) {
+      const payload = VisitHistoryPayloadSchema.parse(event.payload);
+      if (payload.kind !== event.action) {
+        throw new InternalServerErrorException(
+          'Тип события не совпадает с данными истории визита',
+        );
+      }
+      const payloadJson = toJsonValue(payload);
+      if (payloadJson === null || Array.isArray(payloadJson)) {
+        throw new InternalServerErrorException(
+          'Некорректные данные истории визита',
+        );
+      }
+      await tx.auditEvent.create({
+        data: {
+          actorUserId,
+          actorNameSnapshot,
+          source: actor.source,
+          action: event.action,
+          entityType: event.entityType,
+          entityId: event.entityId,
+          visitId: event.visitId,
+          orderId: event.orderId,
+          commandId,
+          schemaVersion: 1,
+          payload: payloadJson,
+        },
+      });
+    }
+  }
 
   private parseDateTime(dateStr: string, timeStr: string): Date {
     return new Date(`${dateStr}T${timeStr}:00Z`);
@@ -208,7 +301,9 @@ export class VisitOrderService {
   async createVisit(
     data: CreateVisitRequestDto,
     sendNotification: boolean,
+    actor: VisitAuditActor,
   ): Promise<CreateVisitResponseDto> {
+    const commandId = randomUUID();
     const fullStartDt = this.parseDateTime(
       data.startDateTime,
       data.issueTimeFrom,
@@ -359,6 +454,31 @@ export class VisitOrderService {
             },
           },
         });
+
+        await this.recordAuditEvents(tx, actor, commandId, [
+          {
+            action: 'visit.created',
+            entityType: 'visit',
+            entityId: visit.id,
+            visitId: visit.id,
+            payload: {
+              kind: 'visit.created',
+              visitCode: visit.visitCode,
+              clientId: visit.client.id,
+              clientName: visit.client.name,
+              startDateTime: visit.startDateTime.toISOString().split('T')[0],
+              endDateTime: visit.endDateTime.toISOString().split('T')[0],
+              orders: visit.orders.map((order) => ({
+                orderId: order.id,
+                childName: order.child.name,
+                costumeName: order.costume.name,
+                inventoryCode: order.costume.inventoryCode,
+                rentPrice: order.rentPrice,
+                prepaymentAmount: order.prepaymentAmount,
+              })),
+            },
+          },
+        ]);
 
         return visit;
       });
@@ -522,18 +642,56 @@ export class VisitOrderService {
     });
   }
 
-  async orderMarkTagWritten(orderId: number): Promise<void> {
-    await this.prisma.order
-      .update({
-        where: { id: orderId, deletedAt: null },
-        data: { tagStatus: 'written' },
-      })
-      .catch(() => {
-        throw new NotFoundException(`Заказ с ID ${orderId} не найден`);
+  async orderMarkTagWritten(
+    orderId: number,
+    actor: VisitAuditActor,
+  ): Promise<void> {
+    const commandId = randomUUID();
+    await this.prisma.$transaction(async (tx) => {
+      const order = await tx.order.findFirst({
+        where: { id: orderId, deletedAt: null, visit: { deletedAt: null } },
+        include: {
+          visit: { select: { id: true } },
+          child: { select: { name: true } },
+          costume: { select: { name: true, inventoryCode: true } },
+        },
       });
+      if (!order) {
+        throw new NotFoundException(`Заказ с ID ${orderId} не найден`);
+      }
+      if (order.tagStatus === 'written') return;
+
+      const changed = await tx.order.updateMany({
+        where: { id: orderId, deletedAt: null, tagStatus: 'not_written' },
+        data: { tagStatus: 'written' },
+      });
+      if (changed.count === 0) return;
+
+      await this.recordAuditEvents(tx, actor, commandId, [
+        {
+          action: 'tag.written',
+          entityType: 'order',
+          entityId: order.id,
+          visitId: order.visitId,
+          orderId: order.id,
+          payload: {
+            kind: 'tag.written',
+            orderId: order.id,
+            childName: order.child.name,
+            costumeName: order.costume.name,
+            inventoryCode: order.costume.inventoryCode,
+          },
+        },
+      ]);
+    });
   }
 
-  async visitIssue(data: VisitIssueRequestDto, visitId: number): Promise<void> {
+  async visitIssue(
+    data: VisitIssueRequestDto,
+    visitId: number,
+    actor: VisitAuditActor,
+  ): Promise<void> {
+    const commandId = randomUUID();
     const { deposit, additionalPayment } = data;
     try {
       Visit.validateIssuePayment(additionalPayment);
@@ -544,7 +702,15 @@ export class VisitOrderService {
     await this.prisma.$transaction(async (tx) => {
       const visit = await tx.visit.findFirst({
         where: { id: visitId, deletedAt: null },
-        include: { orders: { where: { deletedAt: null } } },
+        include: {
+          orders: {
+            where: { deletedAt: null },
+            include: {
+              child: { select: { name: true } },
+              costume: { select: { name: true, inventoryCode: true } },
+            },
+          },
+        },
       });
 
       if (!visit) {
@@ -611,13 +777,66 @@ export class VisitOrderService {
         }
         throw error;
       }
+
+      const orderSnapshots = visit.orders.map((order) => ({
+        orderId: order.id,
+        childName: order.child.name,
+        costumeName: order.costume.name,
+        inventoryCode: order.costume.inventoryCode,
+        rentPrice: order.rentPrice,
+        prepaymentAmount: order.prepaymentAmount,
+      }));
+      const auditEvents: VisitAuditEventInput[] = [
+        {
+          action: 'visit.issued',
+          entityType: 'visit',
+          entityId: visit.id,
+          visitId: visit.id,
+          payload: {
+            kind: 'visit.issued',
+            visitCode: visit.visitCode,
+            additionalPayment,
+            depositType: deposit.type,
+            depositAmount: deposit.type === 'cash' ? (deposit.amount ?? 0) : 0,
+            orders: orderSnapshots,
+          },
+        },
+      ];
+      if (decision.issuePayment !== null) {
+        auditEvents.push({
+          action: 'money.received',
+          entityType: 'visit',
+          entityId: visit.id,
+          visitId: visit.id,
+          payload: {
+            kind: 'money.received',
+            moneyKind: 'issue_payment',
+            amount: decision.issuePayment,
+          },
+        });
+      }
+      await this.recordAuditEvents(tx, actor, commandId, auditEvents);
     });
   }
 
-  async visitUnissue(visitId: number): Promise<void> {
+  async visitUnissue(visitId: number, actor: VisitAuditActor): Promise<void> {
+    const commandId = randomUUID();
     await this.prisma.$transaction(async (tx) => {
       const visit = await tx.visit.findFirst({
         where: { id: visitId, deletedAt: null },
+        include: {
+          orders: {
+            where: { deletedAt: null },
+            include: {
+              child: { select: { name: true } },
+              costume: { select: { name: true, inventoryCode: true } },
+            },
+          },
+          deposits: { where: { deletedAt: null }, take: 1 },
+          moneyOperations: {
+            where: { kind: 'issue_payment', voidedAt: null },
+          },
+        },
       });
 
       if (!visit) {
@@ -659,6 +878,38 @@ export class VisitOrderService {
         where: { visitId, kind: 'issue_payment', voidedAt: null },
         data: { voidedAt: new Date() },
       });
+
+      const deposit = visit.deposits[0];
+      await this.recordAuditEvents(tx, actor, commandId, [
+        {
+          action: 'visit.unissued',
+          entityType: 'visit',
+          entityId: visit.id,
+          visitId: visit.id,
+          payload: {
+            kind: 'visit.unissued',
+            visitCode: visit.visitCode,
+            voidedPaymentAmount: visit.moneyOperations.reduce(
+              (total, operation) => total + operation.amount,
+              0,
+            ),
+            ...(deposit
+              ? {
+                  depositType: deposit.type,
+                  depositAmount: deposit.amount ?? 0,
+                }
+              : {}),
+            orders: visit.orders.map((order) => ({
+              orderId: order.id,
+              childName: order.child.name,
+              costumeName: order.costume.name,
+              inventoryCode: order.costume.inventoryCode,
+              rentPrice: order.rentPrice,
+              prepaymentAmount: order.prepaymentAmount,
+            })),
+          },
+        },
+      ]);
     });
   }
 
@@ -1108,36 +1359,34 @@ export class VisitOrderService {
 
   async MarkDepositReturned(
     visitId: number,
-    notes?: string,
+    notes: string | undefined,
+    actor: VisitAuditActor,
   ): Promise<MarkDepositReturnedDto> {
-    const visit = await this.prisma.visit.findFirst({
-      where: { id: visitId, deletedAt: null },
-      include: { deposits: { where: { deletedAt: null }, take: 1 } },
-    });
-
-    if (!visit) {
-      throw new NotFoundException(`Визит с ID ${visitId} не найден`);
-    }
-
-    if (visit.status !== VisitStatus.completed) {
-      throw new BadRequestException(
-        'Вернуть залог можно только после завершения визита',
-      );
-    }
-
-    const deposit = visit.deposits[0];
-
-    if (!deposit) {
-      throw new BadRequestException(
-        `Для визита №${visitId} залог не зафиксирован`,
-      );
-    }
-
-    if (deposit.type === 'none') {
-      throw new BadRequestException('У визита нет залога для возврата');
-    }
-
+    const commandId = randomUUID();
     await this.prisma.$transaction(async (tx) => {
+      const visit = await tx.visit.findFirst({
+        where: { id: visitId, deletedAt: null },
+        include: { deposits: { where: { deletedAt: null }, take: 1 } },
+      });
+      if (!visit) {
+        throw new NotFoundException(`Визит с ID ${visitId} не найден`);
+      }
+      if (visit.status !== VisitStatus.completed) {
+        throw new BadRequestException(
+          'Вернуть залог можно только после завершения визита',
+        );
+      }
+      const deposit = visit.deposits[0];
+      if (!deposit) {
+        throw new BadRequestException(
+          `Для визита №${visitId} залог не зафиксирован`,
+        );
+      }
+      if (deposit.type === 'none') {
+        throw new BadRequestException('У визита нет залога для возврата');
+      }
+      if (deposit.returned) return;
+
       await tx.deposit.update({
         where: { id: deposit.id, deletedAt: null },
         data: { returned: true },
@@ -1152,6 +1401,19 @@ export class VisitOrderService {
           },
         });
       }
+      await this.recordAuditEvents(tx, actor, commandId, [
+        {
+          action: 'deposit.returned',
+          entityType: 'visit',
+          entityId: visit.id,
+          visitId: visit.id,
+          payload: {
+            kind: 'deposit.returned',
+            depositType: deposit.type,
+            amount: deposit.amount ?? 0,
+          },
+        },
+      ]);
     });
 
     return {
@@ -1164,40 +1426,44 @@ export class VisitOrderService {
   async visitCompleteReturn(
     visitId: number,
     data: visitCompleteReturnRequestDto,
+    actor: VisitAuditActor,
   ): Promise<visitCompleteReturnResponseDto> {
-    const { depositReturned, notes, settlement } = data as unknown as {
-      depositReturned: boolean;
-      notes?: string;
-      settlement?: { kind: VisitSettlementKind; amount: number };
-    };
-
-    const visit = await this.prisma.visit.findFirst({
-      where: { id: visitId, deletedAt: null },
-      include: {
-        orders: { where: { deletedAt: null } },
-        deposits: { where: { deletedAt: null }, take: 1 },
-        moneyOperations: { where: { voidedAt: null } },
-      },
-    });
-
-    if (!visit) {
-      throw new NotFoundException(`Визит №${visitId} не найден`);
-    }
-
-    let decision;
-    try {
-      decision = this.visitDomain(visit).completeReturn(notes, settlement);
-    } catch (error) {
-      if (error instanceof VisitBalanceError && settlement) {
-        this.assertValidSettlement(
-          this.visitDomain(visit).balance(),
-          settlement,
-        );
+    const commandId = randomUUID();
+    const result = await this.prisma.$transaction(async (tx) => {
+      const visit = await tx.visit.findFirst({
+        where: { id: visitId, deletedAt: null },
+        include: {
+          orders: {
+            where: { deletedAt: null },
+            include: {
+              child: { select: { name: true } },
+              costume: { select: { name: true, inventoryCode: true } },
+            },
+          },
+          deposits: { where: { deletedAt: null }, take: 1 },
+          moneyOperations: { where: { voidedAt: null } },
+        },
+      });
+      if (!visit) {
+        throw new NotFoundException(`Визит №${visitId} не найден`);
       }
-      this.rethrowVisitRule(error);
-    }
 
-    const updatedVisit = await this.prisma.$transaction(async (tx) => {
+      let decision;
+      try {
+        decision = this.visitDomain(visit).completeReturn(
+          data.notes,
+          data.settlement,
+        );
+      } catch (error) {
+        if (error instanceof VisitBalanceError && data.settlement) {
+          this.assertValidSettlement(
+            this.visitDomain(visit).balance(),
+            data.settlement,
+          );
+        }
+        this.rethrowVisitRule(error);
+      }
+
       const completedVisit = await tx.visit
         .update({
           where: { id: visitId, status: 'issued', deletedAt: null },
@@ -1227,22 +1493,95 @@ export class VisitOrderService {
       });
 
       const deposit = visit.deposits[0];
-      if (depositReturned && deposit) {
+      const returnsDeposit =
+        data.depositReturned &&
+        deposit !== undefined &&
+        deposit.type !== 'none' &&
+        !deposit.returned;
+      if (returnsDeposit && deposit) {
         await tx.deposit.update({
           where: { id: deposit.id, deletedAt: null },
           data: { returned: true },
         });
       }
 
-      return completedVisit;
+      const orderSnapshots = visit.orders.map((order) => ({
+        orderId: order.id,
+        childName: order.child.name,
+        costumeName: order.costume.name,
+        inventoryCode: order.costume.inventoryCode,
+        rentPrice: order.rentPrice,
+        prepaymentAmount: order.prepaymentAmount,
+      }));
+      const auditEvents: VisitAuditEventInput[] = [
+        {
+          action: 'visit.completed',
+          entityType: 'visit',
+          entityId: visit.id,
+          visitId: visit.id,
+          payload: {
+            kind: 'visit.completed',
+            visitCode: visit.visitCode,
+            orders: orderSnapshots,
+            ...(decision.settlement
+              ? {
+                  settlementKind: decision.settlement.kind,
+                  settlementAmount: decision.settlement.amount,
+                }
+              : {}),
+          },
+        },
+      ];
+      if (decision.settlement) {
+        auditEvents.push(
+          decision.settlement.kind === 'customer_refund'
+            ? {
+                action: 'money.refunded',
+                entityType: 'visit',
+                entityId: visit.id,
+                visitId: visit.id,
+                payload: {
+                  kind: 'money.refunded',
+                  amount: decision.settlement.amount,
+                },
+              }
+            : {
+                action: 'money.received',
+                entityType: 'visit',
+                entityId: visit.id,
+                visitId: visit.id,
+                payload: {
+                  kind: 'money.received',
+                  moneyKind: 'debt_payment',
+                  amount: decision.settlement.amount,
+                },
+              },
+        );
+      }
+      if (returnsDeposit && deposit) {
+        auditEvents.push({
+          action: 'deposit.returned',
+          entityType: 'visit',
+          entityId: visit.id,
+          visitId: visit.id,
+          payload: {
+            kind: 'deposit.returned',
+            depositType: deposit.type,
+            amount: deposit.amount ?? 0,
+          },
+        });
+      }
+      await this.recordAuditEvents(tx, actor, commandId, auditEvents);
+
+      return { completedVisit, decision };
     });
 
     return {
-      visitId: updatedVisit.id,
-      visitCode: updatedVisit.visitCode,
-      status: updatedVisit.status as 'completed',
+      visitId: result.completedVisit.id,
+      visitCode: result.completedVisit.visitCode,
+      status: result.completedVisit.status as 'completed',
       message: 'Визит успешно завершен, все костюмы возвращены',
-      balance: decision.balance,
+      balance: result.decision.balance,
     };
   }
 
@@ -1265,7 +1604,9 @@ export class VisitOrderService {
   async settleVisit(
     visitId: number,
     settlement: VisitSettlementRequestDto,
+    actor: VisitAuditActor,
   ): Promise<VisitBalanceDto> {
+    const commandId = randomUUID();
     try {
       return await this.prisma.$transaction(
         async (tx) => {
@@ -1297,6 +1638,30 @@ export class VisitOrderService {
               amount: settlement.amount,
             },
           });
+          await this.recordAuditEvents(tx, actor, commandId, [
+            settlement.kind === 'customer_refund'
+              ? {
+                  action: 'money.refunded',
+                  entityType: 'visit',
+                  entityId: visit.id,
+                  visitId: visit.id,
+                  payload: {
+                    kind: 'money.refunded',
+                    amount: settlement.amount,
+                  },
+                }
+              : {
+                  action: 'money.received',
+                  entityType: 'visit',
+                  entityId: visit.id,
+                  visitId: visit.id,
+                  payload: {
+                    kind: 'money.received',
+                    moneyKind: 'debt_payment',
+                    amount: settlement.amount,
+                  },
+                },
+          ]);
           return nextBalance;
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
@@ -1312,6 +1677,60 @@ export class VisitOrderService {
       }
       throw error;
     }
+  }
+
+  async visitHistory(
+    visitId: number,
+    page = 1,
+    limit = 20,
+  ): Promise<PaginatedVisitHistoryResponseDto> {
+    if (!Number.isInteger(page) || page < 1) {
+      throw new BadRequestException('Номер страницы должен быть не меньше 1');
+    }
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+      throw new BadRequestException('Размер страницы должен быть от 1 до 100');
+    }
+
+    const visit = await this.prisma.visit.findFirst({
+      where: { id: visitId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!visit) {
+      throw new NotFoundException(`Визит с ID ${visitId} не найден`);
+    }
+
+    const skip = (page - 1) * limit;
+    const where = { visitId };
+    const [events, total] = await this.prisma.$transaction([
+      this.prisma.auditEvent.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: [{ occurredAt: 'asc' }, { id: 'asc' }],
+      }),
+      this.prisma.auditEvent.count({ where }),
+    ]);
+
+    return PaginatedVisitHistoryResponseSchema.parse({
+      items: events.map((event) => {
+        if (event.schemaVersion !== 1) {
+          throw new InternalServerErrorException(
+            'Версия данных истории визита не поддерживается',
+          );
+        }
+        const { actorUserId, orderId, ...eventData } = event;
+        return VisitHistoryEventSchema.parse({
+          ...eventData,
+          occurredAt: event.occurredAt.toISOString(),
+          ...(orderId === null ? {} : { orderId }),
+          ...(actorUserId === null ? {} : { actorUserId }),
+        });
+      }),
+      total,
+      page,
+      limit,
+      hasMore: skip + events.length < total,
+    });
   }
 
   async listUnsettledVisitBalances(
@@ -1498,32 +1917,41 @@ export class VisitOrderService {
     };
   }
 
-  async visitCancel(visitId: number, data: visitCancelRequestDto) {
-    const { reason } = data as unknown as {
-      reason?: string;
-    };
-
-    const visit = await this.prisma.visit.findFirst({
-      where: { id: visitId, deletedAt: null },
-    });
-
-    if (!visit) {
-      throw new NotFoundException(`Визит с ID ${visitId} не найден`);
-    }
-
-    let decision;
-    try {
-      decision = this.visitDomain({
-        status: visit.status,
-        notes: visit.notes,
-        orders: [],
-        moneyOperations: [],
-      }).cancel(reason);
-    } catch (error) {
-      this.rethrowVisitRule(error);
-    }
-
+  async visitCancel(
+    visitId: number,
+    data: visitCancelRequestDto,
+    actor: VisitAuditActor,
+  ) {
+    const commandId = randomUUID();
     await this.prisma.$transaction(async (tx) => {
+      const visit = await tx.visit.findFirst({
+        where: { id: visitId, deletedAt: null },
+        include: {
+          orders: {
+            where: { deletedAt: null },
+            include: {
+              child: { select: { name: true } },
+              costume: { select: { name: true, inventoryCode: true } },
+            },
+          },
+        },
+      });
+      if (!visit) {
+        throw new NotFoundException(`Визит с ID ${visitId} не найден`);
+      }
+
+      let decision;
+      try {
+        decision = this.visitDomain({
+          status: visit.status,
+          notes: visit.notes,
+          orders: [],
+          moneyOperations: [],
+        }).cancel(data.reason);
+      } catch (error) {
+        this.rethrowVisitRule(error);
+      }
+
       await tx.order.updateMany({
         where: { visitId: visitId, deletedAt: null },
         data: { status: decision.orderStatus },
@@ -1536,6 +1964,19 @@ export class VisitOrderService {
           notes: decision.notes,
         },
       });
+      await this.recordAuditEvents(tx, actor, commandId, [
+        {
+          action: 'visit.cancelled',
+          entityType: 'visit',
+          entityId: visit.id,
+          visitId: visit.id,
+          payload: {
+            kind: 'visit.cancelled',
+            visitCode: visit.visitCode,
+            ...(data.reason ? { reason: data.reason } : {}),
+          },
+        },
+      ]);
     });
   }
 

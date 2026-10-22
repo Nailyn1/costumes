@@ -41,8 +41,32 @@ export const schemas = {
   Visits_CompleteReturnResponse: generated.Visits_CompleteReturnResponse,
   Visits_VisitBalance: generated.Visits_VisitBalance,
   Visits_VisitSettlementRequest: generated.Visits_VisitSettlementRequest,
+  Visits_VisitHistorySource: generated.Visits_VisitHistorySource,
+  Visits_VisitHistoryAction: generated.Visits_VisitHistoryAction,
+  Visits_VisitHistoryOrderSnapshot: generated.Visits_VisitHistoryOrderSnapshot,
+  Visits_VisitCreatedHistoryPayload:
+    generated.Visits_VisitCreatedHistoryPayload,
+  Visits_TagWrittenHistoryPayload: generated.Visits_TagWrittenHistoryPayload,
+  Visits_VisitIssuedHistoryPayload: generated.Visits_VisitIssuedHistoryPayload,
+  Visits_VisitUnissuedHistoryPayload:
+    generated.Visits_VisitUnissuedHistoryPayload,
+  Visits_VisitCancelledHistoryPayload:
+    generated.Visits_VisitCancelledHistoryPayload,
+  Visits_VisitCompletedHistoryPayload:
+    generated.Visits_VisitCompletedHistoryPayload,
+  Visits_DepositReturnedHistoryPayload:
+    generated.Visits_DepositReturnedHistoryPayload,
+  Visits_MoneyReceivedHistoryPayload:
+    generated.Visits_MoneyReceivedHistoryPayload,
+  Visits_MoneyRefundedHistoryPayload:
+    generated.Visits_MoneyRefundedHistoryPayload,
+  Visits_VisitHistoryPayload: generated.Visits_VisitHistoryPayload,
+  Visits_VisitHistoryEvent: generated.Visits_VisitHistoryEvent,
+  Visits_PaginatedVisitHistoryResponse:
+    generated.Visits_PaginatedVisitHistoryResponse,
   Visits_UnsettledVisitBalance: generated.Visits_UnsettledVisitBalance,
-  Visits_PaginatedUnsettledVisitBalancesResponse: generated.Visits_PaginatedUnsettledVisitBalancesResponse,
+  Visits_PaginatedUnsettledVisitBalancesResponse:
+    generated.Visits_PaginatedUnsettledVisitBalancesResponse,
   Visits_CreateVisitRequest: generated.Visits_CreateVisitRequest,
   Visits_DepositType: generated.Visits_DepositType,
   Visits_VisitDepositInfo: generated.Visits_VisitDepositInfo,
@@ -52,10 +76,12 @@ export const schemas = {
   Visits_GetNotificationResponse: generated.Visits_GetNotificationResponse,
   Visits_GetReservedResponse: generated.Visits_GetReservedResponse,
   Visits_GetUnreturnedResponse: generated.Visits_GetUnreturnedResponse,
-  Visits_GetUnreturnedDepositsResponse: generated.Visits_GetUnreturnedDepositsResponse,
+  Visits_GetUnreturnedDepositsResponse:
+    generated.Visits_GetUnreturnedDepositsResponse,
   Visits_IssueVisitRequest: generated.Visits_IssueVisitRequest,
   Visits_IssuedForReturnResponse: generated.Visits_IssuedForReturnResponse,
-  Visits_MarkDepositReturnedResponse: generated.Visits_MarkDepositReturnedResponse,
+  Visits_MarkDepositReturnedResponse:
+    generated.Visits_MarkDepositReturnedResponse,
   Visits_Order: generated.Visits_Order,
   Visits_NotWrittenOrdersResponse: generated.Visits_NotWrittenOrdersResponse,
   Visits_Notification: generated.Visits_Notification,

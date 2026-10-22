@@ -24,6 +24,8 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  auditEvents AuditEvent[]
+
   @@map("users")
 }
 
@@ -98,12 +100,38 @@ model Visit {
   notifications Notification[]
   deposits        Deposit[]
   moneyOperations VisitMoneyOperation[]
+  auditEvents     AuditEvent[]
 
   createdAt       DateTime    @default(now()) @map("created_at")
   updatedAt       DateTime    @updatedAt @map("updated_at")
   deletedAt       DateTime?   @map("deleted_at")
 
   @@map("visits")
+}
+
+model AuditEvent {
+  id                Int      @id @default(autoincrement())
+  occurredAt        DateTime @default(now()) @map("occurred_at")
+  actorUserId       Int?     @map("actor_user_id")
+  actorUser         User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  actorNameSnapshot String   @map("actor_name_snapshot")
+  source            String
+  action            String
+  entityType        String   @map("entity_type")
+  entityId          Int      @map("entity_id")
+  visitId           Int?     @map("visit_id")
+  visit             Visit?   @relation(fields: [visitId], references: [id], onDelete: SetNull)
+  orderId           Int?     @map("order_id")
+  commandId         String   @map("command_id")
+  schemaVersion     Int      @default(1) @map("schema_version")
+  payload           Json
+
+  @@index([visitId, occurredAt, id])
+  @@index([occurredAt, id])
+  @@index([actorUserId])
+  @@index([entityType, entityId])
+  @@index([orderId])
+  @@map("audit_events")
 }
 model VisitMoneyOperation {
   id             Int                     @id @default(autoincrement())

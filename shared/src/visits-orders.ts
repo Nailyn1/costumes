@@ -21,6 +21,19 @@ export type VisitSettlementRequestDto = z.infer<
 >;
 export const VisitSettlementRequestSchema =
   schemas.Visits_VisitSettlementRequest;
+export type VisitHistoryEventDto = z.infer<
+  typeof schemas.Visits_VisitHistoryEvent
+>;
+export const VisitHistoryEventSchema = schemas.Visits_VisitHistoryEvent;
+export type VisitHistoryPayloadDto = z.infer<
+  typeof schemas.Visits_VisitHistoryPayload
+>;
+export const VisitHistoryPayloadSchema = schemas.Visits_VisitHistoryPayload;
+export type PaginatedVisitHistoryResponseDto = z.infer<
+  typeof schemas.Visits_PaginatedVisitHistoryResponse
+>;
+export const PaginatedVisitHistoryResponseSchema =
+  schemas.Visits_PaginatedVisitHistoryResponse;
 export type PaginatedUnsettledVisitBalancesResponseDto = z.infer<
   typeof schemas.Visits_PaginatedUnsettledVisitBalancesResponse
 >;

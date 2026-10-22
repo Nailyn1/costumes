@@ -10,11 +10,15 @@ import {
   ParseBoolPipe,
   ParseIntPipe,
   Post,
+  Req,
   Query,
+  BadRequestException,
   UseGuards,
 } from '@nestjs/common';
 import { VisitOrderService } from './visit-order.service';
 import { JwtAuthGuard } from '../auth/jwt/jwt-auth.guard';
+import { RequestWithUser } from '../auth/active-user.interface';
+import { VisitAuditActor } from './visit-order.service';
 import {
   CompleteReturnRequest,
   CreateVisitRequest,
@@ -42,6 +46,14 @@ import {
   visitUnreturnedDepositsResponseDto,
 } from '@costumes/shared';
 
+function auditActor(req: RequestWithUser): VisitAuditActor {
+  const userId = Number(req.user.id);
+  if (!Number.isSafeInteger(userId) || userId < 1) {
+    throw new BadRequestException('В токене указан некорректный сотрудник');
+  }
+  return { source: 'user', userId };
+}
+
 @Controller('visits')
 export class VisitController {
   constructor(private readonly visitOrderService: VisitOrderService) {}
@@ -59,8 +71,23 @@ export class VisitController {
     @Query('sendNotification', new DefaultValuePipe(true), ParseBoolPipe)
     sendNotification: boolean,
     @Body() dto: CreateVisitRequest,
+    @Req() req: RequestWithUser,
   ): Promise<CreateVisitResponseDto> {
-    return await this.visitOrderService.createVisit(dto, sendNotification);
+    return await this.visitOrderService.createVisit(
+      dto,
+      sendNotification,
+      auditActor(req),
+    );
+  }
+
+  @Get(':visitId/history')
+  @UseGuards(JwtAuthGuard)
+  async getVisitHistory(
+    @Param('visitId', ParseIntPipe) visitId: number,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number = 1,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number = 20,
+  ) {
+    return this.visitOrderService.visitHistory(visitId, page, limit);
   }
 
   @Get('not_written')
@@ -120,15 +147,23 @@ export class VisitController {
   async visitIssue(
     @Param('visitId', ParseIntPipe) visitId: number,
     @Body() dto: VisitIssueRequest,
+    @Req() req: RequestWithUser,
   ) {
-    return await this.visitOrderService.visitIssue(dto, visitId);
+    return await this.visitOrderService.visitIssue(
+      dto,
+      visitId,
+      auditActor(req),
+    );
   }
 
   @Post(':visitId/unissue')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
-  async visitUnissue(@Param('visitId', ParseIntPipe) visitId: number) {
-    return await this.visitOrderService.visitUnissue(visitId);
+  async visitUnissue(
+    @Param('visitId', ParseIntPipe) visitId: number,
+    @Req() req: RequestWithUser,
+  ) {
+    return await this.visitOrderService.visitUnissue(visitId, auditActor(req));
   }
 
   @Get(':visitId/for-issue')
@@ -168,15 +203,19 @@ export class VisitController {
   async settleVisit(
     @Param('visitId', ParseIntPipe) visitId: number,
     @Body() dto: VisitSettlementRequest,
+    @Req() req: RequestWithUser,
   ): Promise<VisitBalanceDto> {
-    return this.visitOrderService.settleVisit(visitId, dto);
+    return this.visitOrderService.settleVisit(visitId, dto, auditActor(req));
   }
 
   @Post(':orderId/mark-tag-written')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
-  async deleteClient(@Param('orderId', ParseIntPipe) orderId: number) {
-    await this.visitOrderService.orderMarkTagWritten(orderId);
+  async deleteClient(
+    @Param('orderId', ParseIntPipe) orderId: number,
+    @Req() req: RequestWithUser,
+  ) {
+    await this.visitOrderService.orderMarkTagWritten(orderId, auditActor(req));
   }
 
   @Get('return-search')
@@ -200,8 +239,13 @@ export class VisitController {
   async markDepositReturned(
     @Param('visitId', ParseIntPipe) visitId: number,
     @Body() dto: MarkDepositReturnedRequest,
+    @Req() req: RequestWithUser,
   ): Promise<MarkDepositReturnedDto> {
-    return await this.visitOrderService.MarkDepositReturned(visitId, dto.notes);
+    return await this.visitOrderService.MarkDepositReturned(
+      visitId,
+      dto.notes,
+      auditActor(req),
+    );
   }
 
   @Post(':visitId/complete-return')
@@ -209,8 +253,13 @@ export class VisitController {
   async completeReturn(
     @Param('visitId', ParseIntPipe) visitId: number,
     @Body() dto: CompleteReturnRequest,
+    @Req() req: RequestWithUser,
   ): Promise<visitCompleteReturnResponseDto> {
-    return await this.visitOrderService.visitCompleteReturn(visitId, dto);
+    return await this.visitOrderService.visitCompleteReturn(
+      visitId,
+      dto,
+      auditActor(req),
+    );
   }
 
   @Get('unreturned-deposits')
@@ -237,7 +286,12 @@ export class VisitController {
   async visitCancel(
     @Param('visitId', ParseIntPipe) visitId: number,
     @Body() dto: VisitCancelRequest,
+    @Req() req: RequestWithUser,
   ) {
-    return await this.visitOrderService.visitCancel(visitId, dto);
+    return await this.visitOrderService.visitCancel(
+      visitId,
+      dto,
+      auditActor(req),
+    );
   }
 }

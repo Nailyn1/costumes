@@ -177,6 +177,11 @@ export namespace Schemas {
     >;
   } & Record<string, unknown>;
   export type Visits_DepositType = "cash" | "document" | "none";
+  export type Visits_DepositReturnedHistoryPayload = {
+    kind: "deposit.returned";
+    depositType: Visits_DepositType;
+    amount: number;
+  } & Record<string, unknown>;
   export type Visits_VisitDepositInfo = { type: Visits_DepositType; amount?: number } & Record<string, unknown>;
   export type Visits_GetIssuedItem = {
     visitId: number;
@@ -261,6 +266,12 @@ export namespace Schemas {
     depositReturned: boolean;
     message: string;
   } & Record<string, unknown>;
+  export type Visits_MoneyReceivedHistoryPayload = {
+    kind: "money.received";
+    moneyKind: "issue_payment" | "debt_payment";
+    amount: number;
+  } & Record<string, unknown>;
+  export type Visits_MoneyRefundedHistoryPayload = { kind: "money.refunded"; amount: number } & Record<string, unknown>;
   export type Visits_Order = {
     orderId: number;
     inventoryCode: Costumes_InventoryCode;
@@ -303,6 +314,101 @@ export namespace Schemas {
   } & Record<string, unknown>;
   export type Visits_PaginatedUnsettledVisitBalancesResponse = {
     items: Array<Visits_UnsettledVisitBalance>;
+    total: number;
+    page: number;
+    limit: number;
+    hasMore: boolean;
+  } & Record<string, unknown>;
+  export type Visits_VisitHistorySource = "user" | "system" | "import";
+  export type Visits_VisitHistoryAction =
+    | "visit.created"
+    | "tag.written"
+    | "visit.issued"
+    | "visit.unissued"
+    | "visit.cancelled"
+    | "visit.completed"
+    | "deposit.returned"
+    | "money.received"
+    | "money.refunded";
+  export type Visits_VisitHistoryOrderSnapshot = {
+    orderId: number;
+    childName: string;
+    costumeName: string;
+    inventoryCode: Costumes_InventoryCode;
+    rentPrice: number;
+    prepaymentAmount: number;
+  } & Record<string, unknown>;
+  export type Visits_VisitCreatedHistoryPayload = {
+    kind: "visit.created";
+    visitCode: Costumes_VisitCode;
+    clientId: number;
+    clientName: string;
+    startDateTime: string;
+    endDateTime: string;
+    orders: Array<Visits_VisitHistoryOrderSnapshot>;
+  } & Record<string, unknown>;
+  export type Visits_TagWrittenHistoryPayload = {
+    kind: "tag.written";
+    orderId: number;
+    childName: string;
+    costumeName: string;
+    inventoryCode: Costumes_InventoryCode;
+  } & Record<string, unknown>;
+  export type Visits_VisitIssuedHistoryPayload = {
+    kind: "visit.issued";
+    visitCode: Costumes_VisitCode;
+    additionalPayment: number;
+    depositType: Visits_DepositType;
+    depositAmount: number;
+    orders: Array<Visits_VisitHistoryOrderSnapshot>;
+  } & Record<string, unknown>;
+  export type Visits_VisitUnissuedHistoryPayload = {
+    kind: "visit.unissued";
+    visitCode: Costumes_VisitCode;
+    voidedPaymentAmount: number;
+    depositType?: Visits_DepositType;
+    depositAmount?: number;
+    orders: Array<Visits_VisitHistoryOrderSnapshot>;
+  } & Record<string, unknown>;
+  export type Visits_VisitCancelledHistoryPayload = {
+    kind: "visit.cancelled";
+    visitCode: Costumes_VisitCode;
+    reason?: string;
+  } & Record<string, unknown>;
+  export type Visits_VisitCompletedHistoryPayload = {
+    kind: "visit.completed";
+    visitCode: Costumes_VisitCode;
+    orders: Array<Visits_VisitHistoryOrderSnapshot>;
+    settlementKind?: "debt_payment" | "customer_refund";
+    settlementAmount?: number;
+  } & Record<string, unknown>;
+  export type Visits_VisitHistoryPayload =
+    | Visits_VisitCreatedHistoryPayload
+    | Visits_TagWrittenHistoryPayload
+    | Visits_VisitIssuedHistoryPayload
+    | Visits_VisitUnissuedHistoryPayload
+    | Visits_VisitCancelledHistoryPayload
+    | Visits_VisitCompletedHistoryPayload
+    | Visits_DepositReturnedHistoryPayload
+    | Visits_MoneyReceivedHistoryPayload
+    | Visits_MoneyRefundedHistoryPayload;
+  export type Visits_VisitHistoryEvent = {
+    id: number;
+    occurredAt: string;
+    actorUserId?: number;
+    actorNameSnapshot: string;
+    source: Visits_VisitHistorySource;
+    action: Visits_VisitHistoryAction;
+    entityType: "visit" | "order";
+    entityId: number;
+    visitId: number;
+    orderId?: number;
+    commandId: string;
+    schemaVersion: 1;
+    payload: Visits_VisitHistoryPayload;
+  } & Record<string, unknown>;
+  export type Visits_PaginatedVisitHistoryResponse = {
+    items: Array<Visits_VisitHistoryEvent>;
     total: number;
     page: number;
     limit: number;
@@ -830,6 +936,17 @@ export namespace Endpoints {
     };
     responses: { 200: Schemas.Visits_VisitForReturnResponse; default: Schemas.Common_Error };
   };
+  export type get_VisitOperation_getHistory = {
+    method: "GET";
+    path: "/visits/{visitId}/history";
+    requestFormat: "json";
+    responseFormat: "json";
+    parameters: {
+      query?: Partial<{ page: number; limit: number }>;
+      path: { visitId: number };
+    };
+    responses: { 200: Schemas.Visits_PaginatedVisitHistoryResponse; default: Schemas.Common_Error };
+  };
   export type post_VisitOperation_issue = {
     method: "POST";
     path: "/visits/{visitId}/issue";
@@ -933,6 +1050,7 @@ export type EndpointByMethod = {
     "/visits/{visitId}/balance": Endpoints.get_VisitOperation_getBalance;
     "/visits/{visitId}/for-issue": Endpoints.get_VisitOperation_getForIssue;
     "/visits/{visitId}/for-return": Endpoints.get_VisitOperation_getForReturn;
+    "/visits/{visitId}/history": Endpoints.get_VisitOperation_getHistory;
   };
 };
 

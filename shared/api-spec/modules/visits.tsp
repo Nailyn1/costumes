@@ -146,6 +146,136 @@ model VisitSettlementRequest {
   @minValue(1) amount: int32;
 }
 
+enum VisitHistorySource {
+  user,
+  system,
+  imported: "import",
+}
+
+enum VisitHistoryAction {
+  visitCreated: "visit.created",
+  tagWritten: "tag.written",
+  visitIssued: "visit.issued",
+  visitUnissued: "visit.unissued",
+  visitCancelled: "visit.cancelled",
+  visitCompleted: "visit.completed",
+  depositReturned: "deposit.returned",
+  moneyReceived: "money.received",
+  moneyRefunded: "money.refunded",
+}
+
+model VisitHistoryOrderSnapshot {
+  orderId: int32;
+  childName: string;
+  costumeName: string;
+  inventoryCode: CostumeApp.Costumes.InventoryCode;
+  rentPrice: int32;
+  prepaymentAmount: int32;
+}
+
+model VisitCreatedHistoryPayload {
+  kind: "visit.created";
+  visitCode: VisitCode;
+  clientId: int32;
+  clientName: string;
+  startDateTime: plainDate;
+  endDateTime: plainDate;
+  orders: VisitHistoryOrderSnapshot[];
+}
+
+model TagWrittenHistoryPayload {
+  kind: "tag.written";
+  orderId: int32;
+  childName: string;
+  costumeName: string;
+  inventoryCode: CostumeApp.Costumes.InventoryCode;
+}
+
+model VisitIssuedHistoryPayload {
+  kind: "visit.issued";
+  visitCode: VisitCode;
+  additionalPayment: int32;
+  depositType: DepositType;
+  depositAmount: int32;
+  orders: VisitHistoryOrderSnapshot[];
+}
+
+model VisitUnissuedHistoryPayload {
+  kind: "visit.unissued";
+  visitCode: VisitCode;
+  voidedPaymentAmount: int32;
+  depositType?: DepositType;
+  depositAmount?: int32;
+  orders: VisitHistoryOrderSnapshot[];
+}
+
+model VisitCancelledHistoryPayload {
+  kind: "visit.cancelled";
+  visitCode: VisitCode;
+  reason?: string;
+}
+
+model VisitCompletedHistoryPayload {
+  kind: "visit.completed";
+  visitCode: VisitCode;
+  orders: VisitHistoryOrderSnapshot[];
+  settlementKind?: "debt_payment" | "customer_refund";
+  settlementAmount?: int32;
+}
+
+model DepositReturnedHistoryPayload {
+  kind: "deposit.returned";
+  depositType: DepositType;
+  amount: int32;
+}
+
+model MoneyReceivedHistoryPayload {
+  kind: "money.received";
+  moneyKind: "issue_payment" | "debt_payment";
+  amount: int32;
+}
+
+model MoneyRefundedHistoryPayload {
+  kind: "money.refunded";
+  amount: int32;
+}
+
+union VisitHistoryPayload {
+  visitCreated: VisitCreatedHistoryPayload,
+  tagWritten: TagWrittenHistoryPayload,
+  visitIssued: VisitIssuedHistoryPayload,
+  visitUnissued: VisitUnissuedHistoryPayload,
+  visitCancelled: VisitCancelledHistoryPayload,
+  visitCompleted: VisitCompletedHistoryPayload,
+  depositReturned: DepositReturnedHistoryPayload,
+  moneyReceived: MoneyReceivedHistoryPayload,
+  moneyRefunded: MoneyRefundedHistoryPayload,
+}
+
+model VisitHistoryEvent {
+  id: int32;
+  occurredAt: utcDateTime;
+  actorUserId?: int32;
+  actorNameSnapshot: string;
+  source: VisitHistorySource;
+  action: VisitHistoryAction;
+  entityType: "visit" | "order";
+  entityId: int32;
+  visitId: int32;
+  orderId?: int32;
+  commandId: string;
+  schemaVersion: 1;
+  payload: VisitHistoryPayload;
+}
+
+model PaginatedVisitHistoryResponse {
+  items: VisitHistoryEvent[];
+  total: int32;
+  page: int32;
+  limit: int32;
+  hasMore: boolean;
+}
+
 model UnsettledVisitBalance {
   visitId: int32;
   visitCode: VisitCode;
@@ -348,6 +478,17 @@ interface VisitOperation {
     @body body: CreateVisitRequest): {
     @statusCode statusCode: 201;
     @body body: Visit;
+  } | Common.Error;
+
+  @get
+  @route("{visitId}/history")
+  getHistory(
+    @path visitId: int32,
+    @query @minValue(1) page?: int32,
+    @query @minValue(1) @maxValue(100) limit?: int32,
+  ): {
+    @statusCode statusCode: 200;
+    @body body: PaginatedVisitHistoryResponse;
   } | Common.Error;
 
 @get

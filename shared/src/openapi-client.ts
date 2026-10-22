@@ -296,6 +296,11 @@ export const Visits_CreateVisitRequest = z
 export type Visits_DepositType = __TypedOpenapi.Schemas.Visits_DepositType;
 export const Visits_DepositType = z.enum(["cash", "document", "none"]);
 
+export type Visits_DepositReturnedHistoryPayload = __TypedOpenapi.Schemas.Visits_DepositReturnedHistoryPayload;
+export const Visits_DepositReturnedHistoryPayload = z
+  .object({ kind: z.literal("deposit.returned"), depositType: Visits_DepositType, amount: z.number().int() })
+  .catchall(z.unknown());
+
 export type Visits_VisitDepositInfo = __TypedOpenapi.Schemas.Visits_VisitDepositInfo;
 export const Visits_VisitDepositInfo = z
   .object({ type: Visits_DepositType, amount: z.number().int().optional() })
@@ -420,6 +425,20 @@ export const Visits_MarkDepositReturnedResponse = z
   .object({ visitId: z.number().int(), depositReturned: z.boolean(), message: z.string() })
   .catchall(z.unknown());
 
+export type Visits_MoneyReceivedHistoryPayload = __TypedOpenapi.Schemas.Visits_MoneyReceivedHistoryPayload;
+export const Visits_MoneyReceivedHistoryPayload = z
+  .object({
+    kind: z.literal("money.received"),
+    moneyKind: z.enum(["issue_payment", "debt_payment"]),
+    amount: z.number().int(),
+  })
+  .catchall(z.unknown());
+
+export type Visits_MoneyRefundedHistoryPayload = __TypedOpenapi.Schemas.Visits_MoneyRefundedHistoryPayload;
+export const Visits_MoneyRefundedHistoryPayload = z
+  .object({ kind: z.literal("money.refunded"), amount: z.number().int() })
+  .catchall(z.unknown());
+
 export type Visits_Order = __TypedOpenapi.Schemas.Visits_Order;
 export const Visits_Order = z
   .object({
@@ -482,6 +501,141 @@ export type Visits_PaginatedUnsettledVisitBalancesResponse =
 export const Visits_PaginatedUnsettledVisitBalancesResponse = z
   .object({
     items: z.array(Visits_UnsettledVisitBalance),
+    total: z.number().int(),
+    page: z.number().int(),
+    limit: z.number().int(),
+    hasMore: z.boolean(),
+  })
+  .catchall(z.unknown());
+
+export type Visits_VisitHistorySource = __TypedOpenapi.Schemas.Visits_VisitHistorySource;
+export const Visits_VisitHistorySource = z.enum(["user", "system", "import"]);
+
+export type Visits_VisitHistoryAction = __TypedOpenapi.Schemas.Visits_VisitHistoryAction;
+export const Visits_VisitHistoryAction = z.enum([
+  "visit.created",
+  "tag.written",
+  "visit.issued",
+  "visit.unissued",
+  "visit.cancelled",
+  "visit.completed",
+  "deposit.returned",
+  "money.received",
+  "money.refunded",
+]);
+
+export type Visits_VisitHistoryOrderSnapshot = __TypedOpenapi.Schemas.Visits_VisitHistoryOrderSnapshot;
+export const Visits_VisitHistoryOrderSnapshot = z
+  .object({
+    orderId: z.number().int(),
+    childName: z.string(),
+    costumeName: z.string(),
+    inventoryCode: Costumes_InventoryCode,
+    rentPrice: z.number().int(),
+    prepaymentAmount: z.number().int(),
+  })
+  .catchall(z.unknown());
+
+export type Visits_VisitCreatedHistoryPayload = __TypedOpenapi.Schemas.Visits_VisitCreatedHistoryPayload;
+export const Visits_VisitCreatedHistoryPayload = z
+  .object({
+    kind: z.literal("visit.created"),
+    visitCode: Costumes_VisitCode,
+    clientId: z.number().int(),
+    clientName: z.string(),
+    startDateTime: z.iso.date(),
+    endDateTime: z.iso.date(),
+    orders: z.array(Visits_VisitHistoryOrderSnapshot),
+  })
+  .catchall(z.unknown());
+
+export type Visits_TagWrittenHistoryPayload = __TypedOpenapi.Schemas.Visits_TagWrittenHistoryPayload;
+export const Visits_TagWrittenHistoryPayload = z
+  .object({
+    kind: z.literal("tag.written"),
+    orderId: z.number().int(),
+    childName: z.string(),
+    costumeName: z.string(),
+    inventoryCode: Costumes_InventoryCode,
+  })
+  .catchall(z.unknown());
+
+export type Visits_VisitIssuedHistoryPayload = __TypedOpenapi.Schemas.Visits_VisitIssuedHistoryPayload;
+export const Visits_VisitIssuedHistoryPayload = z
+  .object({
+    kind: z.literal("visit.issued"),
+    visitCode: Costumes_VisitCode,
+    additionalPayment: z.number().int(),
+    depositType: Visits_DepositType,
+    depositAmount: z.number().int(),
+    orders: z.array(Visits_VisitHistoryOrderSnapshot),
+  })
+  .catchall(z.unknown());
+
+export type Visits_VisitUnissuedHistoryPayload = __TypedOpenapi.Schemas.Visits_VisitUnissuedHistoryPayload;
+export const Visits_VisitUnissuedHistoryPayload = z
+  .object({
+    kind: z.literal("visit.unissued"),
+    visitCode: Costumes_VisitCode,
+    voidedPaymentAmount: z.number().int(),
+    depositType: Visits_DepositType.optional(),
+    depositAmount: z.number().int().optional(),
+    orders: z.array(Visits_VisitHistoryOrderSnapshot),
+  })
+  .catchall(z.unknown());
+
+export type Visits_VisitCancelledHistoryPayload = __TypedOpenapi.Schemas.Visits_VisitCancelledHistoryPayload;
+export const Visits_VisitCancelledHistoryPayload = z
+  .object({ kind: z.literal("visit.cancelled"), visitCode: Costumes_VisitCode, reason: z.string().optional() })
+  .catchall(z.unknown());
+
+export type Visits_VisitCompletedHistoryPayload = __TypedOpenapi.Schemas.Visits_VisitCompletedHistoryPayload;
+export const Visits_VisitCompletedHistoryPayload = z
+  .object({
+    kind: z.literal("visit.completed"),
+    visitCode: Costumes_VisitCode,
+    orders: z.array(Visits_VisitHistoryOrderSnapshot),
+    settlementKind: z.enum(["debt_payment", "customer_refund"]).optional(),
+    settlementAmount: z.number().int().optional(),
+  })
+  .catchall(z.unknown());
+
+export type Visits_VisitHistoryPayload = __TypedOpenapi.Schemas.Visits_VisitHistoryPayload;
+export const Visits_VisitHistoryPayload = z.union([
+  Visits_VisitCreatedHistoryPayload,
+  Visits_TagWrittenHistoryPayload,
+  Visits_VisitIssuedHistoryPayload,
+  Visits_VisitUnissuedHistoryPayload,
+  Visits_VisitCancelledHistoryPayload,
+  Visits_VisitCompletedHistoryPayload,
+  Visits_DepositReturnedHistoryPayload,
+  Visits_MoneyReceivedHistoryPayload,
+  Visits_MoneyRefundedHistoryPayload,
+]);
+
+export type Visits_VisitHistoryEvent = __TypedOpenapi.Schemas.Visits_VisitHistoryEvent;
+export const Visits_VisitHistoryEvent = z
+  .object({
+    id: z.number().int(),
+    occurredAt: z.iso.datetime(),
+    actorUserId: z.number().int().optional(),
+    actorNameSnapshot: z.string(),
+    source: Visits_VisitHistorySource,
+    action: Visits_VisitHistoryAction,
+    entityType: z.enum(["visit", "order"]),
+    entityId: z.number().int(),
+    visitId: z.number().int(),
+    orderId: z.number().int().optional(),
+    commandId: z.string(),
+    schemaVersion: z.literal(1),
+    payload: Visits_VisitHistoryPayload,
+  })
+  .catchall(z.unknown());
+
+export type Visits_PaginatedVisitHistoryResponse = __TypedOpenapi.Schemas.Visits_PaginatedVisitHistoryResponse;
+export const Visits_PaginatedVisitHistoryResponse = z
+  .object({
+    items: z.array(Visits_VisitHistoryEvent),
     total: z.number().int(),
     page: z.number().int(),
     limit: z.number().int(),
@@ -1063,6 +1217,22 @@ export const get_VisitOperation_getForReturn = {
   responses: { 200: Visits_VisitForReturnResponse, default: Common_Error },
 };
 
+export type get_VisitOperation_getHistory = __TypedOpenapi.Endpoints.get_VisitOperation_getHistory;
+export const get_VisitOperation_getHistory = {
+  method: z.literal("GET"),
+  path: z.literal("/visits/{visitId}/history"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: {
+    query: z
+      .strictObject({ page: z.coerce.number().int().min(1), limit: z.coerce.number().int().min(1).max(100) })
+      .partial()
+      .optional(),
+    path: z.strictObject({ visitId: z.coerce.number().int() }),
+  },
+  responses: { 200: Visits_PaginatedVisitHistoryResponse, default: Common_Error },
+};
+
 export type post_VisitOperation_issue = __TypedOpenapi.Endpoints.post_VisitOperation_issue;
 export const post_VisitOperation_issue = {
   method: z.literal("POST"),
@@ -1161,6 +1331,7 @@ export const EndpointByMethod = {
     "/visits/{visitId}/balance": get_VisitOperation_getBalance,
     "/visits/{visitId}/for-issue": get_VisitOperation_getForIssue,
     "/visits/{visitId}/for-return": get_VisitOperation_getForReturn,
+    "/visits/{visitId}/history": get_VisitOperation_getHistory,
   },
 } satisfies {
   [M in keyof __TypedOpenapi.EndpointByMethod]: { [P in keyof __TypedOpenapi.EndpointByMethod[M]]: unknown };
@@ -1302,6 +1473,13 @@ export const endpointParameterStyles = {
     "/visits/{visitId}/balance": { path: { visitId: { style: "simple", explode: false, allowReserved: false } } },
     "/visits/{visitId}/for-issue": { path: { visitId: { style: "simple", explode: false, allowReserved: false } } },
     "/visits/{visitId}/for-return": { path: { visitId: { style: "simple", explode: false, allowReserved: false } } },
+    "/visits/{visitId}/history": {
+      query: {
+        page: { style: "form", explode: false, allowReserved: false },
+        limit: { style: "form", explode: false, allowReserved: false },
+      },
+      path: { visitId: { style: "simple", explode: false, allowReserved: false } },
+    },
   },
 } as Partial<Record<string, Partial<Record<string, EndpointParameterStyles>>>>;
 // </EndpointParameterStyles>

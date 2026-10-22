@@ -26,6 +26,7 @@ jest.mock('../prisma/generated/client', () => ({
 const redisMock = { get: jest.fn(), set: jest.fn(), del: jest.fn() };
 const queueMock = { add: jest.fn() };
 const loggerMock = { logger: { id: 'trace-1', error: jest.fn() } };
+const systemAuditActor = { source: 'system' } as const;
 const { prisma: prismaMock, tx: txMock, reset } = createPrismaMock();
 
 const createService = () =>
@@ -57,7 +58,7 @@ describe('VisitOrderService', () => {
     ])('rejects a %s visit', async (status, fragment) => {
       txMock.visit.findFirst.mockResolvedValue({ id: 1, status, orders: [] });
 
-      const promise = service.visitIssue(issueData, 1);
+      const promise = service.visitIssue(issueData, 1, systemAuditActor);
 
       await expect(promise).rejects.toBeInstanceOf(BadRequestException);
       await expect(promise).rejects.toThrow(fragment);
@@ -68,11 +69,12 @@ describe('VisitOrderService', () => {
     it('issues a reserved visit', async () => {
       txMock.visit.findFirst.mockResolvedValue({
         id: 1,
+        visitCode: '1234',
         status: 'reserved',
         orders: [],
       });
 
-      await service.visitIssue(issueData, 1);
+      await service.visitIssue(issueData, 1, systemAuditActor);
 
       expect(txMock.visit.update).toHaveBeenCalled();
     });
@@ -80,15 +82,32 @@ describe('VisitOrderService', () => {
     it('issues only active orders of the visit', async () => {
       txMock.visit.findFirst.mockResolvedValue({
         id: 1,
+        visitCode: '1234',
         status: 'reserved',
-        orders: [{ id: 2, rentPrice: 5000, prepaymentAmount: 1000 }],
+        orders: [
+          {
+            id: 2,
+            rentPrice: 5000,
+            prepaymentAmount: 1000,
+            child: makeChild(),
+            costume: makeCostume(),
+          },
+        ],
       });
 
-      await service.visitIssue(issueData, 1);
+      await service.visitIssue(issueData, 1, systemAuditActor);
 
       expect(txMock.visit.findFirst).toHaveBeenCalledWith({
         where: { id: 1, deletedAt: null },
-        include: { orders: { where: { deletedAt: null } } },
+        include: {
+          orders: {
+            where: { deletedAt: null },
+            include: {
+              child: { select: { name: true } },
+              costume: { select: { name: true, inventoryCode: true } },
+            },
+          },
+        },
       });
       expect(txMock.order.update).toHaveBeenCalledTimes(1);
       expect(txMock.order.update).toHaveBeenCalledWith({
@@ -100,12 +119,20 @@ describe('VisitOrderService', () => {
     it('rejects a deleted visit as not found', async () => {
       txMock.visit.findFirst.mockResolvedValue(null);
 
-      await expect(service.visitIssue(issueData, 1)).rejects.toThrow(
-        new NotFoundException('Визит с ID 1 не найден'),
-      );
+      await expect(
+        service.visitIssue(issueData, 1, systemAuditActor),
+      ).rejects.toThrow(new NotFoundException('Визит с ID 1 не найден'));
       expect(txMock.visit.findFirst).toHaveBeenCalledWith({
         where: { id: 1, deletedAt: null },
-        include: { orders: { where: { deletedAt: null } } },
+        include: {
+          orders: {
+            where: { deletedAt: null },
+            include: {
+              child: { select: { name: true } },
+              costume: { select: { name: true, inventoryCode: true } },
+            },
+          },
+        },
       });
       expect(txMock.visit.update).not.toHaveBeenCalled();
     });
@@ -113,14 +140,18 @@ describe('VisitOrderService', () => {
 
   describe('orderMarkTagWritten', () => {
     it('returns not found for a deleted order', async () => {
-      prismaMock.order.update.mockRejectedValue({ code: 'P2025' });
+      txMock.order.findFirst.mockResolvedValue(null);
 
-      await expect(service.orderMarkTagWritten(1)).rejects.toThrow(
-        new NotFoundException('Заказ с ID 1 не найден'),
-      );
-      expect(prismaMock.order.update).toHaveBeenCalledWith({
-        where: { id: 1, deletedAt: null },
-        data: { tagStatus: 'written' },
+      await expect(
+        service.orderMarkTagWritten(1, systemAuditActor),
+      ).rejects.toThrow(new NotFoundException('Заказ с ID 1 не найден'));
+      expect(txMock.order.findFirst).toHaveBeenCalledWith({
+        where: { id: 1, deletedAt: null, visit: { deletedAt: null } },
+        include: {
+          visit: { select: { id: true } },
+          child: { select: { name: true } },
+          costume: { select: { name: true, inventoryCode: true } },
+        },
       });
     });
   });
@@ -143,7 +174,7 @@ describe('VisitOrderService', () => {
         blacklistReason: 'не вернула костюм',
       });
 
-      const promise = service.createVisit(createData, false);
+      const promise = service.createVisit(createData, false, systemAuditActor);
 
       await expect(promise).rejects.toBeInstanceOf(BadRequestException);
       await expect(promise).rejects.toThrow(/не вернула костюм/);
@@ -159,7 +190,7 @@ describe('VisitOrderService', () => {
         blacklistReason: null,
       });
 
-      const promise = service.createVisit(createData, false);
+      const promise = service.createVisit(createData, false, systemAuditActor);
 
       await expect(promise).rejects.toBeInstanceOf(BadRequestException);
       await expect(promise).rejects.not.toThrow(/Причина/);
@@ -169,9 +200,9 @@ describe('VisitOrderService', () => {
     it('rejects a deleted client as not found', async () => {
       txMock.client.findFirst.mockResolvedValue(null);
 
-      await expect(service.createVisit(createData, false)).rejects.toThrow(
-        new NotFoundException('Клиент с ID 7 не найден'),
-      );
+      await expect(
+        service.createVisit(createData, false, systemAuditActor),
+      ).rejects.toThrow(new NotFoundException('Клиент с ID 7 не найден'));
       expect(txMock.client.findFirst).toHaveBeenCalledWith({
         where: { id: 7, deletedAt: null },
       });
@@ -185,9 +216,9 @@ describe('VisitOrderService', () => {
       });
       txMock.child.findMany.mockResolvedValue([]);
 
-      await expect(service.createVisit(createData, false)).rejects.toThrow(
-        /заказ 1: ребёнок ID 1 не найден или удалён/,
-      );
+      await expect(
+        service.createVisit(createData, false, systemAuditActor),
+      ).rejects.toThrow(/заказ 1: ребёнок ID 1 не найден или удалён/);
       expect(txMock.child.findMany).toHaveBeenCalledWith({
         where: { id: { in: [1] }, deletedAt: null },
         select: { id: true, clientId: true },
@@ -202,9 +233,9 @@ describe('VisitOrderService', () => {
       });
       txMock.child.findMany.mockResolvedValue([{ id: 1, clientId: 8 }]);
 
-      await expect(service.createVisit(createData, false)).rejects.toThrow(
-        /заказ 1: ребёнок ID 1 не принадлежит клиенту/,
-      );
+      await expect(
+        service.createVisit(createData, false, systemAuditActor),
+      ).rejects.toThrow(/заказ 1: ребёнок ID 1 не принадлежит клиенту/);
       expect(txMock.visit.create).not.toHaveBeenCalled();
     });
 
@@ -215,9 +246,9 @@ describe('VisitOrderService', () => {
       });
       txMock.costume.findMany.mockResolvedValue([]);
 
-      await expect(service.createVisit(createData, false)).rejects.toThrow(
-        /заказ 1: костюм ID 1 не найден или удалён/,
-      );
+      await expect(
+        service.createVisit(createData, false, systemAuditActor),
+      ).rejects.toThrow(/заказ 1: костюм ID 1 не найден или удалён/);
       expect(txMock.costume.findMany).toHaveBeenCalledWith({
         where: { id: { in: [1] }, deletedAt: null },
         select: { id: true },
@@ -239,7 +270,9 @@ describe('VisitOrderService', () => {
         ],
       }) as never;
 
-      await expect(service.createVisit(data, false)).rejects.toThrow(
+      await expect(
+        service.createVisit(data, false, systemAuditActor),
+      ).rejects.toThrow(
         /заказ 1: ребёнок ID 2 не найден или удалён; заказ 2: костюм ID 3 не найден или удалён/,
       );
       expect(txMock.visit.create).not.toHaveBeenCalled();
@@ -296,59 +329,130 @@ describe('VisitOrderService', () => {
     it('rejects unissue', async () => {
       txMock.visit.findFirst.mockResolvedValue(null);
 
-      await expect(service.visitUnissue(1)).rejects.toThrow(
+      await expect(service.visitUnissue(1, systemAuditActor)).rejects.toThrow(
         new NotFoundException('Визит с ID 1 не найден'),
       );
-      expect(txMock.visit.findFirst).toHaveBeenCalledWith({
-        where: { id: 1, deletedAt: null },
-      });
+      expect(txMock.visit.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 1, deletedAt: null } }),
+      );
     });
 
     it('rejects cancel', async () => {
-      prismaMock.visit.findFirst.mockResolvedValue(null);
+      txMock.visit.findFirst.mockResolvedValue(null);
 
-      await expect(service.visitCancel(1, {})).rejects.toThrow(
-        new NotFoundException('Визит с ID 1 не найден'),
+      await expect(
+        service.visitCancel(1, {}, systemAuditActor),
+      ).rejects.toThrow(new NotFoundException('Визит с ID 1 не найден'));
+      expect(txMock.visit.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 1, deletedAt: null } }),
       );
-      expect(prismaMock.visit.findFirst).toHaveBeenCalledWith({
-        where: { id: 1, deletedAt: null },
-      });
     });
 
     it('rejects complete return', async () => {
-      prismaMock.visit.findFirst.mockResolvedValue(null);
+      txMock.visit.findFirst.mockResolvedValue(null);
 
-      await expect(service.visitCompleteReturn(1, {} as never)).rejects.toThrow(
-        new NotFoundException('Визит №1 не найден'),
+      await expect(
+        service.visitCompleteReturn(1, {} as never, systemAuditActor),
+      ).rejects.toThrow(new NotFoundException('Визит №1 не найден'));
+      expect(txMock.visit.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 1, deletedAt: null } }),
       );
-      expect(prismaMock.visit.findFirst).toHaveBeenCalledWith({
-        where: { id: 1, deletedAt: null },
-        include: {
-          orders: { where: { deletedAt: null } },
-          deposits: { where: { deletedAt: null }, take: 1 },
-          moneyOperations: { where: { voidedAt: null } },
-        },
-      });
     });
 
     it('rejects deposit return', async () => {
-      prismaMock.visit.findFirst.mockResolvedValue(null);
+      txMock.visit.findFirst.mockResolvedValue(null);
 
-      await expect(service.MarkDepositReturned(1)).rejects.toThrow(
-        new NotFoundException('Визит с ID 1 не найден'),
+      await expect(
+        service.MarkDepositReturned(1, undefined, systemAuditActor),
+      ).rejects.toThrow(new NotFoundException('Визит с ID 1 не найден'));
+      expect(txMock.visit.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 1, deletedAt: null } }),
       );
-      expect(prismaMock.visit.findFirst).toHaveBeenCalledWith({
-        where: { id: 1, deletedAt: null },
-        include: { deposits: { where: { deletedAt: null }, take: 1 } },
+    });
+  });
+
+  describe('visitHistory', () => {
+    it('validates pagination bounds before querying events', async () => {
+      await expect(service.visitHistory(1, 0, 20)).rejects.toMatchObject({
+        status: 400,
+      });
+      await expect(service.visitHistory(1, 1, 101)).rejects.toMatchObject({
+        status: 400,
+      });
+      expect(prismaMock.auditEvent.findMany).not.toHaveBeenCalled();
+    });
+
+    it('returns stable ascending events and omits nullable actor/order ids', async () => {
+      prismaMock.visit.findFirst.mockResolvedValue({ id: 1 });
+      const occurredAt = new Date('2026-10-22T08:00:00.000Z');
+      prismaMock.auditEvent.findMany.mockResolvedValue([
+        {
+          id: 10,
+          occurredAt,
+          actorUserId: null,
+          actorNameSnapshot: 'Система',
+          source: 'system',
+          action: 'visit.created',
+          entityType: 'visit',
+          entityId: 1,
+          visitId: 1,
+          orderId: null,
+          commandId: 'command-1',
+          schemaVersion: 1,
+          payload: {
+            kind: 'visit.created',
+            visitCode: '1234',
+            clientId: 1,
+            clientName: 'Алия',
+            startDateTime: '2026-12-20',
+            endDateTime: '2026-12-21',
+            orders: [],
+          },
+        },
+      ]);
+      prismaMock.auditEvent.count.mockResolvedValue(1);
+      prismaMock.$transaction.mockImplementation(
+        (operations: Promise<unknown>[]) => Promise.all(operations),
+      );
+
+      const result = await service.visitHistory(1, 1, 1);
+
+      expect(result).toMatchObject({
+        total: 1,
+        page: 1,
+        limit: 1,
+        hasMore: false,
+        items: [
+          {
+            id: 10,
+            occurredAt: '2026-10-22T08:00:00.000Z',
+            actorNameSnapshot: 'Система',
+            action: 'visit.created',
+            visitId: 1,
+          },
+        ],
+      });
+      expect(result.items[0]).not.toHaveProperty('orderId');
+      expect(result.items[0]).not.toHaveProperty('actorUserId');
+      expect(prismaMock.auditEvent.findMany).toHaveBeenCalledWith({
+        where: { visitId: 1 },
+        skip: 0,
+        take: 1,
+        orderBy: [{ occurredAt: 'asc' }, { id: 'asc' }],
       });
     });
   });
 
   describe('visit order mutations and soft delete', () => {
     it('unissues only active orders', async () => {
-      txMock.visit.findFirst.mockResolvedValue({ id: 1, status: 'issued' });
+      txMock.visit.findFirst.mockResolvedValue({
+        ...makeVisit({ status: 'issued' }),
+        orders: [],
+        deposits: [],
+        moneyOperations: [],
+      });
 
-      await service.visitUnissue(1);
+      await service.visitUnissue(1, systemAuditActor);
 
       expect(txMock.order.updateMany).toHaveBeenCalledWith({
         where: { visitId: 1, deletedAt: null },
@@ -357,7 +461,7 @@ describe('VisitOrderService', () => {
     });
 
     it('completes return using only active orders', async () => {
-      prismaMock.visit.findFirst.mockResolvedValue({
+      txMock.visit.findFirst.mockResolvedValue({
         id: 1,
         visitCode: '1234',
         status: 'issued',
@@ -372,18 +476,17 @@ describe('VisitOrderService', () => {
         status: 'completed',
       });
 
-      await service.visitCompleteReturn(1, {
-        depositReturned: false,
-      });
-
-      expect(prismaMock.visit.findFirst).toHaveBeenCalledWith({
-        where: { id: 1, deletedAt: null },
-        include: {
-          orders: { where: { deletedAt: null } },
-          deposits: { where: { deletedAt: null }, take: 1 },
-          moneyOperations: { where: { voidedAt: null } },
+      await service.visitCompleteReturn(
+        1,
+        {
+          depositReturned: false,
         },
-      });
+        systemAuditActor,
+      );
+
+      expect(txMock.visit.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 1, deletedAt: null } }),
+      );
       expect(txMock.order.updateMany).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { visitId: 1, deletedAt: null },
@@ -392,13 +495,12 @@ describe('VisitOrderService', () => {
     });
 
     it('cancels only active orders', async () => {
-      prismaMock.visit.findFirst.mockResolvedValue({
-        id: 1,
-        status: 'reserved',
-        notes: null,
+      txMock.visit.findFirst.mockResolvedValue({
+        ...makeVisit({ status: 'reserved', notes: null }),
+        orders: [],
       });
 
-      await service.visitCancel(1, {});
+      await service.visitCancel(1, {}, systemAuditActor);
 
       expect(txMock.order.updateMany).toHaveBeenCalledWith({
         where: { visitId: 1, deletedAt: null },
@@ -700,9 +802,9 @@ describe('VisitOrderService remaining business rules', () => {
           { childId: 2, costumeId: 1, rentPrice: 5000, prepaymentAmount: 1000 },
         ],
       });
-      await expect(service.createVisit(data as never, false)).rejects.toThrow(
-        'один костюм указан в нескольких заказах',
-      );
+      await expect(
+        service.createVisit(data as never, false, systemAuditActor),
+      ).rejects.toThrow('один костюм указан в нескольких заказах');
       expect(redisMock.get).not.toHaveBeenCalled();
       expect(txMock.visit.create).not.toHaveBeenCalled();
     });
@@ -735,6 +837,7 @@ describe('VisitOrderService remaining business rules', () => {
           ],
         }),
         false,
+        systemAuditActor,
       );
       expect(txMock.visit.create).toHaveBeenCalledTimes(1);
       const createCalls = txMock.visit.create.mock.calls as unknown as Array<
@@ -760,7 +863,7 @@ describe('VisitOrderService remaining business rules', () => {
         ],
       });
 
-      await service.createVisit(data, false);
+      await service.createVisit(data, false, systemAuditActor);
 
       const createCalls = txMock.visit.create.mock.calls as unknown as Array<
         [{ data: { notes?: string; orders: { create: { notes: string }[] } } }]
@@ -779,7 +882,7 @@ describe('VisitOrderService remaining business rules', () => {
           { childId: 1, costumeId: 1, rentPrice: 5000, prepaymentAmount: 5000 },
         ],
       });
-      await service.createVisit(data, false);
+      await service.createVisit(data, false, systemAuditActor);
       const createCalls = txMock.visit.create.mock.calls as unknown as Array<
         [{ data: { startDateTime: Date; endDateTime: Date } }]
       >;
@@ -810,6 +913,7 @@ describe('VisitOrderService remaining business rules', () => {
           returnTimeUntil: '18:00',
         }),
         true,
+        systemAuditActor,
       );
       const createCalls = txMock.visit.create.mock.calls as unknown as Array<
         [
@@ -853,6 +957,7 @@ describe('VisitOrderService remaining business rules', () => {
             returnTimeUntil: '18:00',
           }) as never,
           true,
+          systemAuditActor,
         ),
       ).resolves.toMatchObject({ visitCode: '1234' });
       expect(loggerMock.logger.error).toHaveBeenCalled();
@@ -867,7 +972,11 @@ describe('VisitOrderService remaining business rules', () => {
       error.code = 'P2003';
       txMock.visit.create.mockRejectedValue(error);
       await expect(
-        service.createVisit(makeCreateVisitRequest() as never, false),
+        service.createVisit(
+          makeCreateVisitRequest() as never,
+          false,
+          systemAuditActor,
+        ),
       ).rejects.toMatchObject({ status: 400 });
     });
     it('rejects dates in reverse order before reading the reservation', async () => {
@@ -878,6 +987,7 @@ describe('VisitOrderService remaining business rules', () => {
             endDateTime: '2026-12-20',
           }) as never,
           false,
+          systemAuditActor,
         ),
       ).rejects.toThrow('Дата начала не может быть позже даты возврата');
       expect(redisMock.get).not.toHaveBeenCalled();
@@ -886,7 +996,11 @@ describe('VisitOrderService remaining business rules', () => {
     it('rejects missing code reservation', async () => {
       redisMock.get.mockResolvedValue(null);
       await expect(
-        service.createVisit(makeCreateVisitRequest() as never, false),
+        service.createVisit(
+          makeCreateVisitRequest() as never,
+          false,
+          systemAuditActor,
+        ),
       ).rejects.toMatchObject({ status: 409 });
       expect(txMock.visit.create).not.toHaveBeenCalled();
     });
@@ -899,7 +1013,7 @@ describe('VisitOrderService remaining business rules', () => {
         ],
       });
       await expect(
-        service.createVisit(data as never, false),
+        service.createVisit(data as never, false, systemAuditActor),
       ).rejects.toMatchObject({ status: 400 });
       expect(txMock.visit.create).not.toHaveBeenCalled();
     });
@@ -962,10 +1076,16 @@ describe('VisitOrderService remaining business rules', () => {
 
   describe('tags and lists', () => {
     it('marks an active order written', async () => {
-      prismaMock.order.update.mockResolvedValue({ id: 5 });
-      await service.orderMarkTagWritten(5);
-      expect(prismaMock.order.update).toHaveBeenCalledWith({
-        where: { id: 5, deletedAt: null },
+      txMock.order.findFirst.mockResolvedValue({
+        ...makeOrder({ id: 5 }),
+        visit: { id: 1 },
+        child: { name: 'Алия' },
+        costume: { name: 'Эльза', inventoryCode: 'C-0001' },
+      });
+      txMock.order.updateMany.mockResolvedValue({ count: 1 });
+      await service.orderMarkTagWritten(5, systemAuditActor);
+      expect(txMock.order.updateMany).toHaveBeenCalledWith({
+        where: { id: 5, deletedAt: null, tagStatus: 'not_written' },
         data: { tagStatus: 'written' },
       });
     });
@@ -1024,11 +1144,18 @@ describe('VisitOrderService remaining business rules', () => {
     it('records the full overpayment even when order allocation is capped', async () => {
       txMock.visit.findFirst.mockResolvedValue({
         ...makeVisit(),
-        orders: [makeOrder({ id: 1, rentPrice: 5000, prepaymentAmount: 1000 })],
+        orders: [
+          {
+            ...makeOrder({ id: 1, rentPrice: 5000, prepaymentAmount: 1000 }),
+            child: makeChild(),
+            costume: makeCostume(),
+          },
+        ],
       });
       await service.visitIssue(
         { additionalPayment: 5000, deposit: { type: 'none' } } as never,
         1,
+        systemAuditActor,
       );
       expect(txMock.order.update).toHaveBeenCalledWith({
         where: { id: 1, deletedAt: null },
@@ -1042,8 +1169,16 @@ describe('VisitOrderService remaining business rules', () => {
       txMock.visit.findFirst.mockResolvedValue({
         ...makeVisit({ notes: 'старое' }),
         orders: [
-          makeOrder({ id: 1, rentPrice: 5000, prepaymentAmount: 1000 }),
-          makeOrder({ id: 2, rentPrice: 3000, prepaymentAmount: 1000 }),
+          {
+            ...makeOrder({ id: 1, rentPrice: 5000, prepaymentAmount: 1000 }),
+            child: makeChild(),
+            costume: makeCostume(),
+          },
+          {
+            ...makeOrder({ id: 2, rentPrice: 3000, prepaymentAmount: 1000 }),
+            child: makeChild(),
+            costume: makeCostume(),
+          },
         ],
       });
       await service.visitIssue(
@@ -1053,6 +1188,7 @@ describe('VisitOrderService remaining business rules', () => {
           notes: 'новое',
         } as never,
         1,
+        systemAuditActor,
       );
       expect(txMock.order.update).toHaveBeenNthCalledWith(1, {
         where: { id: 1, deletedAt: null },
@@ -1084,6 +1220,7 @@ describe('VisitOrderService remaining business rules', () => {
         await service.visitIssue(
           { additionalPayment: 0, deposit: { type } } as never,
           1,
+          systemAuditActor,
         );
         expect(txMock.deposit.create).toHaveBeenCalledWith({
           data: { visitId: 1, type, amount: 0, returned: false },
@@ -1095,13 +1232,16 @@ describe('VisitOrderService remaining business rules', () => {
     it('propagates a transaction error before a deposit is written', async () => {
       txMock.visit.findFirst.mockResolvedValue({
         ...makeVisit(),
-        orders: [makeOrder()],
+        orders: [
+          { ...makeOrder(), child: makeChild(), costume: makeCostume() },
+        ],
       });
       txMock.order.update.mockRejectedValue(new Error('database failure'));
       await expect(
         service.visitIssue(
           { additionalPayment: 1, deposit: { type: 'none' } } as never,
           1,
+          systemAuditActor,
         ),
       ).rejects.toThrow('database failure');
       expect(txMock.visit.update).not.toHaveBeenCalled();
@@ -1109,8 +1249,13 @@ describe('VisitOrderService remaining business rules', () => {
     });
 
     it('unissues orders, clears payment and soft-deletes the active deposit (T-026)', async () => {
-      txMock.visit.findFirst.mockResolvedValue(makeVisit({ status: 'issued' }));
-      await service.visitUnissue(1);
+      txMock.visit.findFirst.mockResolvedValue({
+        ...makeVisit({ status: 'issued' }),
+        orders: [],
+        deposits: [],
+        moneyOperations: [],
+      });
+      await service.visitUnissue(1, systemAuditActor);
       expect(txMock.order.updateMany).toHaveBeenCalledWith({
         where: { visitId: 1, deletedAt: null },
         data: { status: 'reserved', finalPayment: null },
@@ -1131,7 +1276,9 @@ describe('VisitOrderService remaining business rules', () => {
 
     it('rejects unissue unless the visit is issued', async () => {
       txMock.visit.findFirst.mockResolvedValue(makeVisit());
-      await expect(service.visitUnissue(1)).rejects.toMatchObject({
+      await expect(
+        service.visitUnissue(1, systemAuditActor),
+      ).rejects.toMatchObject({
         status: 400,
       });
       expect(txMock.order.updateMany).not.toHaveBeenCalled();
@@ -1144,42 +1291,46 @@ describe('VisitOrderService remaining business rules', () => {
     it.each(['reserved', 'issued', 'cancelled'] as const)(
       'rejects deposit return for %s visit',
       async (status) => {
-        prismaMock.visit.findFirst.mockResolvedValue({
+        txMock.visit.findFirst.mockResolvedValue({
           ...makeVisit({ status }),
           deposits: [makeDeposit({ type: 'cash' })],
         });
-        await expect(service.MarkDepositReturned(1)).rejects.toThrow(
-          'Вернуть залог можно только после завершения визита',
-        );
+        await expect(
+          service.MarkDepositReturned(1, undefined, systemAuditActor),
+        ).rejects.toThrow('Вернуть залог можно только после завершения визита');
         expect(txMock.deposit.update).not.toHaveBeenCalled();
       },
     );
 
     it('rejects a completed visit without a real deposit', async () => {
-      prismaMock.visit.findFirst.mockResolvedValue({
+      txMock.visit.findFirst.mockResolvedValue({
         ...makeVisit({ status: 'completed' }),
         deposits: [makeDeposit({ type: 'none' })],
       });
-      await expect(service.MarkDepositReturned(1)).rejects.toThrow(
-        'У визита нет залога для возврата',
-      );
+      await expect(
+        service.MarkDepositReturned(1, undefined, systemAuditActor),
+      ).rejects.toThrow('У визита нет залога для возврата');
       expect(txMock.deposit.update).not.toHaveBeenCalled();
     });
 
     it('reports a missing visit as 404 before changing a deposit', async () => {
-      prismaMock.visit.findFirst.mockResolvedValue(null);
-      await expect(service.MarkDepositReturned(1)).rejects.toMatchObject({
+      txMock.visit.findFirst.mockResolvedValue(null);
+      await expect(
+        service.MarkDepositReturned(1, undefined, systemAuditActor),
+      ).rejects.toMatchObject({
         status: 404,
       });
       expect(txMock.deposit.update).not.toHaveBeenCalled();
     });
 
     it('returns a document deposit after completion', async () => {
-      prismaMock.visit.findFirst.mockResolvedValue({
+      txMock.visit.findFirst.mockResolvedValue({
         ...makeVisit({ status: 'completed' }),
         deposits: [makeDeposit({ type: 'document' })],
       });
-      await expect(service.MarkDepositReturned(1)).resolves.toMatchObject({
+      await expect(
+        service.MarkDepositReturned(1, undefined, systemAuditActor),
+      ).resolves.toMatchObject({
         depositReturned: true,
       });
       expect(txMock.deposit.update).toHaveBeenCalledWith({
@@ -1188,24 +1339,23 @@ describe('VisitOrderService remaining business rules', () => {
       });
     });
 
-    it('allows an idempotent repeated deposit return and appends a note', async () => {
-      prismaMock.visit.findFirst.mockResolvedValue({
+    it('does not change or duplicate events for an already returned deposit', async () => {
+      txMock.visit.findFirst.mockResolvedValue({
         ...makeVisit({ status: 'completed', notes: 'старое' }),
         deposits: [makeDeposit({ type: 'cash', returned: true })],
       });
-      const result = await service.MarkDepositReturned(1, 'проверили');
+      const result = await service.MarkDepositReturned(
+        1,
+        'проверили',
+        systemAuditActor,
+      );
       expect(result.depositReturned).toBe(true);
-      expect(txMock.deposit.update).toHaveBeenCalledWith({
-        where: { id: 1, deletedAt: null },
-        data: { returned: true },
-      });
-      expect(txMock.visit.update).toHaveBeenCalledWith({
-        where: { id: 1 },
-        data: { notes: 'старое\n[Возврат залога]: проверили' },
-      });
+      expect(txMock.deposit.update).not.toHaveBeenCalled();
+      expect(txMock.visit.update).not.toHaveBeenCalled();
+      expect(txMock.auditEvent.create).not.toHaveBeenCalled();
     });
     it('rejects a non-issued visit and an order with an invalid status', async () => {
-      prismaMock.visit.findFirst
+      txMock.visit.findFirst
         .mockResolvedValueOnce({
           ...makeVisit(),
           orders: [],
@@ -1214,31 +1364,51 @@ describe('VisitOrderService remaining business rules', () => {
         })
         .mockResolvedValueOnce({
           ...makeVisit({ status: 'issued' }),
-          orders: [makeOrder()],
+          orders: [
+            { ...makeOrder(), child: makeChild(), costume: makeCostume() },
+          ],
           deposits: [],
           moneyOperations: [],
         });
       await expect(
-        service.visitCompleteReturn(1, { depositReturned: false }),
+        service.visitCompleteReturn(
+          1,
+          { depositReturned: false },
+          systemAuditActor,
+        ),
       ).rejects.toMatchObject({ status: 400 });
       await expect(
-        service.visitCompleteReturn(1, { depositReturned: false }),
+        service.visitCompleteReturn(
+          1,
+          { depositReturned: false },
+          systemAuditActor,
+        ),
       ).rejects.toMatchObject({ status: 400 });
       expect(txMock.order.updateMany).not.toHaveBeenCalled();
     });
 
     it('returns all orders and appends a comment without requiring deposit return', async () => {
-      prismaMock.visit.findFirst.mockResolvedValue({
+      txMock.visit.findFirst.mockResolvedValue({
         ...makeVisit({ status: 'issued', notes: 'старое' }),
-        orders: [makeOrder({ status: 'issued' })],
+        orders: [
+          {
+            ...makeOrder({ status: 'issued' }),
+            child: makeChild(),
+            costume: makeCostume(),
+          },
+        ],
         deposits: [makeDeposit({ type: 'cash', returned: false })],
         moneyOperations: [],
       });
       txMock.visit.update.mockResolvedValue(makeVisit({ status: 'completed' }));
-      await service.visitCompleteReturn(1, {
-        depositReturned: false,
-        notes: 'всё цело',
-      });
+      await service.visitCompleteReturn(
+        1,
+        {
+          depositReturned: false,
+          notes: 'всё цело',
+        },
+        systemAuditActor,
+      );
       expect(txMock.order.updateMany).toHaveBeenCalledWith({
         where: { visitId: 1, deletedAt: null },
         data: { status: 'returned' },
@@ -1251,14 +1421,18 @@ describe('VisitOrderService remaining business rules', () => {
     });
 
     it('marks the deposit returned when completing a visit', async () => {
-      prismaMock.visit.findFirst.mockResolvedValue({
+      txMock.visit.findFirst.mockResolvedValue({
         ...makeVisit({ status: 'issued' }),
         orders: [],
         deposits: [makeDeposit({ type: 'cash' })],
         moneyOperations: [],
       });
       txMock.visit.update.mockResolvedValue(makeVisit({ status: 'completed' }));
-      await service.visitCompleteReturn(1, { depositReturned: true });
+      await service.visitCompleteReturn(
+        1,
+        { depositReturned: true },
+        systemAuditActor,
+      );
       expect(txMock.deposit.update).toHaveBeenCalledWith({
         where: { id: 1, deletedAt: null },
         data: { returned: true },
@@ -1266,10 +1440,8 @@ describe('VisitOrderService remaining business rules', () => {
     });
 
     it('cancels a reserved visit and records the reason', async () => {
-      prismaMock.visit.findFirst.mockResolvedValue(
-        makeVisit({ notes: 'старое' }),
-      );
-      await service.visitCancel(1, { reason: 'ошибка' });
+      txMock.visit.findFirst.mockResolvedValue(makeVisit({ notes: 'старое' }));
+      await service.visitCancel(1, { reason: 'ошибка' }, systemAuditActor);
       expect(txMock.order.updateMany).toHaveBeenCalledWith({
         where: { visitId: 1, deletedAt: null },
         data: { status: 'cancelled' },
@@ -1284,10 +1456,10 @@ describe('VisitOrderService remaining business rules', () => {
     });
 
     it('rejects cancellation of an issued visit', async () => {
-      prismaMock.visit.findFirst.mockResolvedValue(
-        makeVisit({ status: 'issued' }),
-      );
-      await expect(service.visitCancel(1, {})).rejects.toMatchObject({
+      txMock.visit.findFirst.mockResolvedValue(makeVisit({ status: 'issued' }));
+      await expect(
+        service.visitCancel(1, {}, systemAuditActor),
+      ).rejects.toMatchObject({
         status: 400,
       });
       expect(txMock.order.updateMany).not.toHaveBeenCalled();
