@@ -165,20 +165,20 @@ describe('visit read API (integration)', () => {
       .expect(200);
     expect((byDate.body as VisitListResponse).total).toBe(1);
 
-    const pages = await Promise.all([
-      createVisit({
+    const pages = [
+      await createVisit({
         label: 'ReadPageTarget one',
         createdAt: new Date('2026-10-22T10:00:00.000Z'),
       }),
-      createVisit({
+      await createVisit({
         label: 'ReadPageTarget two',
         createdAt: new Date('2026-10-22T12:00:00.000Z'),
       }),
-      createVisit({
+      await createVisit({
         label: 'ReadPageTarget three',
         createdAt: new Date('2026-10-22T12:00:00.000Z'),
       }),
-    ]);
+    ];
     const firstPage = await api
       .get('/visits')
       .query({ q: 'ReadPageTarget', page: 1, limit: 2 })
