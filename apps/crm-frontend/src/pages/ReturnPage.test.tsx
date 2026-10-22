@@ -367,7 +367,7 @@ describe("ReturnPage: return modal", () => {
     const dialog = await openReturnModal(user);
 
     await user.click(
-      within(dialog).getByRole("button", { name: "Откатить выдачу" }),
+      within(dialog).getByRole("button", { name: "Отменить выдачу" }),
     );
     expect(unissued).toHaveLength(0);
     await user.click(within(dialog).getByRole("button", { name: "Подтвердить" }));

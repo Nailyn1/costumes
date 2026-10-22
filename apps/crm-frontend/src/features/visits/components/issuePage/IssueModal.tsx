@@ -132,6 +132,7 @@ export function IssueModal({
         </Text>
       }
       size="lg"
+      fullScreen={isMobile}
       closeButtonProps={{
         size: "lg",
         iconSize: 24,

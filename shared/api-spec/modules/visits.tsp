@@ -141,6 +141,99 @@ model VisitBalance {
   @minValue(0) refundDue: int32;
 }
 
+model VisitListItem {
+  id: int32;
+  visitCode: VisitCode;
+  status: VisitStatus;
+  client: {
+    id: int32;
+    name: CostumeApp.Clients.ClientName;
+    phone: CostumeApp.Clients.PhoneString;
+  };
+  startDateTime: plainDate;
+  endDateTime: plainDate;
+  issueTimeFrom: TimeString;
+  issueTimeTo: TimeString;
+  returnTimeUntil: TimeString;
+  childrenNames: string;
+  costumesNames: string;
+  orderCount: int32;
+  totalRent: int32;
+  totalPrepayment: int32;
+  totalRemaining: int32;
+  createdAt: utcDateTime;
+}
+
+model PaginatedVisitsResponse {
+  items: VisitListItem[];
+  total: int32;
+  page: int32;
+  limit: int32;
+  hasMore: boolean;
+}
+
+model VisitReadOrder {
+  orderId: int32;
+  childId: int32;
+  childName: CostumeApp.Children.ChildName;
+  costumeId: int32;
+  costumeName: string;
+  inventoryCode: CostumeApp.Costumes.InventoryCode;
+  status: OrderStatus;
+  tagStatus: TagStatus;
+  rentPrice: int32;
+  prepaymentAmount: int32;
+  finalPayment?: int32;
+  notes?: string;
+}
+
+model VisitReadDeposit {
+  id: int32;
+  type: DepositType;
+  amount?: int32;
+  returned: boolean;
+  createdAt: utcDateTime;
+}
+
+model VisitReadMoneyOperation {
+  id: int32;
+  kind: "issue_payment" | "debt_payment" | "customer_refund";
+  amount: int32;
+  createdAt: utcDateTime;
+  voidedAt?: utcDateTime;
+  legacyImported: boolean;
+}
+
+model VisitReadTotals {
+  totalRent: int32;
+  totalPrepayment: int32;
+  totalRemaining: int32;
+}
+
+model VisitReadDetail {
+  id: int32;
+  visitCode: VisitCode;
+  status: VisitStatus;
+  version: int32;
+  client: {
+    id: int32;
+    name: CostumeApp.Clients.ClientName;
+    phone: CostumeApp.Clients.PhoneString;
+  };
+  startDateTime: plainDate;
+  endDateTime: plainDate;
+  issueTimeFrom: TimeString;
+  issueTimeTo: TimeString;
+  returnTimeUntil: TimeString;
+  notes?: string;
+  createdAt: utcDateTime;
+  orders: VisitReadOrder[];
+  moneyOperations: VisitReadMoneyOperation[];
+  deposits: VisitReadDeposit[];
+  totals: VisitReadTotals;
+  balance?: VisitBalance;
+}
+
 model VisitSettlementRequest {
   kind: "debt_payment" | "customer_refund";
   @minValue(1) amount: int32;
@@ -478,6 +571,28 @@ interface VisitOperation {
     @body body: CreateVisitRequest): {
     @statusCode statusCode: 201;
     @body body: Visit;
+  } | Common.Error;
+
+  @get
+  list(
+    @query @minLength(2) q?: string,
+    @query status?: VisitStatus,
+    @query startDateFrom?: plainDate,
+    @query startDateTo?: plainDate,
+    @query endDateFrom?: plainDate,
+    @query endDateTo?: plainDate,
+    @query @minValue(1) page?: int32,
+    @query @minValue(1) @maxValue(100) limit?: int32,
+  ): {
+    @statusCode statusCode: 200;
+    @body body: PaginatedVisitsResponse;
+  } | Common.Error;
+
+  @get
+  @route("{visitId}")
+  getDetail(@path visitId: int32): {
+    @statusCode statusCode: 200;
+    @body body: VisitReadDetail;
   } | Common.Error;
 
   @get

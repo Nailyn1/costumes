@@ -643,6 +643,41 @@ export const Visits_PaginatedVisitHistoryResponse = z
   })
   .catchall(z.unknown());
 
+export type Visits_VisitListItem = __TypedOpenapi.Schemas.Visits_VisitListItem;
+export const Visits_VisitListItem = z
+  .object({
+    id: z.number().int(),
+    visitCode: Costumes_VisitCode,
+    status: Visits_VisitStatus,
+    client: z
+      .object({ id: z.number().int(), name: Clients_ClientName, phone: Clients_PhoneString })
+      .catchall(z.unknown()),
+    startDateTime: z.iso.date(),
+    endDateTime: z.iso.date(),
+    issueTimeFrom: Visits_TimeString,
+    issueTimeTo: Visits_TimeString,
+    returnTimeUntil: Visits_TimeString,
+    childrenNames: z.string(),
+    costumesNames: z.string(),
+    orderCount: z.number().int(),
+    totalRent: z.number().int(),
+    totalPrepayment: z.number().int(),
+    totalRemaining: z.number().int(),
+    createdAt: z.iso.datetime(),
+  })
+  .catchall(z.unknown());
+
+export type Visits_PaginatedVisitsResponse = __TypedOpenapi.Schemas.Visits_PaginatedVisitsResponse;
+export const Visits_PaginatedVisitsResponse = z
+  .object({
+    items: z.array(Visits_VisitListItem),
+    total: z.number().int(),
+    page: z.number().int(),
+    limit: z.number().int(),
+    hasMore: z.boolean(),
+  })
+  .catchall(z.unknown());
+
 export type Visits_TagStatus = __TypedOpenapi.Schemas.Visits_TagStatus;
 export const Visits_TagStatus = z.enum(["written", "not_written"]);
 
@@ -730,6 +765,77 @@ export const Visits_VisitForReturnResponse = z
     orders: z.array(Visits_VisitReturnOrder),
     deposit: Visits_VisitDepositInfo,
     balance: Visits_VisitBalance,
+  })
+  .catchall(z.unknown());
+
+export type Visits_VisitReadDeposit = __TypedOpenapi.Schemas.Visits_VisitReadDeposit;
+export const Visits_VisitReadDeposit = z
+  .object({
+    id: z.number().int(),
+    type: Visits_DepositType,
+    amount: z.number().int().optional(),
+    returned: z.boolean(),
+    createdAt: z.iso.datetime(),
+  })
+  .catchall(z.unknown());
+
+export type Visits_VisitReadOrder = __TypedOpenapi.Schemas.Visits_VisitReadOrder;
+export const Visits_VisitReadOrder = z
+  .object({
+    orderId: z.number().int(),
+    childId: z.number().int(),
+    childName: Children_ChildName,
+    costumeId: z.number().int(),
+    costumeName: z.string(),
+    inventoryCode: Costumes_InventoryCode,
+    status: Visits_OrderStatus,
+    tagStatus: Visits_TagStatus,
+    rentPrice: z.number().int(),
+    prepaymentAmount: z.number().int(),
+    finalPayment: z.number().int().optional(),
+    notes: z.string().optional(),
+  })
+  .catchall(z.unknown());
+
+export type Visits_VisitReadMoneyOperation = __TypedOpenapi.Schemas.Visits_VisitReadMoneyOperation;
+export const Visits_VisitReadMoneyOperation = z
+  .object({
+    id: z.number().int(),
+    kind: z.enum(["issue_payment", "debt_payment", "customer_refund"]),
+    amount: z.number().int(),
+    createdAt: z.iso.datetime(),
+    voidedAt: z.iso.datetime().optional(),
+    legacyImported: z.boolean(),
+  })
+  .catchall(z.unknown());
+
+export type Visits_VisitReadTotals = __TypedOpenapi.Schemas.Visits_VisitReadTotals;
+export const Visits_VisitReadTotals = z
+  .object({ totalRent: z.number().int(), totalPrepayment: z.number().int(), totalRemaining: z.number().int() })
+  .catchall(z.unknown());
+
+export type Visits_VisitReadDetail = __TypedOpenapi.Schemas.Visits_VisitReadDetail;
+export const Visits_VisitReadDetail = z
+  .object({
+    id: z.number().int(),
+    visitCode: Costumes_VisitCode,
+    status: Visits_VisitStatus,
+    version: z.number().int(),
+    client: z
+      .object({ id: z.number().int(), name: Clients_ClientName, phone: Clients_PhoneString })
+      .catchall(z.unknown()),
+    startDateTime: z.iso.date(),
+    endDateTime: z.iso.date(),
+    issueTimeFrom: Visits_TimeString,
+    issueTimeTo: Visits_TimeString,
+    returnTimeUntil: Visits_TimeString,
+    notes: z.string().optional(),
+    createdAt: z.iso.datetime(),
+    orders: z.array(Visits_VisitReadOrder),
+    moneyOperations: z.array(Visits_VisitReadMoneyOperation),
+    deposits: z.array(Visits_VisitReadDeposit),
+    totals: Visits_VisitReadTotals,
+    balance: Visits_VisitBalance.optional(),
   })
   .catchall(z.unknown());
 
@@ -1024,6 +1130,30 @@ export const post_VisitOperation_create = {
   responses: { 201: Visits_Visit, default: Common_Error },
 };
 
+export type get_VisitOperation_list = __TypedOpenapi.Endpoints.get_VisitOperation_list;
+export const get_VisitOperation_list = {
+  method: z.literal("GET"),
+  path: z.literal("/visits"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: {
+    query: z
+      .strictObject({
+        q: z.string().min(2),
+        status: Visits_VisitStatus,
+        startDateFrom: z.iso.date(),
+        startDateTo: z.iso.date(),
+        endDateFrom: z.iso.date(),
+        endDateTo: z.iso.date(),
+        page: z.coerce.number().int().min(1),
+        limit: z.coerce.number().int().min(1).max(100),
+      })
+      .partial()
+      .optional(),
+  },
+  responses: { 200: Visits_PaginatedVisitsResponse, default: Common_Error },
+};
+
 export type get_VisitOperation_getIssuedVisits = __TypedOpenapi.Endpoints.get_VisitOperation_getIssuedVisits;
 export const get_VisitOperation_getIssuedVisits = {
   method: z.literal("GET"),
@@ -1161,6 +1291,16 @@ export const post_VisitOperation_markTagWritten = {
   responseFormat: z.literal("json"),
   parameters: { path: z.strictObject({ orderId: z.coerce.number().int() }) },
   responses: { 204: z.unknown(), default: Common_Error },
+};
+
+export type get_VisitOperation_getDetail = __TypedOpenapi.Endpoints.get_VisitOperation_getDetail;
+export const get_VisitOperation_getDetail = {
+  method: z.literal("GET"),
+  path: z.literal("/visits/{visitId}"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { path: z.strictObject({ visitId: z.coerce.number().int() }) },
+  responses: { 200: Visits_VisitReadDetail, default: Common_Error },
 };
 
 export type get_VisitOperation_getBalance = __TypedOpenapi.Endpoints.get_VisitOperation_getBalance;
@@ -1318,6 +1458,7 @@ export const EndpointByMethod = {
     "/costumes/search": get_CostumeOperations_searchAvailability,
     "/costumes/search-available": get_CostumeOperations_searchAvailable,
     "/costumes/{costumeId}/availability": get_CostumeOperations_getDetailedAvailability,
+    "/visits": get_VisitOperation_list,
     "/visits/issued": get_VisitOperation_getIssuedVisits,
     "/visits/issued-for-return": get_VisitOperation_getIssuedForReturn,
     "/visits/not_written": get_VisitOperation_getNotWritten,
@@ -1328,6 +1469,7 @@ export const EndpointByMethod = {
     "/visits/search": get_VisitOperation_search,
     "/visits/unreturned-deposits": get_VisitOperation_getUnreturnedDeposits,
     "/visits/unsettled-balances": get_VisitOperation_getUnsettledBalances,
+    "/visits/{visitId}": get_VisitOperation_getDetail,
     "/visits/{visitId}/balance": get_VisitOperation_getBalance,
     "/visits/{visitId}/for-issue": get_VisitOperation_getForIssue,
     "/visits/{visitId}/for-return": get_VisitOperation_getForReturn,
@@ -1435,6 +1577,18 @@ export const endpointParameterStyles = {
     "/costumes/{costumeId}/availability": {
       path: { costumeId: { style: "simple", explode: false, allowReserved: false } },
     },
+    "/visits": {
+      query: {
+        q: { style: "form", explode: false, allowReserved: false },
+        status: { style: "form", explode: false, allowReserved: false },
+        startDateFrom: { style: "form", explode: false, allowReserved: false },
+        startDateTo: { style: "form", explode: false, allowReserved: false },
+        endDateFrom: { style: "form", explode: false, allowReserved: false },
+        endDateTo: { style: "form", explode: false, allowReserved: false },
+        page: { style: "form", explode: false, allowReserved: false },
+        limit: { style: "form", explode: false, allowReserved: false },
+      },
+    },
     "/visits/issued": {
       query: {
         page: { style: "form", explode: false, allowReserved: false },
@@ -1470,6 +1624,7 @@ export const endpointParameterStyles = {
         limit: { style: "form", explode: false, allowReserved: false },
       },
     },
+    "/visits/{visitId}": { path: { visitId: { style: "simple", explode: false, allowReserved: false } } },
     "/visits/{visitId}/balance": { path: { visitId: { style: "simple", explode: false, allowReserved: false } } },
     "/visits/{visitId}/for-issue": { path: { visitId: { style: "simple", explode: false, allowReserved: false } } },
     "/visits/{visitId}/for-return": { path: { visitId: { style: "simple", explode: false, allowReserved: false } } },

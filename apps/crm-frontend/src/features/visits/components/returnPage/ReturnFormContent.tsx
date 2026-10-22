@@ -252,14 +252,14 @@ export function ReturnFormContent({
               onClick={() => setIsUnissuing(true)}
               disabled={returnMutation.isPending}
             >
-              Откатить выдачу
+              Отменить выдачу
             </Button>
           </Stack>
         ) : (
           <Paper withBorder p="md" radius="md" bg="orange.0" mt="sm">
             <Stack gap="sm">
               <Text fw={600} c="orange.9" ta="center">
-                Уверены, что хотите откатить выдачу?
+                Уверены, что хотите отменить выдачу?
               </Text>
               <Text size="sm" c="orange.9" ta="center" mt="-sm">
                 Визит снова появится в списке ожидающих выдачи.

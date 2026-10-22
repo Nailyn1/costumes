@@ -10,6 +10,8 @@ import { PrivateRoute } from "./providers/PrivateRoute";
 import { MainLayout } from "src/components/MainLayout";
 import { NotificationPage } from "src/pages/NotificationPage";
 import { ClientsPage } from "src/pages/ClientsPage";
+import { VisitsPage } from "src/pages/VisitsPage";
+import { VisitDetailPage } from "src/pages/VisitDetailPage";
 
 export const router = createBrowserRouter([
   {
@@ -45,6 +47,14 @@ export const router = createBrowserRouter([
               {
                 path: "return",
                 element: <ReturnPage />,
+              },
+              {
+                path: "visits",
+                element: <VisitsPage />,
+              },
+              {
+                path: "visits/:visitId",
+                element: <VisitDetailPage />,
               },
               {
                 path: "notifications",

@@ -1,5 +1,6 @@
-import { Table, Badge, Text, ActionIcon } from "@mantine/core";
+import { Table, Badge, Text, ActionIcon, Button, Group } from "@mantine/core";
 import { IconArrowRight } from "@tabler/icons-react";
+import { Link } from "react-router-dom";
 import type { IssueListProps } from "../../types/visitTypes";
 import { formatPhoneNumber } from "src/utils/formatters";
 
@@ -25,7 +26,7 @@ export function IssueDesktopTable({ items, onOpenVisit }: IssueListProps) {
           <Table.Th>Клиент</Table.Th>
           <Table.Th>Дети</Table.Th>
           <Table.Th>Костюмы</Table.Th>
-          <Table.Th w={60}></Table.Th>
+          <Table.Th w={160}></Table.Th>
         </Table.Tr>
       </Table.Thead>
       <Table.Tbody>
@@ -57,9 +58,14 @@ export function IssueDesktopTable({ items, onOpenVisit }: IssueListProps) {
               </Text>
             </Table.Td>
             <Table.Td>
-              <ActionIcon variant="light" color="blue">
-                <IconArrowRight size={18} />
-              </ActionIcon>
+              <Group gap="xs" wrap="nowrap">
+                <Button component={Link} to={`/bookings/visits/${visit.visitId}`} variant="subtle" size="xs" onClick={(event) => event.stopPropagation()}>
+                  Карточка
+                </Button>
+                <ActionIcon variant="light" color="blue" aria-label="Открыть выдачу">
+                  <IconArrowRight size={18} />
+                </ActionIcon>
+              </Group>
             </Table.Td>
           </Table.Tr>
         ))}

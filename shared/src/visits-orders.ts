@@ -1,4 +1,8 @@
 import { schemas } from "./schemas.js";
+import type {
+  get_VisitOperation_getHistory,
+  get_VisitOperation_list,
+} from "./openapi-client.js";
 import { z } from "zod";
 
 export type CreateVisitRequestDto = z.infer<
@@ -34,6 +38,19 @@ export type PaginatedVisitHistoryResponseDto = z.infer<
 >;
 export const PaginatedVisitHistoryResponseSchema =
   schemas.Visits_PaginatedVisitHistoryResponse;
+export type PaginatedVisitsResponseDto = z.infer<
+  typeof schemas.Visits_PaginatedVisitsResponse
+>;
+export const PaginatedVisitsResponseSchema =
+  schemas.Visits_PaginatedVisitsResponse;
+export type VisitReadDetailDto = z.infer<typeof schemas.Visits_VisitReadDetail>;
+export const VisitReadDetailSchema = schemas.Visits_VisitReadDetail;
+export type VisitListQueryDto = NonNullable<
+  get_VisitOperation_list["parameters"]["query"]
+>;
+export type VisitHistoryQueryDto = NonNullable<
+  get_VisitOperation_getHistory["parameters"]["query"]
+>;
 export type PaginatedUnsettledVisitBalancesResponseDto = z.infer<
   typeof schemas.Visits_PaginatedUnsettledVisitBalancesResponse
 >;

@@ -19,6 +19,7 @@ export function ReturnModal({
   data,
   isLoading,
   isError,
+  isMobile,
 }: ReturnModalProps) {
   return (
     <Modal
@@ -28,6 +29,7 @@ export function ReturnModal({
         <Text fw={700}>Возврат визита {data ? `#${data.visitCode}` : ""}</Text>
       }
       size="lg"
+      fullScreen={isMobile}
       closeButtonProps={{
         size: "lg",
         iconSize: 24,

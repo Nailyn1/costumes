@@ -414,6 +414,31 @@ export namespace Schemas {
     limit: number;
     hasMore: boolean;
   } & Record<string, unknown>;
+  export type Visits_VisitListItem = {
+    id: number;
+    visitCode: Costumes_VisitCode;
+    status: Visits_VisitStatus;
+    client: { id: number; name: Clients_ClientName; phone: Clients_PhoneString } & Record<string, unknown>;
+    startDateTime: string;
+    endDateTime: string;
+    issueTimeFrom: Visits_TimeString;
+    issueTimeTo: Visits_TimeString;
+    returnTimeUntil: Visits_TimeString;
+    childrenNames: string;
+    costumesNames: string;
+    orderCount: number;
+    totalRent: number;
+    totalPrepayment: number;
+    totalRemaining: number;
+    createdAt: string;
+  } & Record<string, unknown>;
+  export type Visits_PaginatedVisitsResponse = {
+    items: Array<Visits_VisitListItem>;
+    total: number;
+    page: number;
+    limit: number;
+    hasMore: boolean;
+  } & Record<string, unknown>;
   export type Visits_TagStatus = "written" | "not_written";
   export type Visits_VisitOrder = {
     orderId: number;
@@ -484,6 +509,58 @@ export namespace Schemas {
     orders: Array<Visits_VisitReturnOrder>;
     deposit: Visits_VisitDepositInfo;
     balance: Visits_VisitBalance;
+  } & Record<string, unknown>;
+  export type Visits_VisitReadDeposit = {
+    id: number;
+    type: Visits_DepositType;
+    amount?: number;
+    returned: boolean;
+    createdAt: string;
+  } & Record<string, unknown>;
+  export type Visits_VisitReadOrder = {
+    orderId: number;
+    childId: number;
+    childName: Children_ChildName;
+    costumeId: number;
+    costumeName: string;
+    inventoryCode: Costumes_InventoryCode;
+    status: Visits_OrderStatus;
+    tagStatus: Visits_TagStatus;
+    rentPrice: number;
+    prepaymentAmount: number;
+    finalPayment?: number;
+    notes?: string;
+  } & Record<string, unknown>;
+  export type Visits_VisitReadMoneyOperation = {
+    id: number;
+    kind: "issue_payment" | "debt_payment" | "customer_refund";
+    amount: number;
+    createdAt: string;
+    voidedAt?: string;
+    legacyImported: boolean;
+  } & Record<string, unknown>;
+  export type Visits_VisitReadTotals = { totalRent: number; totalPrepayment: number; totalRemaining: number } & Record<
+    string,
+    unknown
+  >;
+  export type Visits_VisitReadDetail = {
+    id: number;
+    visitCode: Costumes_VisitCode;
+    status: Visits_VisitStatus;
+    version: number;
+    client: { id: number; name: Clients_ClientName; phone: Clients_PhoneString } & Record<string, unknown>;
+    startDateTime: string;
+    endDateTime: string;
+    issueTimeFrom: Visits_TimeString;
+    issueTimeTo: Visits_TimeString;
+    returnTimeUntil: Visits_TimeString;
+    notes?: string;
+    createdAt: string;
+    orders: Array<Visits_VisitReadOrder>;
+    moneyOperations: Array<Visits_VisitReadMoneyOperation>;
+    deposits: Array<Visits_VisitReadDeposit>;
+    totals: Visits_VisitReadTotals;
+    balance?: Visits_VisitBalance;
   } & Record<string, unknown>;
   export type Visits_VisitReturnSearchResponse = {
     visitId: number;
@@ -751,6 +828,25 @@ export namespace Endpoints {
     };
     responses: { 201: Schemas.Visits_Visit; default: Schemas.Common_Error };
   };
+  export type get_VisitOperation_list = {
+    method: "GET";
+    path: "/visits";
+    requestFormat: "json";
+    responseFormat: "json";
+    parameters: {
+      query?: Partial<{
+        q: string;
+        status: Schemas.Visits_VisitStatus;
+        startDateFrom: string;
+        startDateTo: string;
+        endDateFrom: string;
+        endDateTo: string;
+        page: number;
+        limit: number;
+      }>;
+    };
+    responses: { 200: Schemas.Visits_PaginatedVisitsResponse; default: Schemas.Common_Error };
+  };
   export type get_VisitOperation_getIssuedVisits = {
     method: "GET";
     path: "/visits/issued";
@@ -864,6 +960,16 @@ export namespace Endpoints {
       path: { orderId: number };
     };
     responses: { 204: unknown; default: Schemas.Common_Error };
+  };
+  export type get_VisitOperation_getDetail = {
+    method: "GET";
+    path: "/visits/{visitId}";
+    requestFormat: "json";
+    responseFormat: "json";
+    parameters: {
+      path: { visitId: number };
+    };
+    responses: { 200: Schemas.Visits_VisitReadDetail; default: Schemas.Common_Error };
   };
   export type get_VisitOperation_getBalance = {
     method: "GET";
@@ -1037,6 +1143,7 @@ export type EndpointByMethod = {
     "/costumes/search": Endpoints.get_CostumeOperations_searchAvailability;
     "/costumes/search-available": Endpoints.get_CostumeOperations_searchAvailable;
     "/costumes/{costumeId}/availability": Endpoints.get_CostumeOperations_getDetailedAvailability;
+    "/visits": Endpoints.get_VisitOperation_list;
     "/visits/issued": Endpoints.get_VisitOperation_getIssuedVisits;
     "/visits/issued-for-return": Endpoints.get_VisitOperation_getIssuedForReturn;
     "/visits/not_written": Endpoints.get_VisitOperation_getNotWritten;
@@ -1047,6 +1154,7 @@ export type EndpointByMethod = {
     "/visits/search": Endpoints.get_VisitOperation_search;
     "/visits/unreturned-deposits": Endpoints.get_VisitOperation_getUnreturnedDeposits;
     "/visits/unsettled-balances": Endpoints.get_VisitOperation_getUnsettledBalances;
+    "/visits/{visitId}": Endpoints.get_VisitOperation_getDetail;
     "/visits/{visitId}/balance": Endpoints.get_VisitOperation_getBalance;
     "/visits/{visitId}/for-issue": Endpoints.get_VisitOperation_getForIssue;
     "/visits/{visitId}/for-return": Endpoints.get_VisitOperation_getForReturn;
