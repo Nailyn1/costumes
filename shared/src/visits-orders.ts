@@ -8,6 +8,16 @@ import { z } from "zod";
 export type CreateVisitRequestDto = z.infer<
   typeof schemas.Visits_CreateVisitRequest
 >;
+export type QuickIssueVisitRequestDto = z.infer<
+  typeof schemas.Visits_QuickIssueVisitRequest
+>;
+export const QuickIssueVisitRequestSchema =
+  schemas.Visits_QuickIssueVisitRequest;
+export type QuickIssueVisitResponseDto = z.infer<
+  typeof schemas.Visits_QuickIssueVisitResponse
+>;
+export const QuickIssueVisitResponseSchema =
+  schemas.Visits_QuickIssueVisitResponse;
 export type CreateVisitResponseDto = z.infer<typeof schemas.Visits_Visit>;
 export type PreviewVisitCodeResponseDto = z.infer<
   typeof schemas.Costumes_VisitCode

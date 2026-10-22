@@ -3,17 +3,14 @@ import {
   Divider,
   Group,
   Paper,
-  Stack,
   Text,
-  TextInput,
 } from "@mantine/core";
 import type { UseFormReturnType } from "@mantine/form";
 import { IconTrash } from "@tabler/icons-react";
-import { ChildSelector } from "src/features/clients-children/components/children/ChildSelector";
-import { CostumeSelector } from "src/features/costumes/components/costumeSelector";
 import type { BookingFormValues } from "../types/visitTypes";
 import { MoneyInput } from "src/components/MoneyInput";
 import { clampPrepayment } from "../utils/bookingForm";
+import { OrderSelectionFields } from "./OrderSelectionFields";
 
 interface OrderBlockProps {
   index: number;
@@ -44,52 +41,42 @@ export function OrderBlock({
 
       <Divider variant="dashed" mb="md" />
 
-      <Stack gap="sm">
-        <ChildSelector
-          clientId={clientId}
-          {...form.getInputProps(`orders.${index}.childId`)}
-        />
-
-        <CostumeSelector
-          {...form.getInputProps(`orders.${index}.costumeId`)}
-          startDateTime={form.values.startDateTime}
-          endDateTime={form.values.endDateTime}
-          issueTimeFrom={form.values.issueTimeFrom || ""}
-          returnTimeUntil={form.values.returnTimeUntil || ""}
-        />
-
-        <Group grow>
-          <MoneyInput
-            label="Аренда"
-            placeholder="0 ₸"
-            {...form.getInputProps(`orders.${index}.rentPrice`)}
-            onChange={(val) => {
-              const numericValue = typeof val === "number" ? val : undefined;
-              form.setFieldValue(`orders.${index}.rentPrice`, numericValue);
-
-              if (typeof val === "number" && prepaymentValue > val) {
-                form.setFieldValue(
-                  `orders.${index}.prepaymentAmount`,
-                  clampPrepayment(val, prepaymentValue),
-                );
-              }
-            }}
-          />
-
+      <OrderSelectionFields
+        clientId={clientId}
+        value={{ ...form.values.orders[index], rentPrice: form.values.orders[index].rentPrice ?? "" }}
+        onChange={(value) => {
+          form.setFieldValue(`orders.${index}.childId`, value.childId);
+          form.setFieldValue(`orders.${index}.costumeId`, value.costumeId);
+          const rentPrice = typeof value.rentPrice === "number" && Number.isFinite(value.rentPrice)
+            ? value.rentPrice
+            : undefined;
+          form.setFieldValue(`orders.${index}.rentPrice`, rentPrice);
+          form.setFieldValue(`orders.${index}.notes`, value.notes);
+          if (rentPrice !== undefined && prepaymentValue > rentPrice) {
+            form.setFieldValue(
+              `orders.${index}.prepaymentAmount`,
+              clampPrepayment(rentPrice, prepaymentValue),
+            );
+          }
+        }}
+        startDateTime={form.values.startDateTime}
+        endDateTime={form.values.endDateTime}
+        issueTimeFrom={form.values.issueTimeFrom || ""}
+        returnTimeUntil={form.values.returnTimeUntil || ""}
+        errors={{
+          childId: form.errors[`orders.${index}.childId`],
+          costumeId: form.errors[`orders.${index}.costumeId`],
+          rentPrice: form.errors[`orders.${index}.rentPrice`],
+        }}
+        rightControl={
           <MoneyInput
             label="Предоплата"
             placeholder="0 ₸"
             max={rentValue}
             {...form.getInputProps(`orders.${index}.prepaymentAmount`)}
           />
-        </Group>
-
-        <TextInput
-          label="Заметка"
-          placeholder="Особенности заказа..."
-          {...form.getInputProps(`orders.${index}.notes`)}
-        />
-      </Stack>
+        }
+      />
     </Paper>
   );
 }

@@ -17,6 +17,7 @@ export const ClientSelector = memo(function ClientSelector({
   value,
   onChange,
   error,
+  showWhatsappAvailability = true,
 }: ClientSelectorProps) {
   const queryClient = useQueryClient();
   const [selectedClient, setSelectedClient] =
@@ -50,6 +51,7 @@ export const ClientSelector = memo(function ClientSelector({
           client={selectedClient!}
           onClearSelection={handleClear}
           onUpdate={handleSelect}
+          showWhatsappAvailability={showWhatsappAvailability}
         />
       }
       renderSearch={

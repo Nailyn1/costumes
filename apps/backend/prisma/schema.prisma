@@ -268,4 +268,5 @@ enum OrderStatus {
 enum TagStatus {
   written
   not_written
+  not_required
 }

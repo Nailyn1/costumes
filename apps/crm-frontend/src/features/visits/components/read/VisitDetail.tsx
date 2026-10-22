@@ -21,6 +21,7 @@ import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { VisitCancelRequestSchema, type visitCancelRequestDto } from "@costumes/shared";
 import { VisitHistory } from "src/features/visits/components/history/VisitHistory";
+import { OrderTagStatusBadge } from "src/features/visits/components/OrderTagStatusBadge";
 import { IssueModal } from "src/features/visits/components/issuePage/IssueModal";
 import { MarkDepositModal } from "src/features/visits/components/returnPage/MarkDepositModal";
 import { ReturnModal } from "src/features/visits/components/returnPage/ReturnModal";
@@ -160,7 +161,7 @@ export function VisitDetailPage() {
               <Stack gap={4}>
                 <Text fw={600}>{order.costumeName}</Text>
                 <Text size="sm">Ребёнок: {order.childName}</Text>
-                <Text size="sm">Бирка: {order.tagStatus === "written" ? "Записана" : "Не записана"} · заказ: {orderStatusLabel(order.status)}</Text>
+                <Group gap="xs"><OrderTagStatusBadge tagStatus={order.tagStatus} /><Text size="sm">Заказ: {orderStatusLabel(order.status)}</Text></Group>
                 <Text size="sm">Аренда: {formatVisitMoney(order.rentPrice)} · предоплата: {formatVisitMoney(order.prepaymentAmount)}</Text>
                 {order.notes && <Text size="sm" c="dimmed">{order.notes}</Text>}
               </Stack>
@@ -172,7 +173,7 @@ export function VisitDetailPage() {
                 <Table.Tbody>{visit.orders.map((order) => <Table.Tr key={order.orderId}>
                   <Table.Td>{order.childName}</Table.Td>
                   <Table.Td>{order.costumeName}<Text size="xs" c="dimmed">{order.inventoryCode}</Text></Table.Td>
-                  <Table.Td><Text size="sm">{orderStatusLabel(order.status)}</Text><Text size="xs" c="dimmed">Бирка: {order.tagStatus === "written" ? "записана" : "не записана"}</Text></Table.Td>
+                  <Table.Td><Stack gap={4}><Text size="sm">{orderStatusLabel(order.status)}</Text><OrderTagStatusBadge tagStatus={order.tagStatus} /></Stack></Table.Td>
                   <Table.Td>{formatVisitMoney(order.rentPrice)}</Table.Td>
                   <Table.Td>{formatVisitMoney(order.prepaymentAmount)}</Table.Td>
                 </Table.Tr>)}</Table.Tbody>

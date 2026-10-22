@@ -6,7 +6,6 @@ import {
   Text,
   Divider,
   Paper,
-  Badge,
   SimpleGrid,
   SegmentedControl,
   Textarea,
@@ -25,6 +24,7 @@ import { formatPhoneNumber, formatStayDates } from "src/utils/formatters";
 import { useForm } from "@mantine/form";
 import { useState } from "react";
 import { issueBalance } from "../../utils/visitBalance";
+import { OrderTagStatusBadge } from "../OrderTagStatusBadge";
 
 interface IssueModalProps {
   opened: boolean;
@@ -205,17 +205,7 @@ export function IssueModal({
                         <Text size="md" c="dimmed">
                           Код: {order.inventoryCode}
                         </Text>
-                        <Badge
-                          size="md"
-                          color={
-                            order.tagStatus === "written" ? "green" : "gray"
-                          }
-                          variant="light"
-                        >
-                          {order.tagStatus === "written"
-                            ? "Бирка есть"
-                            : "Нет бирки"}
-                        </Badge>
+                        <OrderTagStatusBadge tagStatus={order.tagStatus} />
                       </Group>
                     </Box>
                     <Box

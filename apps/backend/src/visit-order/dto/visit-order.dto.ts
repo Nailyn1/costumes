@@ -1,6 +1,7 @@
 import {
   CreateVisitRequestSchema,
   CreateVisitResponseSchema,
+  QuickIssueVisitRequestSchema,
   OrdersNotWrittenResponseSchema,
   VisitCancelRequestSchema,
   VisitCompleteReturnRequestSchema,
@@ -20,6 +21,9 @@ export class CreateVisitRequest extends createZodDto(
 ) {}
 export class CreateVisitResponse extends createZodDto(
   CreateVisitResponseSchema,
+) {}
+export class QuickIssueVisitRequest extends createZodDto(
+  QuickIssueVisitRequestSchema,
 ) {}
 
 export class OrdersNotWrittenResponse extends createZodDto(

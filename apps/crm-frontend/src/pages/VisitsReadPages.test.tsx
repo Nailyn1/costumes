@@ -206,10 +206,10 @@ describe("visit read pages", () => {
     );
 
     expect((await screen.findAllByText("Забронирован")).length).toBeGreaterThanOrEqual(2);
-    expect(await screen.findByText(/Бирка: не записана/i)).toBeInTheDocument();
+    expect(await screen.findByText("Нет бирки")).toBeInTheDocument();
     expect(await screen.findByText("История для старого визита может быть неполной.")).toBeInTheDocument();
     await userEvent.setup().click(screen.getByRole("button", { name: "Тест: записать бирку" }));
-    expect(await screen.findByText(/Бирка: записана/i)).toBeInTheDocument();
+    expect(await screen.findByText("Бирка есть")).toBeInTheDocument();
     await waitFor(() => {
       expect(detailRequests).toHaveBeenCalledTimes(2);
       expect(historyRequests).toHaveBeenCalledTimes(2);

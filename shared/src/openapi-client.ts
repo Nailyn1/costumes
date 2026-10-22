@@ -678,8 +678,48 @@ export const Visits_PaginatedVisitsResponse = z
   })
   .catchall(z.unknown());
 
+export type Visits_QuickIssueVisitRequest = __TypedOpenapi.Schemas.Visits_QuickIssueVisitRequest;
+export const Visits_QuickIssueVisitRequest = z
+  .object({
+    commandId: z.uuid(),
+    clientId: z.number().int(),
+    visitCode: Costumes_VisitCode,
+    startDateTime: z.iso.date(),
+    issueTimeFrom: Visits_TimeString,
+    issueTimeTo: Visits_TimeString,
+    endDateTime: z.iso.date(),
+    returnTimeUntil: Visits_TimeString,
+    notes: z.string().optional(),
+    orders: z
+      .array(
+        z
+          .object({
+            childId: z.number().int(),
+            costumeId: z.number().int(),
+            rentPrice: z.number().int().min(0),
+            notes: z.string().optional(),
+          })
+          .catchall(z.unknown()),
+      )
+      .min(1),
+    additionalPayment: z.number().int().min(0),
+    deposit: z.object({ type: Visits_DepositType, amount: z.number().int().min(0).optional() }).catchall(z.unknown()),
+  })
+  .catchall(z.unknown());
+
+export type Visits_QuickIssueVisitResponse = __TypedOpenapi.Schemas.Visits_QuickIssueVisitResponse;
+export const Visits_QuickIssueVisitResponse = z
+  .object({
+    visitId: z.number().int(),
+    visitCode: Costumes_VisitCode,
+    status: z.literal("issued"),
+    version: z.number().int(),
+    balance: Visits_VisitBalance,
+  })
+  .catchall(z.unknown());
+
 export type Visits_TagStatus = __TypedOpenapi.Schemas.Visits_TagStatus;
-export const Visits_TagStatus = z.enum(["written", "not_written"]);
+export const Visits_TagStatus = z.enum(["written", "not_written", "not_required"]);
 
 export type Visits_VisitOrder = __TypedOpenapi.Schemas.Visits_VisitOrder;
 export const Visits_VisitOrder = z
@@ -1218,6 +1258,16 @@ export const post_VisitOperation_previewCode = {
   responses: { 201: Costumes_VisitCode, default: Common_Error },
 };
 
+export type post_VisitOperation_quickIssue = __TypedOpenapi.Endpoints.post_VisitOperation_quickIssue;
+export const post_VisitOperation_quickIssue = {
+  method: z.literal("POST"),
+  path: z.literal("/visits/quick-issue"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { body: Visits_QuickIssueVisitRequest },
+  responses: { 201: Visits_QuickIssueVisitResponse, default: Common_Error },
+};
+
 export type get_VisitOperation_getReserved = __TypedOpenapi.Endpoints.get_VisitOperation_getReserved;
 export const get_VisitOperation_getReserved = {
   method: z.literal("GET"),
@@ -1430,6 +1480,7 @@ export const EndpointByMethod = {
     "/costumes": post_CostumeOperations_create,
     "/visits": post_VisitOperation_create,
     "/visits/preview-code": post_VisitOperation_previewCode,
+    "/visits/quick-issue": post_VisitOperation_quickIssue,
     "/visits/{orderId}/mark-tag-written": post_VisitOperation_markTagWritten,
     "/visits/{visitId}/cancel": post_VisitOperation_cancel,
     "/visits/{visitId}/complete-return": post_VisitOperation_completeReturn,

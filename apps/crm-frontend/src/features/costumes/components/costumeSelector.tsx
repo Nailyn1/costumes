@@ -1,4 +1,4 @@
-import { useState, useCallback, memo } from "react";
+import { useState, useCallback, memo, useEffect } from "react";
 import { IconCalendarExclamation, IconShirt } from "@tabler/icons-react";
 import { SelectionManager } from "src/components/selection/SelectionManager";
 import { useQueryClient } from "@tanstack/react-query";
@@ -24,6 +24,17 @@ export const CostumeSelector = memo(function CostumeSelector({
   const queryClient = useQueryClient();
   const [selectedCostume, setSelectedCostume] =
     useState<SelectedCostumeData | null>(null);
+
+  useEffect(() => {
+    if (!value) {
+      setSelectedCostume(null);
+      return;
+    }
+    const cached = queryClient.getQueryData<SelectedCostumeData>(
+      costumesKeys.detail(value),
+    );
+    setSelectedCostume(cached ?? null);
+  }, [queryClient, value]);
 
   const handleSelect = useCallback(
     (costume: SelectedCostumeData | null) => {

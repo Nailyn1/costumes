@@ -11,6 +11,7 @@ export function SelectedClientCard({
   client,
   onClearSelection,
   onUpdate,
+  showWhatsappAvailability = true,
 }: SelectedClientCardProps) {
   const deleteMutation = useDeleteClient();
   const queryClient = useQueryClient();
@@ -44,7 +45,9 @@ export function SelectedClientCard({
         />
       )}
     />
-    <WhatsappAvailabilityNotice clientId={Number(client.id)} phone={client.phone} whatsappConfirmed={client.whatsappConfirmed} />
+    {showWhatsappAvailability && (
+      <WhatsappAvailabilityNotice clientId={Number(client.id)} phone={client.phone} whatsappConfirmed={client.whatsappConfirmed} />
+    )}
     </Stack>
   );
 }

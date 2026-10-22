@@ -439,7 +439,28 @@ export namespace Schemas {
     limit: number;
     hasMore: boolean;
   } & Record<string, unknown>;
-  export type Visits_TagStatus = "written" | "not_written";
+  export type Visits_QuickIssueVisitRequest = {
+    commandId: string;
+    clientId: number;
+    visitCode: Costumes_VisitCode;
+    startDateTime: string;
+    issueTimeFrom: Visits_TimeString;
+    issueTimeTo: Visits_TimeString;
+    endDateTime: string;
+    returnTimeUntil: Visits_TimeString;
+    notes?: string;
+    orders: Array<{ childId: number; costumeId: number; rentPrice: number; notes?: string } & Record<string, unknown>>;
+    additionalPayment: number;
+    deposit: { type: Visits_DepositType; amount?: number } & Record<string, unknown>;
+  } & Record<string, unknown>;
+  export type Visits_QuickIssueVisitResponse = {
+    visitId: number;
+    visitCode: Costumes_VisitCode;
+    status: "issued";
+    version: number;
+    balance: Visits_VisitBalance;
+  } & Record<string, unknown>;
+  export type Visits_TagStatus = "written" | "not_written" | "not_required";
   export type Visits_VisitOrder = {
     orderId: number;
     childName: Children_ChildName;
@@ -901,6 +922,16 @@ export namespace Endpoints {
     parameters: never;
     responses: { 201: Schemas.Costumes_VisitCode; default: Schemas.Common_Error };
   };
+  export type post_VisitOperation_quickIssue = {
+    method: "POST";
+    path: "/visits/quick-issue";
+    requestFormat: "json";
+    responseFormat: "json";
+    parameters: {
+      body: Schemas.Visits_QuickIssueVisitRequest;
+    };
+    responses: { 201: Schemas.Visits_QuickIssueVisitResponse; default: Schemas.Common_Error };
+  };
   export type get_VisitOperation_getReserved = {
     method: "GET";
     path: "/visits/reserved";
@@ -1115,6 +1146,7 @@ export type EndpointByMethod = {
     "/costumes": Endpoints.post_CostumeOperations_create;
     "/visits": Endpoints.post_VisitOperation_create;
     "/visits/preview-code": Endpoints.post_VisitOperation_previewCode;
+    "/visits/quick-issue": Endpoints.post_VisitOperation_quickIssue;
     "/visits/{orderId}/mark-tag-written": Endpoints.post_VisitOperation_markTagWritten;
     "/visits/{visitId}/cancel": Endpoints.post_VisitOperation_cancel;
     "/visits/{visitId}/complete-return": Endpoints.post_VisitOperation_completeReturn;

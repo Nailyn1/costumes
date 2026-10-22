@@ -25,10 +25,12 @@ import {
   MarkDepositReturnedRequest,
   VisitCancelRequest,
   VisitIssueRequest,
+  QuickIssueVisitRequest,
   VisitSettlementRequest,
 } from './dto/visit-order.dto';
 import {
   CreateVisitResponseDto,
+  QuickIssueVisitResponseDto,
   GetVisitForIssueDto,
   GetVisitReservedDto,
   GetVisitReturnSearchDto,
@@ -78,6 +80,15 @@ export class VisitController {
       sendNotification,
       auditActor(req),
     );
+  }
+
+  @Post('quick-issue')
+  @UseGuards(JwtAuthGuard)
+  async QuickIssueVisit(
+    @Body() dto: QuickIssueVisitRequest,
+    @Req() req: RequestWithUser,
+  ): Promise<QuickIssueVisitResponseDto> {
+    return this.visitOrderService.quickIssueVisit(dto, auditActor(req));
   }
 
   @Get(':visitId/history')

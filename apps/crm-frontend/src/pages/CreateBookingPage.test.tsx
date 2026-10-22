@@ -9,6 +9,11 @@ import { renderWithProviders } from "../../test/render";
 import { API_URL, server } from "../../test/server";
 import { CreateBookingPage } from "./CreateBookingPage";
 import { clientKeys } from '../features/clients-children/hooks/useClients';
+import { useAuthStore } from "../stores/auth.store";
+import {
+  savePendingQuickIssueRequest,
+} from "../features/visits/utils/quickIssueRequestStorage";
+import type { QuickIssueVisitRequestDto } from "@costumes/shared";
 
 /**
  * Форма кладёт выбранные сущности в кэш через setQueryData без подписчиков
@@ -79,13 +84,17 @@ function mockBackend(
 ) {
   const created: CapturedVisit[] = [];
   const costumeQueries: URLSearchParams[] = [];
+  const whatsappChecks = vi.fn();
   // Контракт preview-code возвращает JSON-строку, которую клиент разбирает как код.
   const previewCode = vi.fn(
     () => HttpResponse.json("1648", { status: 201 }),
   );
   server.use(
     http.get(`${API_URL}/clients/search`, () => HttpResponse.json([aliya])),
-    http.get(`${API_URL}/clients/:clientId/whatsapp-availability`, () => HttpResponse.json({ status: 'exists' })),
+    http.get(`${API_URL}/clients/:clientId/whatsapp-availability`, () => {
+      whatsappChecks();
+      return HttpResponse.json({ status: 'exists' });
+    }),
     http.get(`${API_URL}/costumes/search-available`, ({ request }) => {
       costumeQueries.push(new URL(request.url).searchParams);
       return HttpResponse.json([elsa, busyAnna]);
@@ -104,7 +113,7 @@ function mockBackend(
         : HttpResponse.json(createdVisit, { status: 201 });
     }),
   );
-  return { created, costumeQueries, previewCode };
+  return { created, costumeQueries, previewCode, whatsappChecks };
 }
 
 type User = ReturnType<typeof userEvent.setup>;
@@ -160,12 +169,27 @@ async function openPreview(user: User) {
   return screen.findByRole("dialog");
 }
 
+async function prepareQuickReview(user: User) {
+  await user.click(screen.getByText("Выдать сейчас"));
+  await pickClient(user);
+  await pickChild(user, "Маша");
+  await pickCostume(user, "Эль", /Эльза \(C-0128\)/);
+  await fillMoney(user, "Аренда", "8000");
+  await user.click(screen.getByRole("button", { name: "Проверить и выдать" }));
+  return screen.findByRole("dialog");
+}
+
 beforeEach(() => {
   // «сегодня» = 10 декабря 2026: от него считаются умные даты
   vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-12-10T09:00:00") });
+  window.sessionStorage.clear();
+  useAuthStore.getState().logout();
 });
 
 afterEach(() => {
+  vi.restoreAllMocks();
+  window.sessionStorage.clear();
+  useAuthStore.getState().logout();
   vi.useRealTimers();
 });
 
@@ -599,6 +623,284 @@ describe("CreateBookingPage", () => {
     expect(previewCode).toHaveBeenCalledOnce();
     expect(within(dialog).getByText("1648")).toBeInTheDocument();
     expect(within(dialog).queryByText("[object Object]")).not.toBeInTheDocument();
+  });
+
+  it("creates an immediate issue without WhatsApp and keeps selections when return date changes", async () => {
+    const { whatsappChecks } = mockBackend();
+    useAuthStore.getState().setAuth({
+      accessToken: "test-token",
+      user: { login: "quick-operator", name: "Оператор" },
+    });
+    const requests: Record<string, unknown>[] = [];
+    server.use(
+      http.post(`${API_URL}/visits/quick-issue`, async ({ request }) => {
+        requests.push((await request.json()) as Record<string, unknown>);
+        return HttpResponse.json({
+          visitId: 321,
+          visitCode: "1648",
+          status: "issued",
+          version: 1,
+          balance: {
+            totalRent: 8000,
+            totalPrepayment: 0,
+            totalReceived: 9000,
+            totalRefunded: 0,
+            signedBalance: -1000,
+            debt: 0,
+            refundDue: 1000,
+          },
+        }, { status: 201 });
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByText("Выдать сейчас"));
+    await pickClient(user);
+    await pickChild(user, "Маша");
+    await pickCostume(user, "Эль", /Эльза \(C-0128\)/);
+    await fillMoney(user, "Аренда", "8000");
+
+    const returnDate = screen.getByLabelText("Дата возврата");
+    await user.clear(returnDate);
+    await user.type(returnDate, "12{Enter}");
+    expect(returnDate).toHaveValue("12.12");
+    expect(screen.getByText("Маша")).toBeInTheDocument();
+    expect(screen.getByText("Эльза")).toBeInTheDocument();
+
+    await fillMoney(user, "Получено сейчас", "9000");
+    await user.click(screen.getByRole("radio", { name: "Деньги" }));
+    await fillMoney(user, "Сумма денежного залога", "5000");
+    const dialog = await (async () => {
+      await user.click(screen.getByRole("button", { name: "Проверить и выдать" }));
+      return screen.findByRole("dialog");
+    })();
+    expect(within(dialog).getByText(/Маша — Эльза/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/Возврат: 12\.12\.2026 до 18:00/)).toBeInTheDocument();
+    expect(within(dialog).getByText("Залог: Деньги · 5 000 ₸")).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Подтвердить и выдать" }));
+
+    await waitFor(() => expect(requests).toHaveLength(1));
+    expect(requests[0]).toMatchObject({
+      clientId: 1,
+      visitCode: "1648",
+      startDateTime: "2026-12-10",
+      issueTimeFrom: "09:00",
+      issueTimeTo: "09:00",
+      endDateTime: "2026-12-12",
+      returnTimeUntil: "18:00",
+      additionalPayment: 9000,
+      deposit: { type: "cash", amount: 5000 },
+      orders: [{ childId: 10, costumeId: 5, rentPrice: 8000 }],
+    });
+    expect((requests[0].orders as Record<string, unknown>[])[0]).not.toHaveProperty("prepaymentAmount");
+    expect(requests[0]).not.toHaveProperty("sendNotification");
+    expect(whatsappChecks).not.toHaveBeenCalled();
+    expect(requests[0]).toMatchObject({ endDateTime: "2026-12-12" });
+    expect(await screen.findByRole("link", { name: "Открыть визит" })).toHaveAttribute(
+      "href",
+      "/bookings/visits/321",
+    );
+  });
+
+  it("retries an ambiguous 401/5xx sequence with the exact command body", async () => {
+    const { whatsappChecks } = mockBackend();
+    useAuthStore.getState().setAuth({
+      accessToken: "test-token",
+      user: { login: "quick-operator", name: "Оператор" },
+    });
+    const requests: Record<string, unknown>[] = [];
+    let issueCalls = 0;
+    server.use(
+      http.post(`${API_URL}/auth/refresh`, () =>
+        HttpResponse.json({ accessToken: "refreshed-token" }, { status: 201 }),
+      ),
+      http.post(`${API_URL}/visits/quick-issue`, async ({ request }) => {
+        requests.push((await request.json()) as Record<string, unknown>);
+        issueCalls += 1;
+        if (issueCalls === 1) return HttpResponse.json({ statusCode: 401, message: "expired" }, { status: 401 });
+        if (issueCalls === 2) return HttpResponse.json({ statusCode: 503, message: "unknown" }, { status: 503 });
+        return HttpResponse.json({
+          visitId: 321,
+          visitCode: "1648",
+          status: "issued",
+          version: 1,
+          balance: { totalRent: 8000, totalPrepayment: 0, totalReceived: 0, totalRefunded: 0, signedBalance: 8000, debt: 8000, refundDue: 0 },
+        }, { status: 201 });
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+
+    const dialog = await prepareQuickReview(user);
+    await user.click(within(dialog).getByRole("button", { name: "Подтвердить и выдать" }));
+    expect(await screen.findByRole("button", { name: "Повторить выдачу" })).toBeInTheDocument();
+    expect(requests).toHaveLength(2);
+    expect(requests[0]).toEqual(requests[1]);
+    expect(whatsappChecks).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Повторить выдачу" }));
+    await screen.findByRole("link", { name: "Открыть визит" });
+    expect(requests).toHaveLength(3);
+    expect(requests[0]).toEqual(requests[2]);
+  });
+
+  it("keeps an unknown 409 frozen for retry and releases a code-expired command for a new code", async () => {
+    mockBackend();
+    useAuthStore.getState().setAuth({
+      accessToken: "test-token",
+      user: { login: "quick-operator", name: "Оператор" },
+    });
+    const requests: Record<string, unknown>[] = [];
+    let issueCalls = 0;
+    server.use(
+      http.post(`${API_URL}/visits/quick-issue`, async ({ request }) => {
+        requests.push((await request.json()) as Record<string, unknown>);
+        issueCalls += 1;
+        if (issueCalls === 1) return HttpResponse.json({ statusCode: 409, message: "in progress", code: "RECEIPT_IN_PROGRESS" }, { status: 409 });
+        if (issueCalls === 2) return HttpResponse.json({ statusCode: 409, message: "expired", code: "QUICK_ISSUE_CODE_EXPIRED" }, { status: 409 });
+        return HttpResponse.json({
+          visitId: 321,
+          visitCode: "1648",
+          status: "issued",
+          version: 1,
+          balance: { totalRent: 8000, totalPrepayment: 0, totalReceived: 0, totalRefunded: 0, signedBalance: 8000, debt: 8000, refundDue: 0 },
+        }, { status: 201 });
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+
+    const firstDialog = await prepareQuickReview(user);
+    await user.click(within(firstDialog).getByRole("button", { name: "Подтвердить и выдать" }));
+    await screen.findByRole("button", { name: "Повторить выдачу" });
+    await user.click(screen.getByRole("button", { name: "Повторить выдачу" }));
+    await waitFor(() => expect(requests).toHaveLength(2));
+    expect(requests[0]).toEqual(requests[1]);
+    expect(await screen.findByRole("button", { name: "Проверить и выдать" })).toBeInTheDocument();
+
+    const secondDialogPromise = (async () => {
+      await user.click(screen.getByRole("button", { name: "Проверить и выдать" }));
+      return screen.findByRole("dialog");
+    })();
+    const secondDialog = await secondDialogPromise;
+    await user.click(within(secondDialog).getByRole("button", { name: "Подтвердить и выдать" }));
+    await screen.findByRole("link", { name: "Открыть визит" });
+    expect(requests).toHaveLength(3);
+    expect(requests[2].commandId).not.toBe(requests[0].commandId);
+  });
+
+  it("keeps the booking prepayment draft when toggling quick issue and back", async () => {
+    mockBackend();
+    const user = userEvent.setup();
+    renderPage();
+
+    await pickClient(user);
+    await fillDates(user, "20");
+    await fillFirstOrder(user, "8000", "3000");
+    await user.click(screen.getByText("Выдать сейчас"));
+    expect(screen.getByText("Предоплата из черновика брони не переносится.")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Предоплата")).not.toBeInTheDocument();
+    const returnDate = screen.getByLabelText("Дата возврата");
+    await user.clear(returnDate);
+    await user.type(returnDate, "12{Enter}");
+    await fillMoney(user, "Получено сейчас", "9000");
+    await user.click(screen.getByRole("radio", { name: "Деньги" }));
+    await fillMoney(user, "Сумма денежного залога", "5000");
+
+    await user.click(screen.getByText("Бронь"));
+    expect(screen.getByLabelText("Предоплата")).toHaveValue("3 000 ₸");
+    await user.click(screen.getByText("Выдать сейчас"));
+    expect(screen.getByLabelText("Дата возврата")).toHaveValue("12.12");
+    expect(screen.getByLabelText("Получено сейчас")).toHaveValue("9 000 ₸");
+    expect(screen.getByRole("radio", { name: "Деньги" })).toBeChecked();
+    expect(screen.getByLabelText("Сумма денежного залога")).toHaveValue("5 000 ₸");
+  });
+
+  it("restores an unresolved request for the same user immediately after reload", async () => {
+    const pending: QuickIssueVisitRequestDto = {
+      commandId: "a06d6c16-7f80-4507-b601-e03c2c13a54b",
+      clientId: 1,
+      visitCode: "1648",
+      startDateTime: "2026-12-10",
+      issueTimeFrom: "09:00",
+      issueTimeTo: "09:00",
+      endDateTime: "2026-12-11",
+      returnTimeUntil: "18:00",
+      orders: [{ childId: 10, costumeId: 5, rentPrice: 8000 }],
+      additionalPayment: 9000,
+      deposit: { type: "cash", amount: 5000 },
+    };
+    useAuthStore.getState().setAuth({
+      accessToken: "test-token",
+      user: { login: "quick-operator", name: "Оператор" },
+    });
+    expect(savePendingQuickIssueRequest("quick-operator", pending)).toBe(true);
+    mockBackend();
+    renderPage();
+
+    expect(screen.getByRole("heading", { name: "Быстрая выдача" })).toBeInTheDocument();
+    expect(screen.getByText("Код визита: 1648")).toBeInTheDocument();
+    expect(screen.getByText(/Получено сейчас: 9 000 ₸/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Повторить выдачу" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Проверить и выдать" })).not.toBeInTheDocument();
+  });
+
+  it("does not restore another user's pending quick issue", () => {
+    const pending: QuickIssueVisitRequestDto = {
+      commandId: "a06d6c16-7f80-4507-b601-e03c2c13a54b",
+      clientId: 1,
+      visitCode: "1648",
+      startDateTime: "2026-12-10",
+      issueTimeFrom: "09:00",
+      issueTimeTo: "09:00",
+      endDateTime: "2026-12-11",
+      returnTimeUntil: "18:00",
+      orders: [{ childId: 10, costumeId: 5, rentPrice: 8000 }],
+      additionalPayment: 0,
+      deposit: { type: "none" },
+    };
+    useAuthStore.getState().setAuth({
+      accessToken: "test-token",
+      user: { login: "operator-a", name: "Оператор А" },
+    });
+    savePendingQuickIssueRequest("operator-a", pending);
+    useAuthStore.getState().setAuth({
+      accessToken: "other-token",
+      user: { login: "operator-b", name: "Оператор Б" },
+    });
+    mockBackend();
+    renderPage();
+
+    expect(screen.getByRole("heading", { name: "Создание брони" })).toBeInTheDocument();
+    expect(screen.queryByText("Код визита: 1648")).not.toBeInTheDocument();
+  });
+
+  it("does not submit a confirmed request when session storage rejects persistence", async () => {
+    const { previewCode } = mockBackend();
+    useAuthStore.getState().setAuth({
+      accessToken: "test-token",
+      user: { login: "quick-operator", name: "Оператор" },
+    });
+    const issue = vi.fn();
+    server.use(
+      http.post(`${API_URL}/visits/quick-issue`, () => {
+        issue();
+        return HttpResponse.error();
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+
+    const dialog = await prepareQuickReview(user);
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("storage denied", "QuotaExceededError");
+    });
+    await user.click(within(dialog).getByRole("button", { name: "Подтвердить и выдать" }));
+
+    expect(previewCode).toHaveBeenCalledOnce();
+    expect(issue).not.toHaveBeenCalled();
+    expect(await screen.findByText("Не удалось сохранить выдачу для повтора")).toBeInTheDocument();
   });
 
   it.todo(

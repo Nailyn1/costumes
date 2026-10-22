@@ -15,6 +15,9 @@ import {
   CreateVisitRequestDto,
   CreateVisitResponseDto,
   CreateVisitResponseSchema,
+  QuickIssueVisitRequestDto,
+  QuickIssueVisitResponseDto,
+  QuickIssueVisitResponseSchema,
   GetVisitForIssueDto,
   GetVisitReservedDto,
   GetVisitReturnSearchDto,
@@ -72,6 +75,10 @@ import {
   isSerializationConflict,
   runSerializableTransaction,
 } from './transactions/serializable-transaction';
+import {
+  executeWithCommandReceipt,
+  hashCommandRequest,
+} from './transactions/command-receipt';
 
 const VISIT_ISSUE_REJECT_MESSAGES: Record<
   Exclude<VisitStatus, 'reserved'>,
@@ -595,6 +602,301 @@ export class VisitOrderService {
     }
   }
 
+  async quickIssueVisit(
+    data: QuickIssueVisitRequestDto,
+    actor: VisitAuditActor,
+  ): Promise<QuickIssueVisitResponseDto> {
+    if (actor.source !== 'user') {
+      throw new BadRequestException(
+        'Быстрая выдача требует сотрудника из токена',
+      );
+    }
+    if (data.issueTimeFrom !== data.issueTimeTo) {
+      throw new BadRequestException(
+        'Время быстрой выдачи должно совпадать с фактическим временем начала',
+      );
+    }
+    const fullStartDt = this.parseDateTime(
+      data.startDateTime,
+      data.issueTimeFrom,
+    );
+    const fullEndDt = this.parseDateTime(
+      data.endDateTime,
+      data.returnTimeUntil,
+    );
+    if (
+      Number.isNaN(fullStartDt.getTime()) ||
+      Number.isNaN(fullEndDt.getTime()) ||
+      fullStartDt.toISOString().slice(0, 10) !== data.startDateTime ||
+      fullEndDt.toISOString().slice(0, 10) !== data.endDateTime
+    ) {
+      throw new BadRequestException('Указана некорректная дата визита');
+    }
+    try {
+      Visit.validateCreationStructure({
+        startDateTime: fullStartDt,
+        endDateTime: fullEndDt,
+        orders: data.orders.map((order) => ({
+          ...order,
+          prepaymentAmount: 0,
+        })),
+      });
+      Visit.validateCreationMoney(
+        data.orders.map((order) => ({ ...order, prepaymentAmount: 0 })),
+      );
+      Visit.validateIssuePayment(data.additionalPayment);
+    } catch (error) {
+      this.rethrowVisitRule(error);
+    }
+    if (
+      !Number.isSafeInteger(data.deposit.amount ?? 0) ||
+      (data.deposit.amount ?? 0) < 0
+    ) {
+      throw new BadRequestException('Сумма залога должна быть неотрицательной');
+    }
+
+    const commandPath = 'POST /visits/quick-issue';
+    const redisKey = `visit_code_lock:${data.visitCode}`;
+    const result = await executeWithCommandReceipt(
+      this.prisma,
+      {
+        commandId: data.commandId,
+        actorUserId: actor.userId,
+        commandPath,
+        requestHash: hashCommandRequest(data),
+      },
+      async (tx) => {
+        const isReserved = await this.redis.get(redisKey);
+        if (!isReserved) {
+          throw new ConflictException({
+            statusCode: 409,
+            message: 'Срок действия кода визита истёк. Получите новый код',
+            code: 'QUICK_ISSUE_CODE_EXPIRED',
+          });
+        }
+        const existingVisit = await tx.visit.findUnique({
+          where: { visitCode: data.visitCode },
+          select: { id: true },
+        });
+        if (existingVisit) {
+          throw new ConflictException({
+            statusCode: 409,
+            message: 'Этот код визита уже использован',
+            code: 'VISIT_CODE_ALREADY_USED',
+          });
+        }
+
+        const client = await tx.client.findFirst({
+          where: { id: data.clientId, deletedAt: null },
+        });
+        if (!client) {
+          throw new NotFoundException(`Клиент с ID ${data.clientId} не найден`);
+        }
+        if (client.isBlacklisted) {
+          const reason = client.blacklistReason
+            ? ` Причина: ${client.blacklistReason}.`
+            : '';
+          throw new BadRequestException(
+            `Клиент «${client.name}» в чёрном списке — выдача невозможна.${reason}`,
+          );
+        }
+
+        const [children, costumes] = await Promise.all([
+          tx.child.findMany({
+            where: {
+              id: { in: data.orders.map((order) => order.childId) },
+              deletedAt: null,
+            },
+            select: { id: true, clientId: true },
+          }),
+          tx.costume.findMany({
+            where: {
+              id: { in: data.orders.map((order) => order.costumeId) },
+              deletedAt: null,
+            },
+            select: { id: true },
+          }),
+        ]);
+        const childrenById = new Map(
+          children.map((child) => [child.id, child]),
+        );
+        const costumeIds = new Set(costumes.map((costume) => costume.id));
+        const invalidOrders = data.orders.flatMap((order, index) => {
+          const errors: string[] = [];
+          const child = childrenById.get(order.childId);
+          if (!child) {
+            errors.push(`заказ ${index + 1}: ребёнок не найден или удалён`);
+          } else if (child.clientId !== data.clientId) {
+            errors.push(`заказ ${index + 1}: ребёнок не принадлежит клиенту`);
+          }
+          if (!costumeIds.has(order.costumeId)) {
+            errors.push(`заказ ${index + 1}: костюм не найден или удалён`);
+          }
+          return errors;
+        });
+        if (invalidOrders.length > 0) {
+          throw new BadRequestException(
+            `Быстрая выдача невозможна: ${invalidOrders.join('; ')}`,
+          );
+        }
+
+        const busyCostumes = await this.isSuitAvailability(
+          data.orders.map((order) => order.costumeId),
+          fullStartDt,
+          fullEndDt,
+          tx,
+        );
+        if (busyCostumes.length > 0) {
+          throw new BadRequestException(
+            `Костюмы ${busyCostumes.map((costume) => `«${costume.name}»`).join(', ')} уже заняты в этот промежуток времени`,
+          );
+        }
+
+        let remainingPayment = data.additionalPayment;
+        const visit = await tx.visit.create({
+          data: {
+            visitCode: data.visitCode,
+            clientId: data.clientId,
+            startDateTime: fullStartDt,
+            endDateTime: fullEndDt,
+            issueTimeFrom: data.issueTimeFrom,
+            issueTimeTo: data.issueTimeTo,
+            returnTimeUntil: data.returnTimeUntil,
+            status: 'issued',
+            notes: data.notes,
+            orders: {
+              create: data.orders.map((order) => {
+                const finalPayment = Math.min(
+                  remainingPayment,
+                  order.rentPrice,
+                );
+                remainingPayment -= finalPayment;
+                return {
+                  childId: order.childId,
+                  costumeId: order.costumeId,
+                  rentPrice: order.rentPrice,
+                  notes: order.notes,
+                  clientId: data.clientId,
+                  startDateTime: fullStartDt,
+                  endDateTime: fullEndDt,
+                  prepaymentAmount: 0,
+                  finalPayment,
+                  tagStatus: 'not_required',
+                  status: 'issued',
+                };
+              }),
+            },
+            deposits: {
+              create: {
+                type: data.deposit.type,
+                amount:
+                  data.deposit.type === 'cash' ? (data.deposit.amount ?? 0) : 0,
+                returned: false,
+              },
+            },
+          },
+          include: {
+            client: { select: { id: true, name: true } },
+            orders: {
+              include: {
+                child: { select: { name: true } },
+                costume: {
+                  select: { name: true, inventoryCode: true },
+                },
+              },
+            },
+          },
+        });
+        if (data.additionalPayment > 0) {
+          await tx.visitMoneyOperation.create({
+            data: {
+              visitId: visit.id,
+              kind: 'issue_payment',
+              amount: data.additionalPayment,
+            },
+          });
+        }
+
+        const orderSnapshots = visit.orders.map((order) => ({
+          orderId: order.id,
+          childName: order.child.name,
+          costumeName: order.costume.name,
+          inventoryCode: order.costume.inventoryCode,
+          rentPrice: order.rentPrice,
+          prepaymentAmount: 0,
+        }));
+        const auditEvents: VisitAuditEventInput[] = [
+          {
+            action: 'visit.created',
+            entityType: 'visit',
+            entityId: visit.id,
+            visitId: visit.id,
+            payload: {
+              kind: 'visit.created',
+              visitCode: visit.visitCode,
+              clientId: visit.client.id,
+              clientName: visit.client.name,
+              startDateTime: data.startDateTime,
+              endDateTime: data.endDateTime,
+              orders: orderSnapshots,
+            },
+          },
+          {
+            action: 'visit.issued',
+            entityType: 'visit',
+            entityId: visit.id,
+            visitId: visit.id,
+            payload: {
+              kind: 'visit.issued',
+              visitCode: visit.visitCode,
+              additionalPayment: data.additionalPayment,
+              depositType: data.deposit.type,
+              depositAmount:
+                data.deposit.type === 'cash' ? (data.deposit.amount ?? 0) : 0,
+              orders: orderSnapshots,
+            },
+          },
+        ];
+        if (data.additionalPayment > 0) {
+          auditEvents.push({
+            action: 'money.received',
+            entityType: 'visit',
+            entityId: visit.id,
+            visitId: visit.id,
+            payload: {
+              kind: 'money.received',
+              moneyKind: 'issue_payment',
+              amount: data.additionalPayment,
+            },
+          });
+        }
+        await this.recordAuditEvents(tx, actor, data.commandId, auditEvents);
+
+        const balance = calculateVisitBalance({
+          orders: visit.orders.map((order) => ({
+            rentPrice: order.rentPrice,
+            prepaymentAmount: 0,
+          })),
+          operations:
+            data.additionalPayment > 0
+              ? [{ kind: 'issue_payment', amount: data.additionalPayment }]
+              : [],
+        });
+        return QuickIssueVisitResponseSchema.parse({
+          visitId: visit.id,
+          visitCode: visit.visitCode,
+          status: visit.status,
+          version: visit.version,
+          balance,
+        });
+      },
+      (value) => QuickIssueVisitResponseSchema.parse(value),
+    );
+
+    await this.redis.del(redisKey);
+    return result;
+  }
+
   async isSuitAvailability(
     costumeIds: number[],
     startDateTime: Date,
@@ -899,6 +1201,14 @@ export class VisitOrderService {
           status: decision.orderStatus,
           finalPayment: null,
         },
+      });
+      await tx.order.updateMany({
+        where: {
+          visitId,
+          deletedAt: null,
+          tagStatus: 'not_required',
+        },
+        data: { tagStatus: 'not_written' },
       });
 
       await this.updateVisitWithVersion(tx, visitId, visit.version, {

@@ -28,6 +28,7 @@ enum DepositType {
 enum TagStatus {
     written,
     not_written,
+    not_required,
 }
 
 enum OrderStatus {
@@ -122,6 +123,38 @@ model IssueVisitRequest {
     amount?: int32;
   };
   notes?: string;
+}
+
+model QuickIssueVisitRequest {
+  @format("uuid") commandId: string;
+  clientId: int32;
+  visitCode: VisitCode;
+  startDateTime: plainDate;
+  issueTimeFrom: TimeString;
+  issueTimeTo: TimeString;
+  endDateTime: plainDate;
+  returnTimeUntil: TimeString;
+  notes?: string;
+  @minItems(1)
+  orders: {
+    childId: int32;
+    costumeId: int32;
+    @minValue(0) rentPrice: int32;
+    notes?: string;
+  }[];
+  @minValue(0) additionalPayment: int32;
+  deposit: {
+    type: DepositType;
+    @minValue(0) amount?: int32;
+  };
+}
+
+model QuickIssueVisitResponse {
+  visitId: int32;
+  visitCode: VisitCode;
+  status: "issued";
+  version: int32;
+  balance: VisitBalance;
 }
 
 model CompleteReturnRequest {
@@ -571,6 +604,13 @@ interface VisitOperation {
     @body body: CreateVisitRequest): {
     @statusCode statusCode: 201;
     @body body: Visit;
+  } | Common.Error;
+
+  @post
+  @route("quick-issue")
+  quickIssue(@body body: QuickIssueVisitRequest): {
+    @statusCode statusCode: 201;
+    @body body: QuickIssueVisitResponse;
   } | Common.Error;
 
   @get
