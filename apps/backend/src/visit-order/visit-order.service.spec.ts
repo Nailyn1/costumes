@@ -745,6 +745,31 @@ describe('VisitOrderService remaining business rules', () => {
       ).toEqual([1, 2]);
     });
 
+    it('persists visit notes without changing order notes', async () => {
+      prepareValidBooking();
+      const data = makeCreateVisitRequest({
+        notes: 'Позвонить перед выдачей',
+        orders: [
+          {
+            childId: 1,
+            costumeId: 1,
+            rentPrice: 5000,
+            prepaymentAmount: 1000,
+            notes: 'Проверить аксессуары',
+          },
+        ],
+      });
+
+      await service.createVisit(data, false);
+
+      const createCalls = txMock.visit.create.mock.calls as unknown as Array<
+        [{ data: { notes?: string; orders: { create: { notes: string }[] } } }]
+      >;
+      expect(createCalls[0][0].data.notes).toBe('Позвонить перед выдачей');
+      expect(createCalls[0][0].data.orders.create[0].notes).toBe(
+        'Проверить аксессуары',
+      );
+    });
     it('accepts full prepayment, stores local time as UTC and releases the code lock', async () => {
       prepareValidBooking();
       const data = makeCreateVisitRequest({

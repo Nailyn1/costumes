@@ -57,7 +57,7 @@ describe('visit flow (integration)', () => {
     return res.body as string;
   }
 
-  const visitBody = (ids: Ids, visitCode: string) => ({
+  const visitBody = (ids: Ids, visitCode: string, notes?: string) => ({
     clientId: ids.clientId,
     visitCode,
     startDateTime: '2026-12-20',
@@ -65,6 +65,7 @@ describe('visit flow (integration)', () => {
     issueTimeFrom: '10:00',
     issueTimeTo: '19:00',
     returnTimeUntil: '19:00',
+    ...(notes === undefined ? {} : { notes }),
     orders: [
       {
         childId: ids.childId,
@@ -216,6 +217,32 @@ describe('visit flow (integration)', () => {
       .post('/visits?sendNotification=false')
       .send(visitBody(ids, '0000'))
       .expect(409);
+  });
+
+  it('persists visit notes and preserves the optional and empty-note behavior', async () => {
+    const cases = [
+      {
+        phone: '+77071110005',
+        notes: 'Позвонить перед выдачей',
+        expected: 'Позвонить перед выдачей',
+      },
+      { phone: '+77071110006', expected: null },
+      { phone: '+77071110007', notes: '', expected: '' },
+    ];
+
+    for (const { phone, notes, expected } of cases) {
+      const ids = await seedBooking(phone);
+      const visitCode = await reserveVisitCode();
+      await api
+        .post('/visits?sendNotification=false')
+        .send(visitBody(ids, visitCode, notes))
+        .expect(201);
+
+      const visit = await t.prisma.visit.findUniqueOrThrow({
+        where: { visitCode },
+      });
+      expect(visit.notes).toBe(expected);
+    }
   });
 
   it('rejects overlapping reservations of one costume', async () => {

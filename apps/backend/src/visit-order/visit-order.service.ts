@@ -329,6 +329,7 @@ export class VisitOrderService {
             issueTimeFrom: data.issueTimeFrom,
             issueTimeTo: data.issueTimeTo,
             returnTimeUntil: data.returnTimeUntil,
+            notes: data.notes,
             orders: {
               create: data.orders.map((o) => ({
                 ...o,
