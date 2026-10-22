@@ -1,4 +1,8 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { VisitOrderService } from './visit-order.service';
 import { Prisma } from '../prisma/generated/client';
 
@@ -42,6 +46,7 @@ describe('VisitOrderService', () => {
 
   beforeEach(() => {
     reset();
+    txMock.visit.updateMany.mockResolvedValue({ count: 1 });
     service = createService();
   });
 
@@ -63,7 +68,7 @@ describe('VisitOrderService', () => {
       await expect(promise).rejects.toBeInstanceOf(BadRequestException);
       await expect(promise).rejects.toThrow(fragment);
       expect(txMock.order.update).not.toHaveBeenCalled();
-      expect(txMock.visit.update).not.toHaveBeenCalled();
+      expect(txMock.visit.updateMany).not.toHaveBeenCalled();
     });
 
     it('issues a reserved visit', async () => {
@@ -71,12 +76,43 @@ describe('VisitOrderService', () => {
         id: 1,
         visitCode: '1234',
         status: 'reserved',
+        version: 1,
+        notes: null,
         orders: [],
       });
 
       await service.visitIssue(issueData, 1, systemAuditActor);
 
-      expect(txMock.visit.update).toHaveBeenCalled();
+      expect(txMock.visit.updateMany).toHaveBeenCalledWith({
+        where: { id: 1, version: 1, deletedAt: null },
+        data: {
+          status: 'issued',
+          notes: null,
+          version: { increment: 1 },
+        },
+      });
+    });
+
+    it('rejects a stale visit version without recording an audit event', async () => {
+      txMock.visit.findFirst.mockResolvedValue({
+        ...makeVisit(),
+        orders: [],
+      });
+      txMock.visit.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(
+        service.visitIssue(issueData, 1, systemAuditActor),
+      ).rejects.toBeInstanceOf(ConflictException);
+
+      expect(txMock.visit.updateMany).toHaveBeenCalledWith({
+        where: { id: 1, version: 1, deletedAt: null },
+        data: {
+          status: 'issued',
+          notes: null,
+          version: { increment: 1 },
+        },
+      });
+      expect(txMock.auditEvent.create).not.toHaveBeenCalled();
     });
 
     it('issues only active orders of the visit', async () => {
@@ -134,8 +170,27 @@ describe('VisitOrderService', () => {
           },
         },
       });
-      expect(txMock.visit.update).not.toHaveBeenCalled();
+      expect(txMock.visit.updateMany).not.toHaveBeenCalled();
     });
+  });
+
+  it('returns a conflict after exhausting serialization retries', async () => {
+    const serializationConflict = Object.assign(
+      new Error('Serialization conflict'),
+      { code: 'P2034' },
+    );
+    prismaMock.$transaction.mockRejectedValue(serializationConflict);
+
+    await expect(
+      service.visitIssue(
+        { additionalPayment: 0, deposit: { type: 'none' } } as never,
+        1,
+        systemAuditActor,
+      ),
+    ).rejects.toBeInstanceOf(ConflictException);
+
+    expect(prismaMock.$transaction).toHaveBeenCalledTimes(3);
+    expect(txMock.visit.findFirst).not.toHaveBeenCalled();
   });
 
   describe('orderMarkTagWritten', () => {
@@ -148,7 +203,7 @@ describe('VisitOrderService', () => {
       expect(txMock.order.findFirst).toHaveBeenCalledWith({
         where: { id: 1, deletedAt: null, visit: { deletedAt: null } },
         include: {
-          visit: { select: { id: true } },
+          visit: { select: { id: true, version: true } },
           child: { select: { name: true } },
           costume: { select: { name: true, inventoryCode: true } },
         },
@@ -470,12 +525,6 @@ describe('VisitOrderService', () => {
         deposits: [],
         moneyOperations: [],
       });
-      txMock.visit.update.mockResolvedValue({
-        id: 1,
-        visitCode: '1234',
-        status: 'completed',
-      });
-
       await service.visitCompleteReturn(
         1,
         {
@@ -764,6 +813,7 @@ describe('VisitOrderService remaining business rules', () => {
 
   beforeEach(() => {
     reset();
+    txMock.visit.updateMany.mockResolvedValue({ count: 1 });
     service = createService();
   });
 
@@ -1078,7 +1128,7 @@ describe('VisitOrderService remaining business rules', () => {
     it('marks an active order written', async () => {
       txMock.order.findFirst.mockResolvedValue({
         ...makeOrder({ id: 5 }),
-        visit: { id: 1 },
+        visit: { id: 1, version: 1 },
         child: { name: 'Алия' },
         costume: { name: 'Эльза', inventoryCode: 'C-0001' },
       });
@@ -1198,9 +1248,13 @@ describe('VisitOrderService remaining business rules', () => {
         where: { id: 2, deletedAt: null },
         data: { status: 'issued', finalPayment: 2000 },
       });
-      expect(txMock.visit.update).toHaveBeenCalledWith({
-        where: { id: 1 },
-        data: { status: 'issued', notes: 'старое\nновое' },
+      expect(txMock.visit.updateMany).toHaveBeenCalledWith({
+        where: { id: 1, version: 1, deletedAt: null },
+        data: {
+          status: 'issued',
+          notes: 'старое\nновое',
+          version: { increment: 1 },
+        },
       });
       expect(txMock.deposit.create).toHaveBeenCalledWith({
         data: { visitId: 1, type: 'cash', amount: 5000, returned: false },
@@ -1244,7 +1298,7 @@ describe('VisitOrderService remaining business rules', () => {
           systemAuditActor,
         ),
       ).rejects.toThrow('database failure');
-      expect(txMock.visit.update).not.toHaveBeenCalled();
+      expect(txMock.visit.updateMany).not.toHaveBeenCalled();
       expect(txMock.deposit.create).not.toHaveBeenCalled();
     });
 
@@ -1260,9 +1314,9 @@ describe('VisitOrderService remaining business rules', () => {
         where: { visitId: 1, deletedAt: null },
         data: { status: 'reserved', finalPayment: null },
       });
-      expect(txMock.visit.update).toHaveBeenCalledWith({
-        where: { id: 1 },
-        data: { status: 'reserved' },
+      expect(txMock.visit.updateMany).toHaveBeenCalledWith({
+        where: { id: 1, version: 1, deletedAt: null },
+        data: { status: 'reserved', version: { increment: 1 } },
       });
       expect(txMock.deposit.updateMany).toHaveBeenCalledWith({
         where: { visitId: 1, deletedAt: null },
@@ -1351,7 +1405,7 @@ describe('VisitOrderService remaining business rules', () => {
       );
       expect(result.depositReturned).toBe(true);
       expect(txMock.deposit.update).not.toHaveBeenCalled();
-      expect(txMock.visit.update).not.toHaveBeenCalled();
+      expect(txMock.visit.updateMany).not.toHaveBeenCalled();
       expect(txMock.auditEvent.create).not.toHaveBeenCalled();
     });
     it('rejects a non-issued visit and an order with an invalid status', async () => {
@@ -1400,7 +1454,6 @@ describe('VisitOrderService remaining business rules', () => {
         deposits: [makeDeposit({ type: 'cash', returned: false })],
         moneyOperations: [],
       });
-      txMock.visit.update.mockResolvedValue(makeVisit({ status: 'completed' }));
       await service.visitCompleteReturn(
         1,
         {
@@ -1414,9 +1467,13 @@ describe('VisitOrderService remaining business rules', () => {
         data: { status: 'returned' },
       });
       expect(txMock.deposit.update).not.toHaveBeenCalled();
-      expect(txMock.visit.update).toHaveBeenCalledWith({
-        where: { id: 1, status: 'issued', deletedAt: null },
-        data: { status: 'completed', notes: 'старое\n[Завершение]: всё цело' },
+      expect(txMock.visit.updateMany).toHaveBeenCalledWith({
+        where: { id: 1, version: 1, deletedAt: null },
+        data: {
+          status: 'completed',
+          notes: 'старое\n[Завершение]: всё цело',
+          version: { increment: 1 },
+        },
       });
     });
 
@@ -1427,7 +1484,6 @@ describe('VisitOrderService remaining business rules', () => {
         deposits: [makeDeposit({ type: 'cash' })],
         moneyOperations: [],
       });
-      txMock.visit.update.mockResolvedValue(makeVisit({ status: 'completed' }));
       await service.visitCompleteReturn(
         1,
         { depositReturned: true },
@@ -1446,11 +1502,12 @@ describe('VisitOrderService remaining business rules', () => {
         where: { visitId: 1, deletedAt: null },
         data: { status: 'cancelled' },
       });
-      expect(txMock.visit.update).toHaveBeenCalledWith({
-        where: { id: 1 },
+      expect(txMock.visit.updateMany).toHaveBeenCalledWith({
+        where: { id: 1, version: 1, deletedAt: null },
         data: {
           status: 'cancelled',
           notes: 'старое\n[Причина отмены]: ошибка',
+          version: { increment: 1 },
         },
       });
     });

@@ -25,6 +25,7 @@ model User {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   auditEvents AuditEvent[]
+  commandReceipts CommandReceipt[]
 
   @@map("users")
 }
@@ -94,6 +95,7 @@ model Visit {
   returnTimeUntil String      @map("return_time_until")
   
   status          VisitStatus @default(reserved)
+  version         Int         @default(1)
   notes           String?     @db.Text
   
   orders          Order[]
@@ -133,6 +135,21 @@ model AuditEvent {
   @@index([orderId])
   @@map("audit_events")
 }
+
+model CommandReceipt {
+  id            Int      @id @default(autoincrement())
+  commandId     String   @unique @map("command_id")
+  actorUserId   Int      @map("actor_user_id")
+  actorUser     User     @relation(fields: [actorUserId], references: [id])
+  commandPath   String   @map("command_path")
+  requestHash   String   @map("request_hash")
+  result        Json
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([actorUserId, createdAt])
+  @@map("command_receipts")
+}
+
 model VisitMoneyOperation {
   id             Int                     @id @default(autoincrement())
   visitId        Int                     @map("visit_id")

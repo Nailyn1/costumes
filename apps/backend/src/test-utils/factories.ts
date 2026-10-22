@@ -54,6 +54,7 @@ export const makeVisit = (overrides: Partial<Visit> = {}): Visit => ({
   issueTimeTo: '19:00',
   returnTimeUntil: '19:00',
   status: 'reserved',
+  version: 1,
   notes: null,
   createdAt: new Date('2026-12-01T10:00:00Z'),
   updatedAt: new Date('2026-12-01T10:00:00Z'),

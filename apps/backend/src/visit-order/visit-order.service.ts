@@ -68,6 +68,10 @@ import {
   type VisitSettlementKind,
 } from './domain/visit-balance';
 import { Visit, VisitRuleError, type VisitSnapshot } from './domain/visit';
+import {
+  isSerializationConflict,
+  runSerializableTransaction,
+} from './transactions/serializable-transaction';
 
 const VISIT_ISSUE_REJECT_MESSAGES: Record<
   Exclude<VisitStatus, 'reserved'>,
@@ -127,6 +131,41 @@ export class VisitOrderService {
     @InjectPinoLogger(VisitOrderService.name)
     private readonly logger: PinoLogger,
   ) {}
+
+  private async withSerializableTransaction<TResult>(
+    operation: (tx: Prisma.TransactionClient) => Promise<TResult>,
+  ): Promise<TResult> {
+    try {
+      return await runSerializableTransaction<
+        Prisma.TransactionClient,
+        TResult
+      >(this.prisma.$transaction.bind(this.prisma), operation);
+    } catch (error: unknown) {
+      if (isSerializationConflict(error)) {
+        throw new ConflictException(
+          'Данные визита изменились. Обновите данные и повторите попытку',
+        );
+      }
+      throw error;
+    }
+  }
+
+  private async updateVisitWithVersion(
+    tx: Prisma.TransactionClient,
+    visitId: number,
+    expectedVersion: number,
+    data: Prisma.VisitUpdateManyMutationInput = {},
+  ): Promise<void> {
+    const updated = await tx.visit.updateMany({
+      where: { id: visitId, version: expectedVersion, deletedAt: null },
+      data: { ...data, version: { increment: 1 } },
+    });
+    if (updated.count !== 1) {
+      throw new ConflictException(
+        'Визит изменён другим сотрудником. Обновите данные и повторите действие',
+      );
+    }
+  }
 
   private async recordAuditEvents(
     tx: Prisma.TransactionClient,
@@ -338,7 +377,7 @@ export class VisitOrderService {
     }
 
     try {
-      const result = await this.prisma.$transaction(async (tx) => {
+      const result = await this.withSerializableTransaction(async (tx) => {
         const client = await tx.client.findFirst({
           where: { id: data.clientId, deletedAt: null },
         });
@@ -647,11 +686,11 @@ export class VisitOrderService {
     actor: VisitAuditActor,
   ): Promise<void> {
     const commandId = randomUUID();
-    await this.prisma.$transaction(async (tx) => {
+    await this.withSerializableTransaction(async (tx) => {
       const order = await tx.order.findFirst({
         where: { id: orderId, deletedAt: null, visit: { deletedAt: null } },
         include: {
-          visit: { select: { id: true } },
+          visit: { select: { id: true, version: true } },
           child: { select: { name: true } },
           costume: { select: { name: true, inventoryCode: true } },
         },
@@ -666,6 +705,8 @@ export class VisitOrderService {
         data: { tagStatus: 'written' },
       });
       if (changed.count === 0) return;
+
+      await this.updateVisitWithVersion(tx, order.visitId, order.visit.version);
 
       await this.recordAuditEvents(tx, actor, commandId, [
         {
@@ -699,7 +740,7 @@ export class VisitOrderService {
       this.rethrowVisitRule(error);
     }
 
-    await this.prisma.$transaction(async (tx) => {
+    await this.withSerializableTransaction(async (tx) => {
       const visit = await tx.visit.findFirst({
         where: { id: visitId, deletedAt: null },
         include: {
@@ -749,12 +790,9 @@ export class VisitOrderService {
         });
       }
 
-      await tx.visit.update({
-        where: { id: visitId },
-        data: {
-          status: decision.visitStatus,
-          notes: decision.notes,
-        },
+      await this.updateVisitWithVersion(tx, visitId, visit.version, {
+        status: decision.visitStatus,
+        notes: decision.notes,
       });
 
       try {
@@ -821,7 +859,7 @@ export class VisitOrderService {
 
   async visitUnissue(visitId: number, actor: VisitAuditActor): Promise<void> {
     const commandId = randomUUID();
-    await this.prisma.$transaction(async (tx) => {
+    await this.withSerializableTransaction(async (tx) => {
       const visit = await tx.visit.findFirst({
         where: { id: visitId, deletedAt: null },
         include: {
@@ -863,11 +901,8 @@ export class VisitOrderService {
         },
       });
 
-      await tx.visit.update({
-        where: { id: visitId },
-        data: {
-          status: decision.visitStatus,
-        },
+      await this.updateVisitWithVersion(tx, visitId, visit.version, {
+        status: decision.visitStatus,
       });
 
       await tx.deposit.updateMany({
@@ -1363,7 +1398,7 @@ export class VisitOrderService {
     actor: VisitAuditActor,
   ): Promise<MarkDepositReturnedDto> {
     const commandId = randomUUID();
-    await this.prisma.$transaction(async (tx) => {
+    await this.withSerializableTransaction(async (tx) => {
       const visit = await tx.visit.findFirst({
         where: { id: visitId, deletedAt: null },
         include: { deposits: { where: { deletedAt: null }, take: 1 } },
@@ -1394,12 +1429,11 @@ export class VisitOrderService {
 
       if (notes) {
         const currentNotes = visit.notes ? `${visit.notes}\n` : '';
-        await tx.visit.update({
-          where: { id: visitId },
-          data: {
-            notes: `${currentNotes}[Возврат залога]: ${notes}`,
-          },
+        await this.updateVisitWithVersion(tx, visitId, visit.version, {
+          notes: `${currentNotes}[Возврат залога]: ${notes}`,
         });
+      } else {
+        await this.updateVisitWithVersion(tx, visitId, visit.version);
       }
       await this.recordAuditEvents(tx, actor, commandId, [
         {
@@ -1429,7 +1463,7 @@ export class VisitOrderService {
     actor: VisitAuditActor,
   ): Promise<visitCompleteReturnResponseDto> {
     const commandId = randomUUID();
-    const result = await this.prisma.$transaction(async (tx) => {
+    const result = await this.withSerializableTransaction(async (tx) => {
       const visit = await tx.visit.findFirst({
         where: { id: visitId, deletedAt: null },
         include: {
@@ -1464,20 +1498,15 @@ export class VisitOrderService {
         this.rethrowVisitRule(error);
       }
 
-      const completedVisit = await tx.visit
-        .update({
-          where: { id: visitId, status: 'issued', deletedAt: null },
-          data: { status: decision.visitStatus, notes: decision.notes },
-        })
-        .catch((error: unknown) => {
-          if (
-            error instanceof Prisma.PrismaClientKnownRequestError &&
-            error.code === 'P2025'
-          ) {
-            throw new ConflictException('Визит уже завершён. Обновите данные');
-          }
-          throw error;
-        });
+      await this.updateVisitWithVersion(tx, visitId, visit.version, {
+        status: decision.visitStatus,
+        notes: decision.notes,
+      });
+      const completedVisit = {
+        id: visit.id,
+        visitCode: visit.visitCode,
+        status: decision.visitStatus,
+      };
       if (decision.settlement) {
         await tx.visitMoneyOperation.create({
           data: {
@@ -1608,64 +1637,61 @@ export class VisitOrderService {
   ): Promise<VisitBalanceDto> {
     const commandId = randomUUID();
     try {
-      return await this.prisma.$transaction(
-        async (tx) => {
-          const visit = await tx.visit.findFirst({
-            where: { id: visitId, deletedAt: null },
-            include: {
-              orders: { where: { deletedAt: null } },
-              moneyOperations: { where: { voidedAt: null } },
-            },
-          });
-          if (!visit)
-            throw new NotFoundException(`Визит №${visitId} не найден`);
-          let nextBalance;
-          try {
-            nextBalance = this.visitDomain(visit).settle(settlement);
-          } catch (error) {
-            if (error instanceof VisitBalanceError) {
-              this.assertValidSettlement(
-                this.visitDomain(visit).balance(),
-                settlement,
-              );
-            }
-            this.rethrowVisitRule(error);
+      return await this.withSerializableTransaction(async (tx) => {
+        const visit = await tx.visit.findFirst({
+          where: { id: visitId, deletedAt: null },
+          include: {
+            orders: { where: { deletedAt: null } },
+            moneyOperations: { where: { voidedAt: null } },
+          },
+        });
+        if (!visit) throw new NotFoundException(`Визит №${visitId} не найден`);
+        let nextBalance;
+        try {
+          nextBalance = this.visitDomain(visit).settle(settlement);
+        } catch (error) {
+          if (error instanceof VisitBalanceError) {
+            this.assertValidSettlement(
+              this.visitDomain(visit).balance(),
+              settlement,
+            );
           }
-          await tx.visitMoneyOperation.create({
-            data: {
-              visitId,
-              kind: settlement.kind,
-              amount: settlement.amount,
-            },
-          });
-          await this.recordAuditEvents(tx, actor, commandId, [
-            settlement.kind === 'customer_refund'
-              ? {
-                  action: 'money.refunded',
-                  entityType: 'visit',
-                  entityId: visit.id,
-                  visitId: visit.id,
-                  payload: {
-                    kind: 'money.refunded',
-                    amount: settlement.amount,
-                  },
-                }
-              : {
-                  action: 'money.received',
-                  entityType: 'visit',
-                  entityId: visit.id,
-                  visitId: visit.id,
-                  payload: {
-                    kind: 'money.received',
-                    moneyKind: 'debt_payment',
-                    amount: settlement.amount,
-                  },
+          this.rethrowVisitRule(error);
+        }
+        await tx.visitMoneyOperation.create({
+          data: {
+            visitId,
+            kind: settlement.kind,
+            amount: settlement.amount,
+          },
+        });
+        await this.recordAuditEvents(tx, actor, commandId, [
+          settlement.kind === 'customer_refund'
+            ? {
+                action: 'money.refunded',
+                entityType: 'visit',
+                entityId: visit.id,
+                visitId: visit.id,
+                payload: {
+                  kind: 'money.refunded',
+                  amount: settlement.amount,
                 },
-          ]);
-          return nextBalance;
-        },
-        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
-      );
+              }
+            : {
+                action: 'money.received',
+                entityType: 'visit',
+                entityId: visit.id,
+                visitId: visit.id,
+                payload: {
+                  kind: 'money.received',
+                  moneyKind: 'debt_payment',
+                  amount: settlement.amount,
+                },
+              },
+        ]);
+        await this.updateVisitWithVersion(tx, visitId, visit.version);
+        return nextBalance;
+      });
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -1923,7 +1949,7 @@ export class VisitOrderService {
     actor: VisitAuditActor,
   ) {
     const commandId = randomUUID();
-    await this.prisma.$transaction(async (tx) => {
+    await this.withSerializableTransaction(async (tx) => {
       const visit = await tx.visit.findFirst({
         where: { id: visitId, deletedAt: null },
         include: {
@@ -1957,12 +1983,9 @@ export class VisitOrderService {
         data: { status: decision.orderStatus },
       });
 
-      await tx.visit.update({
-        where: { id: visitId },
-        data: {
-          status: decision.visitStatus,
-          notes: decision.notes,
-        },
+      await this.updateVisitWithVersion(tx, visitId, visit.version, {
+        status: decision.visitStatus,
+        notes: decision.notes,
       });
       await this.recordAuditEvents(tx, actor, commandId, [
         {
