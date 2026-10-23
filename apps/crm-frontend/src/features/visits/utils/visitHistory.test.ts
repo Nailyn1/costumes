@@ -179,4 +179,92 @@ describe("visit history grouping", () => {
     expect(presentation.title).toBe("Изменение визита");
     expect(presentation.details.join(" ")).not.toContain("Залог возвращён");
   });
+
+  it("renders an edit and its invalidated tag once inside the command group", () => {
+    const before = {
+      orderId: 31,
+      childId: 41,
+      childName: "Амина",
+      costumeId: 51,
+      costumeName: "Принцесса",
+      inventoryCode: "C-0051",
+      rentPrice: 10000,
+      prepaymentAmount: 0,
+      notes: "",
+    };
+    const after = { ...before, rentPrice: 11000 };
+    const updated = makeEvent({
+      id: 20,
+      action: "visit.updated",
+      commandId: "edit-1",
+      occurredAt: "2026-10-22T07:00:00.000Z",
+      payload: {
+        kind: "visit.updated",
+        changedFields: {
+          startDateTime: { before: "2026-12-10", after: "2026-12-12" },
+          endDateTime: { before: "2026-12-11", after: "2026-12-13" },
+          issueTimeFrom: { before: "10:00", after: "11:00" },
+        },
+        orderChanges: [{ change: "updated", orderId: 31, before, after }],
+      },
+    });
+    const tagReset = makeEvent({
+      id: 21,
+      action: "tag.invalidated",
+      commandId: "edit-1",
+      occurredAt: "2026-10-22T07:00:00.000Z",
+      payload: {
+        kind: "tag.invalidated",
+        orderId: 31,
+        childName: "Амина",
+        costumeName: "Принцесса",
+        inventoryCode: "C-0051",
+        reason: "date_changed",
+        previousTagStatus: "written",
+        tagStatus: "not_written",
+      },
+    });
+
+    const group = groupVisitHistoryEvents([tagReset, updated])[0]!;
+    const presentation = presentVisitHistoryGroup(group);
+
+    expect(group.events).toHaveLength(2);
+    expect(presentation.title).toBe("Визит изменён");
+    expect(presentation.details).toContain("Срок аренды: 10.12.2026 – 11.12.2026 → 12.12.2026 – 13.12.2026");
+    expect(presentation.details).toContain("Выдача с: 10:00 → 11:00");
+    expect(presentation.details).toEqual(expect.arrayContaining([
+      expect.stringContaining("аренда:"),
+    ]));
+    expect(presentation.details.filter((detail) => detail.includes("Бирка сброшена"))).toHaveLength(1);
+    expect(presentation.details.join(" ")).not.toContain("Получено");
+  });
+
+  it.each([
+    ["startDateTime", "Дата выдачи", "endDateTime"],
+    ["endDateTime", "Дата возврата", "startDateTime"],
+  ] as const)("does not invent an unchanged %s bound in a partial date edit", (field, label, absentField) => {
+    const event = makeEvent({
+      id: 22,
+      action: "visit.updated",
+      commandId: `edit-${field}`,
+      occurredAt: "2026-10-22T07:00:00.000Z",
+      payload: {
+        kind: "visit.updated",
+        changedFields: {
+          [field]: field === "startDateTime"
+            ? { before: "2026-12-10", after: "2026-12-12" }
+            : { before: "2026-12-11", after: "2026-12-13" },
+        },
+        orderChanges: [],
+      },
+    });
+
+    const presentation = presentVisitHistoryGroup(groupVisitHistoryEvents([event])[0]!);
+
+    expect(presentation.details).toContain(
+      `${label}: ${field === "startDateTime" ? "10.12.2026" : "11.12.2026"} → ${field === "startDateTime" ? "12.12.2026" : "13.12.2026"}`,
+    );
+    expect(presentation.details.join(" ")).not.toContain(absentField);
+    expect(presentation.details.join(" ")).not.toContain("Срок аренды:");
+  });
 });

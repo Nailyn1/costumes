@@ -22,8 +22,10 @@ export interface OrderSelectionFieldsProps {
   errors?: Partial<Record<keyof OrderSelectionValue, ReactNode>>;
   disabled?: boolean;
   rightControl?: ReactNode;
-  /** Reserved for visit-edit flows once the availability API supports exclusions. */
+  /** Excludes this visit's own orders from its edit-time availability search. */
   excludeVisitId?: number;
+  selectedChild?: { childId: number; name: string } | null;
+  selectedCostume?: { costumeId: number; name: string; inventoryCode?: string } | null;
 }
 
 /** Shared child, costume, rent and notes controls without endpoint assumptions. */
@@ -38,6 +40,9 @@ export function OrderSelectionFields({
   errors,
   disabled,
   rightControl,
+  excludeVisitId,
+  selectedChild,
+  selectedCostume,
 }: OrderSelectionFieldsProps) {
   return (
     <Fieldset
@@ -49,6 +54,7 @@ export function OrderSelectionFields({
           clientId={clientId}
           value={value.childId}
           onChange={(childId) => onChange({ ...value, childId })}
+          selectedChild={selectedChild}
           error={errors?.childId}
         />
         <CostumeSelector
@@ -61,6 +67,8 @@ export function OrderSelectionFields({
           endDateTime={endDateTime}
           issueTimeFrom={issueTimeFrom}
           returnTimeUntil={returnTimeUntil}
+          excludeVisitId={excludeVisitId}
+          selectedCostume={selectedCostume}
         />
         <Group grow align="flex-start">
           <MoneyInput

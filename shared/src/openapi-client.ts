@@ -514,6 +514,8 @@ export const Visits_VisitHistorySource = z.enum(["user", "system", "import"]);
 export type Visits_VisitHistoryAction = __TypedOpenapi.Schemas.Visits_VisitHistoryAction;
 export const Visits_VisitHistoryAction = z.enum([
   "visit.created",
+  "visit.updated",
+  "tag.invalidated",
   "tag.written",
   "visit.issued",
   "visit.unissued",
@@ -524,15 +526,22 @@ export const Visits_VisitHistoryAction = z.enum([
   "money.refunded",
 ]);
 
+export type Visits_TagStatus = __TypedOpenapi.Schemas.Visits_TagStatus;
+export const Visits_TagStatus = z.enum(["written", "not_written", "not_required"]);
+
 export type Visits_VisitHistoryOrderSnapshot = __TypedOpenapi.Schemas.Visits_VisitHistoryOrderSnapshot;
 export const Visits_VisitHistoryOrderSnapshot = z
   .object({
     orderId: z.number().int(),
+    childId: z.number().int().optional(),
     childName: z.string(),
+    costumeId: z.number().int().optional(),
     costumeName: z.string(),
     inventoryCode: Costumes_InventoryCode,
     rentPrice: z.number().int(),
     prepaymentAmount: z.number().int(),
+    tagStatus: Visits_TagStatus.optional(),
+    notes: z.string().nullable().optional(),
   })
   .catchall(z.unknown());
 
@@ -546,6 +555,49 @@ export const Visits_VisitCreatedHistoryPayload = z
     startDateTime: z.iso.date(),
     endDateTime: z.iso.date(),
     orders: z.array(Visits_VisitHistoryOrderSnapshot),
+  })
+  .catchall(z.unknown());
+
+export type Visits_VisitUpdatedHistoryOrderChange = __TypedOpenapi.Schemas.Visits_VisitUpdatedHistoryOrderChange;
+export const Visits_VisitUpdatedHistoryOrderChange = z
+  .object({
+    change: z.enum(["added", "updated", "removed"]),
+    orderId: z.number().int(),
+    before: Visits_VisitHistoryOrderSnapshot.optional(),
+    after: Visits_VisitHistoryOrderSnapshot.optional(),
+  })
+  .catchall(z.unknown());
+
+export type Visits_VisitUpdatedHistoryPayload = __TypedOpenapi.Schemas.Visits_VisitUpdatedHistoryPayload;
+export const Visits_VisitUpdatedHistoryPayload = z
+  .object({
+    kind: z.literal("visit.updated"),
+    changedFields: z
+      .object({
+        startDateTime: z.object({ before: z.iso.date(), after: z.iso.date() }).catchall(z.unknown()),
+        issueTimeFrom: z.object({ before: Visits_TimeString, after: Visits_TimeString }).catchall(z.unknown()),
+        issueTimeTo: z.object({ before: Visits_TimeString, after: Visits_TimeString }).catchall(z.unknown()),
+        endDateTime: z.object({ before: z.iso.date(), after: z.iso.date() }).catchall(z.unknown()),
+        returnTimeUntil: z.object({ before: Visits_TimeString, after: Visits_TimeString }).catchall(z.unknown()),
+        notes: z.object({ before: z.string().nullable(), after: z.string().nullable() }).catchall(z.unknown()),
+      })
+      .partial()
+      .catchall(z.unknown()),
+    orderChanges: z.array(Visits_VisitUpdatedHistoryOrderChange),
+  })
+  .catchall(z.unknown());
+
+export type Visits_TagInvalidatedHistoryPayload = __TypedOpenapi.Schemas.Visits_TagInvalidatedHistoryPayload;
+export const Visits_TagInvalidatedHistoryPayload = z
+  .object({
+    kind: z.literal("tag.invalidated"),
+    orderId: z.number().int(),
+    childName: z.string(),
+    costumeName: z.string(),
+    inventoryCode: Costumes_InventoryCode,
+    reason: z.enum(["date_changed", "window_changed", "child_changed", "costume_changed"]),
+    previousTagStatus: z.literal("written"),
+    tagStatus: z.literal("not_written"),
   })
   .catchall(z.unknown());
 
@@ -603,6 +655,8 @@ export const Visits_VisitCompletedHistoryPayload = z
 export type Visits_VisitHistoryPayload = __TypedOpenapi.Schemas.Visits_VisitHistoryPayload;
 export const Visits_VisitHistoryPayload = z.union([
   Visits_VisitCreatedHistoryPayload,
+  Visits_VisitUpdatedHistoryPayload,
+  Visits_TagInvalidatedHistoryPayload,
   Visits_TagWrittenHistoryPayload,
   Visits_VisitIssuedHistoryPayload,
   Visits_VisitUnissuedHistoryPayload,
@@ -718,8 +772,31 @@ export const Visits_QuickIssueVisitResponse = z
   })
   .catchall(z.unknown());
 
-export type Visits_TagStatus = __TypedOpenapi.Schemas.Visits_TagStatus;
-export const Visits_TagStatus = z.enum(["written", "not_written", "not_required"]);
+export type Visits_UpdateReservedVisitOrder = __TypedOpenapi.Schemas.Visits_UpdateReservedVisitOrder;
+export const Visits_UpdateReservedVisitOrder = z
+  .object({
+    orderId: z.number().int().min(1).optional(),
+    childId: z.number().int().min(1),
+    costumeId: z.number().int().min(1),
+    rentPrice: z.number().int().min(0),
+    notes: z.string().optional(),
+  })
+  .catchall(z.unknown());
+
+export type Visits_UpdateReservedVisitRequest = __TypedOpenapi.Schemas.Visits_UpdateReservedVisitRequest;
+export const Visits_UpdateReservedVisitRequest = z
+  .object({
+    commandId: z.uuid(),
+    expectedVersion: z.number().int().min(1),
+    startDateTime: z.iso.date(),
+    issueTimeFrom: Visits_TimeString,
+    issueTimeTo: Visits_TimeString,
+    endDateTime: z.iso.date(),
+    returnTimeUntil: Visits_TimeString,
+    notes: z.string().optional(),
+    orders: z.array(Visits_UpdateReservedVisitOrder).min(1),
+  })
+  .catchall(z.unknown());
 
 export type Visits_VisitOrder = __TypedOpenapi.Schemas.Visits_VisitOrder;
 export const Visits_VisitOrder = z
@@ -1114,7 +1191,14 @@ export const get_CostumeOperations_searchAvailable = {
   path: z.literal("/costumes/search-available"),
   requestFormat: z.literal("json"),
   responseFormat: z.literal("json"),
-  parameters: { query: z.strictObject({ q: z.string().optional(), startDate: z.string(), endDate: z.string() }) },
+  parameters: {
+    query: z.strictObject({
+      q: z.string().optional(),
+      startDate: z.string(),
+      endDate: z.string(),
+      excludeVisitId: z.coerce.number().int().optional(),
+    }),
+  },
   responses: { 200: z.array(Costumes_AvailableCostume), default: Common_Error },
 };
 
@@ -1343,6 +1427,16 @@ export const post_VisitOperation_markTagWritten = {
   responses: { 204: z.unknown(), default: Common_Error },
 };
 
+export type patch_VisitOperation_updateReserved = __TypedOpenapi.Endpoints.patch_VisitOperation_updateReserved;
+export const patch_VisitOperation_updateReserved = {
+  method: z.literal("PATCH"),
+  path: z.literal("/visits/{visitId}"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { path: z.strictObject({ visitId: z.coerce.number().int() }), body: Visits_UpdateReservedVisitRequest },
+  responses: { 200: Visits_VisitReadDetail, default: Common_Error },
+};
+
 export type get_VisitOperation_getDetail = __TypedOpenapi.Endpoints.get_VisitOperation_getDetail;
 export const get_VisitOperation_getDetail = {
   method: z.literal("GET"),
@@ -1493,6 +1587,7 @@ export const EndpointByMethod = {
     "/children/{childId}": patch_ChildOperations_update,
     "/clients/{clientId}": patch_ClientOperations_update,
     "/costumes/{costumeId}": patch_CostumeOperations_update,
+    "/visits/{visitId}": patch_VisitOperation_updateReserved,
   },
   delete: {
     "/children/{childId}": delete_ChildOperations_delete,
@@ -1591,6 +1686,7 @@ export const endpointParameterStyles = {
     "/children/{childId}": { path: { childId: { style: "simple", explode: false, allowReserved: false } } },
     "/clients/{clientId}": { path: { clientId: { style: "simple", explode: false, allowReserved: false } } },
     "/costumes/{costumeId}": { path: { costumeId: { style: "simple", explode: false, allowReserved: false } } },
+    "/visits/{visitId}": { path: { visitId: { style: "simple", explode: false, allowReserved: false } } },
   },
   delete: {
     "/children/{childId}": { path: { childId: { style: "simple", explode: false, allowReserved: false } } },
@@ -1623,6 +1719,7 @@ export const endpointParameterStyles = {
         q: { style: "form", explode: false, allowReserved: false },
         startDate: { style: "form", explode: false, allowReserved: false },
         endDate: { style: "form", explode: false, allowReserved: false },
+        excludeVisitId: { style: "form", explode: false, allowReserved: false },
       },
     },
     "/costumes/{costumeId}/availability": {

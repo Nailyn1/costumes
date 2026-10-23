@@ -42,6 +42,9 @@ import {
   VisitHistoryEventSchema,
   PaginatedVisitHistoryResponseDto,
   PaginatedVisitHistoryResponseSchema,
+  UpdateReservedVisitRequestDto,
+  UpdateReservedVisitResponseDto,
+  UpdateReservedVisitResponseSchema,
 } from '@costumes/shared';
 import { OrderStatus, Prisma, VisitStatus } from '../prisma/generated/client';
 import { randomUUID } from 'node:crypto';
@@ -79,6 +82,7 @@ import {
   executeWithCommandReceipt,
   hashCommandRequest,
 } from './transactions/command-receipt';
+import { readVisitDetail } from './visit-read.mapper';
 
 const VISIT_ISSUE_REJECT_MESSAGES: Record<
   Exclude<VisitStatus, 'reserved'>,
@@ -897,17 +901,485 @@ export class VisitOrderService {
     return result;
   }
 
+  async updateReservedVisit(
+    visitId: number,
+    data: UpdateReservedVisitRequestDto,
+    actor: VisitAuditActor,
+  ): Promise<UpdateReservedVisitResponseDto> {
+    if (actor.source !== 'user') {
+      throw new BadRequestException(
+        'Изменение визита требует сотрудника из токена',
+      );
+    }
+    const startDateTime = this.parseDateTime(
+      data.startDateTime,
+      data.issueTimeFrom,
+    );
+    const endDateTime = this.parseDateTime(
+      data.endDateTime,
+      data.returnTimeUntil,
+    );
+    if (
+      Number.isNaN(startDateTime.getTime()) ||
+      Number.isNaN(endDateTime.getTime()) ||
+      startDateTime.toISOString().slice(0, 10) !== data.startDateTime ||
+      endDateTime.toISOString().slice(0, 10) !== data.endDateTime
+    ) {
+      throw new BadRequestException('Указана некорректная дата визита');
+    }
+    if (data.issueTimeFrom > data.issueTimeTo) {
+      throw new BadRequestException(
+        'Начало окна выдачи не может быть позже его окончания',
+      );
+    }
+    try {
+      Visit.validateCreationStructure({
+        startDateTime,
+        endDateTime,
+        orders: data.orders.map((order) => ({
+          ...order,
+          prepaymentAmount: 0,
+        })),
+      });
+    } catch (error) {
+      this.rethrowVisitRule(error);
+    }
+    const orderIds = data.orders.flatMap((order) =>
+      order.orderId === undefined ? [] : [order.orderId],
+    );
+    if (new Set(orderIds).size !== orderIds.length) {
+      throw new BadRequestException('Один заказ указан в визите несколько раз');
+    }
+    const costumeIds = data.orders.map((order) => order.costumeId);
+    if (new Set(costumeIds).size !== costumeIds.length) {
+      throw new BadRequestException(
+        'Один костюм нельзя добавить в визит дважды',
+      );
+    }
+
+    return executeWithCommandReceipt(
+      this.prisma,
+      {
+        commandId: data.commandId,
+        actorUserId: actor.userId,
+        commandPath: `PATCH /visits/${visitId}`,
+        requestHash: hashCommandRequest({ visitId, ...data }),
+      },
+      async (tx) => {
+        const visit = await tx.visit.findFirst({
+          where: { id: visitId, deletedAt: null },
+          include: {
+            client: {
+              select: {
+                id: true,
+                name: true,
+                isBlacklisted: true,
+                deletedAt: true,
+              },
+            },
+            orders: {
+              where: { deletedAt: null },
+              include: {
+                child: { select: { name: true } },
+                costume: { select: { name: true, inventoryCode: true } },
+              },
+            },
+          },
+        });
+        if (!visit)
+          throw new NotFoundException(`Визит с ID ${visitId} не найден`);
+        if (visit.version !== data.expectedVersion) {
+          throw this.visitVersionConflict();
+        }
+        if (visit.status !== 'reserved') {
+          throw new BadRequestException(
+            'Редактировать можно только визит со статусом «забронирован»',
+          );
+        }
+        if (visit.orders.some((order) => order.status !== 'reserved')) {
+          throw new BadRequestException(
+            'Редактировать можно только невыданные заказы визита',
+          );
+        }
+        if (visit.client.deletedAt !== null) {
+          throw new NotFoundException(
+            `Клиент с ID ${visit.clientId} не найден`,
+          );
+        }
+        if (visit.client.isBlacklisted) {
+          throw new BadRequestException(
+            'Клиент в чёрном списке — редактирование брони невозможно',
+          );
+        }
+
+        const currentOrders = new Map(
+          visit.orders.map((order) => [order.id, order]),
+        );
+        const submittedIds = new Set(orderIds);
+        for (const orderId of orderIds) {
+          if (!currentOrders.has(orderId)) {
+            throw new BadRequestException(
+              `Заказ с ID ${orderId} не принадлежит визиту или удалён`,
+            );
+          }
+        }
+        const removedOrders = visit.orders.filter(
+          (order) => !submittedIds.has(order.id),
+        );
+        const paidRemoval = removedOrders.find(
+          (order) => order.prepaymentAmount > 0,
+        );
+        if (paidRemoval) {
+          throw new BadRequestException(
+            `Заказ с предоплатой ${paidRemoval.prepaymentAmount} ₸ нельзя удалить`,
+          );
+        }
+
+        const [children, costumes] = await Promise.all([
+          tx.child.findMany({
+            where: {
+              id: {
+                in: [...new Set(data.orders.map((order) => order.childId))],
+              },
+              clientId: visit.clientId,
+              deletedAt: null,
+            },
+            select: { id: true, name: true },
+          }),
+          tx.costume.findMany({
+            where: { id: { in: [...new Set(costumeIds)] }, deletedAt: null },
+            select: { id: true, name: true, inventoryCode: true },
+          }),
+        ]);
+        const childIds = new Set(children.map((child) => child.id));
+        const activeCostumeIds = new Set(costumes.map((costume) => costume.id));
+        const invalidOrder = data.orders.find(
+          (order) =>
+            !childIds.has(order.childId) ||
+            !activeCostumeIds.has(order.costumeId),
+        );
+        if (invalidOrder) {
+          throw new BadRequestException(
+            `Ребёнок или костюм в заказе не найден, удалён или не принадлежит клиенту`,
+          );
+        }
+
+        for (const input of data.orders) {
+          if (input.orderId === undefined) continue;
+          const current = currentOrders.get(input.orderId);
+          if (!current) continue;
+          if (input.rentPrice < current.prepaymentAmount) {
+            throw new BadRequestException(
+              `Цена аренды не может быть ниже предоплаты ${current.prepaymentAmount} ₸`,
+            );
+          }
+        }
+
+        const busyCostumes = await this.isSuitAvailability(
+          costumeIds,
+          startDateTime,
+          endDateTime,
+          tx,
+          visitId,
+        );
+        if (busyCostumes.length > 0) {
+          throw new BadRequestException(
+            `Костюмы ${busyCostumes.map((costume) => `«${costume.name}»`).join(', ')} уже заняты в этот промежуток времени`,
+          );
+        }
+
+        const normalizedVisitNotes =
+          data.notes === undefined ? visit.notes : data.notes || null;
+        const changedFields: Extract<
+          VisitHistoryPayloadDto,
+          { kind: 'visit.updated' }
+        >['changedFields'] = {};
+        const changed = (left: unknown, right: unknown) => left !== right;
+        const datesChanged =
+          changed(
+            visit.startDateTime.toISOString().slice(0, 10),
+            data.startDateTime,
+          ) ||
+          changed(
+            visit.endDateTime.toISOString().slice(0, 10),
+            data.endDateTime,
+          );
+        const windowChanged =
+          datesChanged ||
+          changed(visit.issueTimeFrom, data.issueTimeFrom) ||
+          changed(visit.issueTimeTo, data.issueTimeTo) ||
+          changed(visit.returnTimeUntil, data.returnTimeUntil);
+        if (
+          changed(
+            visit.startDateTime.toISOString().slice(0, 10),
+            data.startDateTime,
+          )
+        )
+          changedFields.startDateTime = {
+            before: visit.startDateTime.toISOString().slice(0, 10),
+            after: data.startDateTime,
+          };
+        if (changed(visit.issueTimeFrom, data.issueTimeFrom))
+          changedFields.issueTimeFrom = {
+            before: visit.issueTimeFrom,
+            after: data.issueTimeFrom,
+          };
+        if (changed(visit.issueTimeTo, data.issueTimeTo))
+          changedFields.issueTimeTo = {
+            before: visit.issueTimeTo,
+            after: data.issueTimeTo,
+          };
+        if (
+          changed(
+            visit.endDateTime.toISOString().slice(0, 10),
+            data.endDateTime,
+          )
+        )
+          changedFields.endDateTime = {
+            before: visit.endDateTime.toISOString().slice(0, 10),
+            after: data.endDateTime,
+          };
+        if (changed(visit.returnTimeUntil, data.returnTimeUntil))
+          changedFields.returnTimeUntil = {
+            before: visit.returnTimeUntil,
+            after: data.returnTimeUntil,
+          };
+        if (changed(visit.notes, normalizedVisitNotes))
+          changedFields.notes = {
+            before: visit.notes,
+            after: normalizedVisitNotes,
+          };
+
+        const snapshot = (order: (typeof visit.orders)[number]) => ({
+          orderId: order.id,
+          childId: order.childId,
+          childName: order.child.name,
+          costumeId: order.costumeId,
+          costumeName: order.costume.name,
+          inventoryCode: order.costume.inventoryCode,
+          rentPrice: order.rentPrice,
+          prepaymentAmount: order.prepaymentAmount,
+          tagStatus: order.tagStatus,
+          notes: order.notes,
+        });
+        const orderChanges: Extract<
+          VisitHistoryPayloadDto,
+          { kind: 'visit.updated' }
+        >['orderChanges'] = [];
+        const tagInvalidations: VisitAuditEventInput[] = [];
+        for (const input of data.orders) {
+          const current =
+            input.orderId === undefined
+              ? undefined
+              : currentOrders.get(input.orderId);
+          if (!current) {
+            const created = await tx.order.create({
+              data: {
+                visitId,
+                clientId: visit.clientId,
+                childId: input.childId,
+                costumeId: input.costumeId,
+                rentPrice: input.rentPrice,
+                prepaymentAmount: 0,
+                startDateTime,
+                endDateTime,
+                notes: input.notes || null,
+                status: 'reserved',
+                tagStatus: 'not_written',
+              },
+              include: {
+                child: { select: { name: true } },
+                costume: { select: { name: true, inventoryCode: true } },
+              },
+            });
+            orderChanges.push({
+              change: 'added',
+              orderId: created.id,
+              after: {
+                orderId: created.id,
+                childId: created.childId,
+                childName: created.child.name,
+                costumeId: created.costumeId,
+                costumeName: created.costume.name,
+                inventoryCode: created.costume.inventoryCode,
+                rentPrice: created.rentPrice,
+                prepaymentAmount: 0,
+                tagStatus: created.tagStatus,
+                notes: created.notes,
+              },
+            });
+            continue;
+          }
+          const updatedNotes =
+            input.notes === undefined ? current.notes : input.notes || null;
+          const periodChanged =
+            current.startDateTime.getTime() !== startDateTime.getTime() ||
+            current.endDateTime.getTime() !== endDateTime.getTime();
+          const childChanged = current.childId !== input.childId;
+          const costumeChanged = current.costumeId !== input.costumeId;
+          const orderChanged =
+            childChanged ||
+            costumeChanged ||
+            current.rentPrice !== input.rentPrice ||
+            current.notes !== updatedNotes ||
+            periodChanged ||
+            (current.tagStatus === 'written' && windowChanged);
+          const invalidateTag =
+            current.tagStatus === 'written' &&
+            (windowChanged || childChanged || costumeChanged);
+          if (orderChanged) {
+            await tx.order.update({
+              where: { id: current.id },
+              data: {
+                childId: input.childId,
+                costumeId: input.costumeId,
+                rentPrice: input.rentPrice,
+                notes: updatedNotes,
+                startDateTime,
+                endDateTime,
+                ...(invalidateTag ? { tagStatus: 'not_written' as const } : {}),
+              },
+            });
+            orderChanges.push({
+              change: 'updated',
+              orderId: current.id,
+              before: snapshot(current),
+              after: {
+                orderId: current.id,
+                childId: input.childId,
+                childName:
+                  children.find((child) => child.id === input.childId)?.name ??
+                  current.child.name,
+                costumeId: input.costumeId,
+                costumeName:
+                  costumes.find((costume) => costume.id === input.costumeId)
+                    ?.name ?? current.costume.name,
+                inventoryCode:
+                  costumes.find((costume) => costume.id === input.costumeId)
+                    ?.inventoryCode ?? current.costume.inventoryCode,
+                rentPrice: input.rentPrice,
+                prepaymentAmount: current.prepaymentAmount,
+                tagStatus: invalidateTag ? 'not_written' : current.tagStatus,
+                notes: updatedNotes,
+              },
+            });
+            if (invalidateTag) {
+              const reason = datesChanged
+                ? 'date_changed'
+                : childChanged
+                  ? 'child_changed'
+                  : costumeChanged
+                    ? 'costume_changed'
+                    : 'window_changed';
+              const childName =
+                children.find((child) => child.id === input.childId)?.name ??
+                current.child.name;
+              const costume = costumes.find(
+                (item) => item.id === input.costumeId,
+              );
+              tagInvalidations.push({
+                action: 'tag.invalidated',
+                entityType: 'order',
+                entityId: current.id,
+                visitId,
+                orderId: current.id,
+                payload: {
+                  kind: 'tag.invalidated',
+                  orderId: current.id,
+                  childName,
+                  costumeName: costume?.name ?? current.costume.name,
+                  inventoryCode:
+                    costume?.inventoryCode ?? current.costume.inventoryCode,
+                  reason,
+                  previousTagStatus: 'written',
+                  tagStatus: 'not_written',
+                },
+              });
+            }
+          }
+        }
+        for (const order of removedOrders) {
+          await tx.order.update({
+            where: { id: order.id },
+            data: { deletedAt: new Date() },
+          });
+          orderChanges.push({
+            change: 'removed',
+            orderId: order.id,
+            before: snapshot(order),
+          });
+        }
+
+        const visitChanged =
+          Object.keys(changedFields).length > 0 || orderChanges.length > 0;
+        if (visitChanged) {
+          const updated = await tx.visit.updateMany({
+            where: {
+              id: visitId,
+              deletedAt: null,
+              status: 'reserved',
+              version: data.expectedVersion,
+            },
+            data: {
+              startDateTime,
+              endDateTime,
+              issueTimeFrom: data.issueTimeFrom,
+              issueTimeTo: data.issueTimeTo,
+              returnTimeUntil: data.returnTimeUntil,
+              notes: normalizedVisitNotes,
+              version: { increment: 1 },
+            },
+          });
+          if (updated.count !== 1) throw this.visitVersionConflict();
+          await this.recordAuditEvents(tx, actor, data.commandId, [
+            {
+              action: 'visit.updated',
+              entityType: 'visit',
+              entityId: visitId,
+              visitId,
+              payload: {
+                kind: 'visit.updated',
+                changedFields,
+                orderChanges,
+              },
+            },
+            ...tagInvalidations,
+          ]);
+        }
+        return readVisitDetail(tx, visitId);
+      },
+      (value) => UpdateReservedVisitResponseSchema.parse(value),
+    );
+  }
+
+  private visitVersionConflict(): ConflictException {
+    return new ConflictException({
+      statusCode: 409,
+      code: 'VISIT_VERSION_CONFLICT',
+      message:
+        'Визит изменён другим сотрудником. Обновите данные и повторите действие',
+    });
+  }
+
   async isSuitAvailability(
     costumeIds: number[],
     startDateTime: Date,
     endDateTime: Date,
     db: Prisma.TransactionClient = this.prisma,
+    excludeVisitId?: number,
   ): Promise<{ id: number; name: string }[]> {
     const conflicts = await db.order.findMany({
       where: {
         costumeId: { in: costumeIds },
         deletedAt: null,
         status: { in: ['reserved', 'issued'] },
+        visit: {
+          deletedAt: null,
+          status: { not: 'cancelled' },
+          ...(excludeVisitId === undefined
+            ? {}
+            : { id: { not: excludeVisitId } }),
+        },
         AND: [
           { startDateTime: { lt: endDateTime } },
           { endDateTime: { gt: startDateTime } },

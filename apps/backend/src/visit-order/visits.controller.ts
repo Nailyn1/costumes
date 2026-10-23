@@ -7,6 +7,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   ParseBoolPipe,
   ParseIntPipe,
   Post,
@@ -27,6 +28,7 @@ import {
   VisitIssueRequest,
   QuickIssueVisitRequest,
   VisitSettlementRequest,
+  UpdateReservedVisitRequest,
 } from './dto/visit-order.dto';
 import {
   CreateVisitResponseDto,
@@ -46,6 +48,7 @@ import {
   visitIssuedResponseDto,
   visitNotificationResponseDto,
   visitUnreturnedDepositsResponseDto,
+  VisitReadDetailDto,
 } from '@costumes/shared';
 
 function auditActor(req: RequestWithUser): VisitAuditActor {
@@ -89,6 +92,20 @@ export class VisitController {
     @Req() req: RequestWithUser,
   ): Promise<QuickIssueVisitResponseDto> {
     return this.visitOrderService.quickIssueVisit(dto, auditActor(req));
+  }
+
+  @Patch(':visitId')
+  @UseGuards(JwtAuthGuard)
+  async updateReservedVisit(
+    @Param('visitId', ParseIntPipe) visitId: number,
+    @Body() dto: UpdateReservedVisitRequest,
+    @Req() req: RequestWithUser,
+  ): Promise<VisitReadDetailDto> {
+    return this.visitOrderService.updateReservedVisit(
+      visitId,
+      dto,
+      auditActor(req),
+    );
   }
 
   @Get(':visitId/history')

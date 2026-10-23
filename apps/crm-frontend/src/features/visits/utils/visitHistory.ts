@@ -66,6 +66,11 @@ export function formatVisitHistoryRentalPeriod(
   return `${formatDate(startDate)} – ${formatDate(endDate)}`;
 }
 
+function formatHistoryDate(value: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  return match ? `${match[3]}.${match[2]}.${match[1]}` : value;
+}
+
 function formatMoney(amount: number): string {
   return `${amount.toLocaleString("ru-RU")} ₸`;
 }
@@ -107,8 +112,75 @@ function formatOrderSnapshots(
         `${payload.childName} — ${payload.costumeName} (${payload.inventoryCode})`,
       );
     }
+    if (payload.kind === "visit.updated") {
+      for (const change of payload.orderChanges) {
+        const snapshot = change.after ?? change.before;
+        if (snapshot) {
+          orders.set(
+            snapshot.orderId,
+            `${snapshot.childName} — ${snapshot.costumeName} (${snapshot.inventoryCode})`,
+          );
+        }
+      }
+    }
   }
   return [...orders.values()];
+}
+
+function formatVisitEditDetails(
+  payload: Extract<VisitHistoryEventDto["payload"], { kind: "visit.updated" }>,
+): string[] {
+  const details: string[] = [];
+  const fields = payload.changedFields;
+  if (fields.startDateTime || fields.endDateTime) {
+    if (fields.startDateTime && fields.endDateTime) {
+      const { before: beforeStart, after: afterStart } = fields.startDateTime;
+      const { before: beforeEnd, after: afterEnd } = fields.endDateTime;
+      details.push(`Срок аренды: ${formatVisitHistoryRentalPeriod(beforeStart, beforeEnd)} → ${formatVisitHistoryRentalPeriod(afterStart, afterEnd)}`);
+    } else if (fields.startDateTime) {
+      details.push(`Дата выдачи: ${formatHistoryDate(fields.startDateTime.before)} → ${formatHistoryDate(fields.startDateTime.after)}`);
+    } else if (fields.endDateTime) {
+      details.push(`Дата возврата: ${formatHistoryDate(fields.endDateTime.before)} → ${formatHistoryDate(fields.endDateTime.after)}`);
+    }
+  }
+  for (const [key, label] of [
+    ["issueTimeFrom", "Выдача с"],
+    ["issueTimeTo", "Выдача до"],
+    ["returnTimeUntil", "Возврат до"],
+  ] as const) {
+    const change = fields[key];
+    if (change) details.push(`${label}: ${change.before} → ${change.after}`);
+  }
+  if (fields.notes) {
+    const before = fields.notes.before?.trim() || "—";
+    const after = fields.notes.after?.trim() || "—";
+    details.push(`Примечание: ${before} → ${after}`);
+  }
+
+  for (const change of payload.orderChanges) {
+    const before = change.before;
+    const after = change.after;
+    const snapshot = after ?? before;
+    if (!snapshot) continue;
+    const orderLabel = `${snapshot.childName} — ${snapshot.costumeName} (${snapshot.inventoryCode})`;
+    if (change.change === "added") {
+      details.push(`Добавлен заказ: ${orderLabel}`);
+    } else if (change.change === "removed") {
+      details.push(`Удалён заказ: ${orderLabel}`);
+    } else if (before && after) {
+      const edits: string[] = [];
+      if (before.childId !== after.childId) edits.push(`ребёнок: ${before.childName} → ${after.childName}`);
+      if (before.costumeId !== after.costumeId) edits.push(`костюм: ${before.costumeName} → ${after.costumeName}`);
+      if (before.rentPrice !== after.rentPrice) {
+        edits.push(`аренда: ${formatMoney(before.rentPrice)} → ${formatMoney(after.rentPrice)}`);
+      }
+      if ((before.notes ?? "") !== (after.notes ?? "")) {
+        edits.push(`заметка: ${before.notes?.trim() || "—"} → ${after.notes?.trim() || "—"}`);
+      }
+      if (edits.length > 0) details.push(`${orderLabel}: ${edits.join("; ")}`);
+    }
+  }
+  return details;
 }
 
 function formatActor(event: VisitHistoryEventDto): string {
@@ -128,6 +200,8 @@ export function presentVisitHistoryGroup(
   const cancelled = payloads.find((payload) => payload.kind === "visit.cancelled");
   const completed = payloads.find((payload) => payload.kind === "visit.completed");
   const tagWritten = payloads.find((payload) => payload.kind === "tag.written");
+  const visitUpdated = payloads.find((payload) => payload.kind === "visit.updated");
+  const tagInvalidations = payloads.filter((payload) => payload.kind === "tag.invalidated");
   const depositReturned = payloads.find((payload) => payload.kind === "deposit.returned");
   const received = payloads.filter((payload) => payload.kind === "money.received");
   const refunded = payloads.filter((payload) => payload.kind === "money.refunded");
@@ -178,6 +252,11 @@ export function presentVisitHistoryGroup(
   } else if (tagWritten) {
     title = `Бирка написана: ${tagWritten.costumeName}`;
     details.push(`${tagWritten.childName} · ${tagWritten.inventoryCode}`);
+  } else if (visitUpdated) {
+    title = "Визит изменён";
+    details.push(...formatVisitEditDetails(visitUpdated));
+  } else if (tagInvalidations.length > 0) {
+    title = "Бирка сброшена после изменения заказа";
   } else if (depositReturned) {
     const returnedDeposit = formatReturnedDeposit(
       depositReturned.depositType,
@@ -193,6 +272,15 @@ export function presentVisitHistoryGroup(
     title = "Клиенту возвращены деньги";
   } else {
     title = "Изменение визита";
+  }
+
+  for (const invalidation of tagInvalidations) {
+    const reason = invalidation.reason === "date_changed" || invalidation.reason === "window_changed"
+      ? "изменился период аренды/время"
+      : invalidation.reason === "child_changed"
+        ? "изменился ребёнок"
+        : "изменился костюм";
+    details.push(`Бирка сброшена: ${invalidation.childName} — ${invalidation.costumeName} (${invalidation.inventoryCode}); ${reason}`);
   }
 
   if (issued && created) {
@@ -214,7 +302,7 @@ export function presentVisitHistoryGroup(
     details.push(`Возврат клиенту: ${formatMoney(refund.amount)}`);
   }
 
-  if (snapshots.length > 0) details.push(...snapshots);
+  if (snapshots.length > 0 && !visitUpdated) details.push(...snapshots);
 
   const firstEvent = events[0];
   return {

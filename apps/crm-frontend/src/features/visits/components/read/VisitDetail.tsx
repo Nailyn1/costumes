@@ -17,9 +17,17 @@ import {
 } from "@mantine/core";
 import { schemaResolver, useForm } from "@mantine/form";
 import { useMediaQuery } from "@mantine/hooks";
+import { notifications } from "@mantine/notifications";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { VisitCancelRequestSchema, type visitCancelRequestDto } from "@costumes/shared";
+import {
+  VisitCancelRequestSchema,
+  type UpdateReservedVisitRequestDto,
+  type VisitReadDetailDto,
+  type visitCancelRequestDto,
+} from "@costumes/shared";
+import { VisitEditModal } from "src/features/visits/components/edit/VisitEditModal";
+import type { VisitEditDraft } from "src/features/visits/components/edit/visitEditDraft";
 import { VisitHistory } from "src/features/visits/components/history/VisitHistory";
 import { OrderTagStatusBadge } from "src/features/visits/components/OrderTagStatusBadge";
 import { IssueModal } from "src/features/visits/components/issuePage/IssueModal";
@@ -27,13 +35,25 @@ import { MarkDepositModal } from "src/features/visits/components/returnPage/Mark
 import { ReturnModal } from "src/features/visits/components/returnPage/ReturnModal";
 import { SettleBalanceModal } from "src/features/visits/components/returnPage/SettleBalanceModal";
 import { useCancelVisit, useVisitForIssue, useVisitForReturn } from "src/features/visits/hooks/useVisits";
-import { useVisitReadDetail } from "src/features/visits/hooks/useVisitReads";
+import { useUpdateReservedVisit, useVisitReadDetail } from "src/features/visits/hooks/useVisitReads";
 import {
   formatVisitDate,
   formatVisitDateTime,
   formatVisitMoney,
   visitStatusLabels,
 } from "src/features/visits/utils/visitReadFormatters";
+import { createUpdateReservedVisitRequest } from "src/features/visits/components/edit/visitEditDraft";
+import { useAuthStore } from "src/stores/auth.store";
+import {
+  clearPendingVisitEditRequest,
+  getPendingVisitEditRequest,
+  savePendingVisitEditRequest,
+} from "src/features/visits/utils/visitEditRequestStorage";
+import {
+  isAmbiguousVisitEditFailure,
+  isVisitVersionConflict,
+  visitEditFailureMessage,
+} from "src/features/visits/utils/visitEditRequestFailure";
 
 function StatusBadge({ status }: { status: "reserved" | "issued" | "completed" | "cancelled" }) {
   const color = status === "reserved" ? "blue" : status === "issued" ? "orange" : status === "completed" ? "green" : "gray";
@@ -64,6 +84,12 @@ function orderStatusLabel(status: "reserved" | "issued" | "returned" | "cancelle
 }
 
 export function VisitDetailPage() {
+  const { visitId } = useParams();
+  const userLogin = useAuthStore((state) => state.user?.login ?? null);
+  return <VisitDetailContent key={`${userLogin ?? "signed-out"}:${visitId ?? "invalid"}`} userLogin={userLogin} />;
+}
+
+function VisitDetailContent({ userLogin }: { userLogin: string | null }) {
   const { visitId: visitIdParam } = useParams();
   const parsedId = Number(visitIdParam);
   const visitId = Number.isInteger(parsedId) && parsedId > 0 ? parsedId : null;
@@ -73,6 +99,15 @@ export function VisitDetailPage() {
   const [settleOpened, setSettleOpened] = useState(false);
   const [depositOpened, setDepositOpened] = useState(false);
   const [cancelOpened, setCancelOpened] = useState(false);
+  const [pendingEditRequest, setPendingEditRequest] = useState<UpdateReservedVisitRequestDto | null>(() =>
+    visitId === null ? null : getPendingVisitEditRequest(userLogin, visitId),
+  );
+  const [editOpened, setEditOpened] = useState(() => Boolean(pendingEditRequest));
+  const [editSourceVisit, setEditSourceVisit] = useState<VisitReadDetailDto | null>(null);
+  const [editVersionConflict, setEditVersionConflict] = useState(false);
+  const [editExpectedVersion, setEditExpectedVersion] = useState<number | null>(null);
+  const [editErrorMessage, setEditErrorMessage] = useState<string | null>(null);
+  const updateVisitMutation = useUpdateReservedVisit();
   const cancelMutation = useCancelVisit();
   const cancelForm = useForm<visitCancelRequestDto>({
     initialValues: { reason: "" },
@@ -82,6 +117,100 @@ export function VisitDetailPage() {
   const issueQuery = useVisitForIssue(issueOpened ? visitId : null);
   const returnQuery = useVisitForReturn(returnOpened ? visitId : null);
   const visit = detailQuery.data;
+
+  const runEditCommand = async (
+    request: UpdateReservedVisitRequestDto,
+    alreadyPersisted = false,
+  ) => {
+    if (visitId === null) return;
+    if (!alreadyPersisted && !savePendingVisitEditRequest(userLogin, visitId, request)) {
+      setEditErrorMessage("Не удалось сохранить команду для безопасного повтора. Разрешите хранение данных сеанса и повторите сохранение.");
+      return;
+    }
+    setEditErrorMessage(null);
+    try {
+      await updateVisitMutation.mutateAsync({ visitId, body: request });
+      clearPendingVisitEditRequest(userLogin, visitId);
+      setPendingEditRequest(null);
+      setEditVersionConflict(false);
+      setEditExpectedVersion(null);
+      setEditSourceVisit(null);
+      setEditOpened(false);
+    } catch (error) {
+      setEditErrorMessage(visitEditFailureMessage(error));
+      if (isAmbiguousVisitEditFailure(error)) {
+        setPendingEditRequest(request);
+        return;
+      }
+      clearPendingVisitEditRequest(userLogin, visitId);
+      setPendingEditRequest(null);
+      if (isVisitVersionConflict(error)) setEditVersionConflict(true);
+    }
+  };
+
+  const handleSaveVisitEdit = async (draft: VisitEditDraft) => {
+    if (visitId === null || !visit) return;
+    if (editExpectedVersion === null) {
+      setEditErrorMessage("Откройте редактирование заново, чтобы загрузить актуальную версию визита.");
+      return;
+    }
+    let request: UpdateReservedVisitRequestDto;
+    try {
+      request = createUpdateReservedVisitRequest(
+        draft,
+        editExpectedVersion,
+        crypto.randomUUID(),
+      );
+    } catch {
+      setEditErrorMessage("Проверьте даты, время и состав заказа.");
+      return;
+    }
+    await runEditCommand(request);
+  };
+
+  const retryPendingVisitEdit = () => {
+    if (!pendingEditRequest) return;
+    void runEditCommand(pendingEditRequest, true);
+  };
+
+  const rebaseVisitEditVersion = async () => {
+    const refreshed = await detailQuery.refetch();
+    if (refreshed.isError || !refreshed.data) {
+      setEditErrorMessage("Не удалось обновить визит. Ваша форма сохранена; попробуйте обновить ещё раз.");
+      return;
+    }
+    if (refreshed.data.status !== "reserved") {
+      setEditErrorMessage("Визит уже не находится в статусе брони. Изменения не отправлены.");
+      setEditVersionConflict(true);
+      return;
+    }
+    setEditExpectedVersion(refreshed.data.version);
+    setEditVersionConflict(false);
+    setEditErrorMessage(null);
+    notifications.show({
+      title: "Актуальная версия загружена",
+      message: "Ваши поля сохранены. Проверьте их и сохраните ещё раз.",
+      color: "blue",
+    });
+  };
+
+  const openVisitEdit = () => {
+    if (!visit || visit.status !== "reserved") return;
+    setEditSourceVisit(visit);
+    setEditExpectedVersion(visit.version);
+    setEditVersionConflict(false);
+    setEditErrorMessage(null);
+    setEditOpened(true);
+  };
+
+  const closeVisitEdit = () => {
+    if (pendingEditRequest) return;
+    setEditOpened(false);
+    setEditSourceVisit(null);
+    setEditExpectedVersion(null);
+    setEditVersionConflict(false);
+    setEditErrorMessage(null);
+  };
 
   if (visitId === null) {
     return <Paper withBorder p="lg"><Text c="red">Некорректный номер визита.</Text></Paper>;
@@ -113,6 +242,7 @@ export function VisitDetailPage() {
         </Stack>
         {visit.status === "reserved" && (
           <Group grow={isMobile}>
+            <Button fullWidth={isMobile} variant="light" onClick={openVisitEdit}>Редактировать бронь</Button>
             <Button fullWidth={isMobile} onClick={() => setIssueOpened(true)}>Выдать костюмы</Button>
             <Button fullWidth={isMobile} variant="light" color="red" onClick={() => setCancelOpened(true)}>Отменить визит</Button>
           </Group>
@@ -215,6 +345,20 @@ export function VisitDetailPage() {
       </Paper>
 
       <VisitHistory visitId={visit.id} />
+
+      <VisitEditModal
+        opened={editOpened}
+        onClose={closeVisitEdit}
+        visit={editSourceVisit ?? visit}
+        isMobile={isMobile}
+        onSave={handleSaveVisitEdit}
+        isSaving={updateVisitMutation.isPending}
+        errorMessage={editErrorMessage}
+        pendingRequest={pendingEditRequest}
+        onRetryPending={retryPendingVisitEdit}
+        versionConflict={editVersionConflict}
+        onRebaseVersion={rebaseVisitEditVersion}
+      />
 
       <IssueModal opened={issueOpened} onClose={() => setIssueOpened(false)} visitId={visitId} isMobile={isMobile} data={issueQuery.data} isLoading={issueQuery.isLoading} isError={issueQuery.isError} />
       <ReturnModal opened={returnOpened} onClose={() => setReturnOpened(false)} visitId={visitId} isMobile={isMobile} data={returnQuery.data} isLoading={returnQuery.isLoading} isError={returnQuery.isError} />

@@ -20,20 +20,35 @@ export const CostumeSelector = memo(function CostumeSelector({
   endDateTime,
   issueTimeFrom,
   returnTimeUntil,
+  excludeVisitId,
+  selectedCostume: selectedCostumeProp,
 }: CostumeSelectorProps) {
   const queryClient = useQueryClient();
-  const [selectedCostume, setSelectedCostume] =
-    useState<SelectedCostumeData | null>(null);
+  const [selection, setSelection] = useState<{
+    value: string | null;
+    costume: SelectedCostumeData | null;
+  } | null>(null);
+  const selectedCostume = selection?.value === (value ?? null)
+    ? selection.costume
+    : selectedCostumeProp?.costumeId.toString() === value
+      ? selectedCostumeProp
+      : null;
 
   useEffect(() => {
     if (!value) {
-      setSelectedCostume(null);
+      setSelection({ value: null, costume: null });
       return;
     }
     const cached = queryClient.getQueryData<SelectedCostumeData>(
       costumesKeys.detail(value),
     );
-    setSelectedCostume(cached ?? null);
+    setSelection({
+      value,
+      costume: cached ?? (selectedCostumeProp?.costumeId.toString() === value ? selectedCostumeProp : null),
+    });
+  // The detail snapshot is read only when the selected id changes, so a fresh
+  // prop object created during form rendering cannot reset an active selection.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queryClient, value]);
 
   const handleSelect = useCallback(
@@ -44,14 +59,14 @@ export const CostumeSelector = memo(function CostumeSelector({
           costume,
         );
       }
-      setSelectedCostume(costume);
+      setSelection({ value: costume?.costumeId.toString() ?? null, costume });
       onChange(costume?.costumeId || null);
     },
     [onChange, queryClient],
   );
 
   const handleClear = useCallback(() => {
-    setSelectedCostume(null);
+    setSelection({ value: null, costume: null });
     onChange(null);
   }, [onChange]);
 
@@ -110,6 +125,7 @@ export const CostumeSelector = memo(function CostumeSelector({
           endDateTime={endDateTime}
           returnTimeUntil={returnTimeUntil}
           issueTimeFrom={issueTimeFrom}
+          excludeVisitId={excludeVisitId}
         />
       }
       // Рендерим форму создания

@@ -11,6 +11,7 @@ interface SmartDateInputProps {
   onChange: (val: string | null) => void;
   error?: React.ReactNode;
   minDate?: string | null;
+  disabled?: boolean;
 }
 export function SmartDateInput({
   label,
@@ -18,6 +19,7 @@ export function SmartDateInput({
   onChange,
   error,
   minDate,
+  disabled = false,
 }: SmartDateInputProps) {
   const [inputValue, setInputValue] = useState(
     value ? dayjs(value).format("DD.MM") : "",
@@ -65,6 +67,7 @@ export function SmartDateInput({
         placeholder="Напр: 4 или 15.05"
         value={inputValue}
         error={error}
+        disabled={disabled}
         onChange={(e) =>
           setInputValue(e.currentTarget.value.replace(/[^0-9.]/g, ""))
         }
@@ -82,6 +85,7 @@ export function SmartDateInput({
               <ActionIcon
                 variant="subtle"
                 color="gray"
+                disabled={disabled}
                 onClick={() => setOpened((o) => !o)}
               >
                 <IconCalendar size="1.2rem" />

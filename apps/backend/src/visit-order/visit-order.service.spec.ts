@@ -348,6 +348,7 @@ describe('VisitOrderService', () => {
         costumeId: { in: [1] },
         deletedAt: null,
         status: { in: ['reserved', 'issued'] },
+        visit: { deletedAt: null, status: { not: 'cancelled' } },
         AND: [
           { startDateTime: { lt: new Date('2026-12-21') } },
           { endDateTime: { gt: new Date('2026-12-20') } },
@@ -371,6 +372,37 @@ describe('VisitOrderService', () => {
         costumeId: { in: [1] },
         deletedAt: null,
         status: { in: ['reserved', 'issued'] },
+        visit: { deletedAt: null, status: { not: 'cancelled' } },
+        AND: [
+          { startDateTime: { lt: new Date('2026-12-21') } },
+          { endDateTime: { gt: new Date('2026-12-20') } },
+        ],
+      },
+      select: { costume: { select: { id: true, name: true } } },
+    });
+  });
+
+  it('can exclude the reserved visit currently being edited from availability conflicts', async () => {
+    txMock.order.findMany.mockResolvedValue([]);
+
+    await service.isSuitAvailability(
+      [1],
+      new Date('2026-12-20'),
+      new Date('2026-12-21'),
+      txMock as never,
+      42,
+    );
+
+    expect(txMock.order.findMany).toHaveBeenCalledWith({
+      where: {
+        costumeId: { in: [1] },
+        deletedAt: null,
+        status: { in: ['reserved', 'issued'] },
+        visit: {
+          deletedAt: null,
+          status: { not: 'cancelled' },
+          id: { not: 42 },
+        },
         AND: [
           { startDateTime: { lt: new Date('2026-12-21') } },
           { endDateTime: { gt: new Date('2026-12-20') } },
@@ -1117,6 +1149,7 @@ describe('VisitOrderService remaining business rules', () => {
           costumeId: { in: [1, 2] },
           deletedAt: null,
           status: { in: ['reserved', 'issued'] },
+          visit: { deletedAt: null, status: { not: 'cancelled' } },
           AND: [{ startDateTime: { lt: end } }, { endDateTime: { gt: start } }],
         },
         select: { costume: { select: { id: true, name: true } } },

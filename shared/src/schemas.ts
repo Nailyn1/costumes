@@ -42,6 +42,8 @@ export const schemas = {
   Visits_VisitBalance: generated.Visits_VisitBalance,
   Visits_QuickIssueVisitRequest: generated.Visits_QuickIssueVisitRequest,
   Visits_QuickIssueVisitResponse: generated.Visits_QuickIssueVisitResponse,
+  Visits_UpdateReservedVisitOrder: generated.Visits_UpdateReservedVisitOrder,
+  Visits_UpdateReservedVisitRequest: generated.Visits_UpdateReservedVisitRequest,
   Visits_VisitListItem: generated.Visits_VisitListItem,
   Visits_PaginatedVisitsResponse: generated.Visits_PaginatedVisitsResponse,
   Visits_VisitReadOrder: generated.Visits_VisitReadOrder,

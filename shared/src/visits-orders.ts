@@ -2,6 +2,7 @@ import { schemas } from "./schemas.js";
 import type {
   get_VisitOperation_getHistory,
   get_VisitOperation_list,
+  patch_VisitOperation_updateReserved,
 } from "./openapi-client.js";
 import { z } from "zod";
 
@@ -55,6 +56,19 @@ export const PaginatedVisitsResponseSchema =
   schemas.Visits_PaginatedVisitsResponse;
 export type VisitReadDetailDto = z.infer<typeof schemas.Visits_VisitReadDetail>;
 export const VisitReadDetailSchema = schemas.Visits_VisitReadDetail;
+export type UpdateReservedVisitOrderDto = z.infer<
+  typeof schemas.Visits_UpdateReservedVisitOrder
+>;
+export type UpdateReservedVisitRequestDto = z.infer<
+  typeof schemas.Visits_UpdateReservedVisitRequest
+>;
+export const UpdateReservedVisitRequestSchema =
+  schemas.Visits_UpdateReservedVisitRequest;
+export type UpdateReservedVisitResponseDto = VisitReadDetailDto;
+export const UpdateReservedVisitResponseSchema = VisitReadDetailSchema;
+export type UpdateReservedVisitPathDto = NonNullable<
+  patch_VisitOperation_updateReserved["parameters"]["path"]
+>;
 export type VisitListQueryDto = NonNullable<
   get_VisitOperation_list["parameters"]["query"]
 >;

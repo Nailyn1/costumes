@@ -167,9 +167,9 @@ export class CostumesService {
     q: string,
     startStr: string,
     endStr: string,
+    excludeVisitIdRaw?: string,
   ): Promise<CostumesSearchAvailableResponseDto[]> {
     const search = normalizeSearchQuery(q);
-    if (!isSearchQueryReady(search)) return [];
 
     const requestedStart = new Date(startStr);
     const requestedEnd = new Date(endStr);
@@ -186,6 +186,28 @@ export class CostumesService {
       );
     }
 
+    let excludeVisitId: number | undefined;
+    if (excludeVisitIdRaw !== undefined) {
+      excludeVisitId = Number(excludeVisitIdRaw);
+      if (!Number.isSafeInteger(excludeVisitId) || excludeVisitId < 1) {
+        throw new BadRequestException('Некорректный ID визита');
+      }
+      const visit = await this.prisma.visit.findFirst({
+        where: { id: excludeVisitId, deletedAt: null },
+        select: { id: true, status: true },
+      });
+      if (!visit) {
+        throw new NotFoundException(`Визит с ID ${excludeVisitId} не найден`);
+      }
+      if (visit.status !== 'reserved') {
+        throw new BadRequestException(
+          'Исключать из проверки доступности можно только бронь со статусом «забронирован»',
+        );
+      }
+    }
+
+    if (!isSearchQueryReady(search)) return [];
+
     const searchFilters: Prisma.CostumeWhereInput[] = [
       ...buildWordStartFilters(search).map((filter) => ({ name: filter })),
       ...buildIdentifierFilters(search).map((filter) => ({
@@ -201,6 +223,9 @@ export class CostumesService {
           visit: {
             deletedAt: null,
             status: { not: 'cancelled' },
+            ...(excludeVisitId === undefined
+              ? {}
+              : { id: { not: excludeVisitId } }),
             AND: [
               { startDateTime: { lt: requestedEnd } },
               { endDateTime: { gt: requestedStart } },

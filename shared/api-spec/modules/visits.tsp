@@ -157,6 +157,27 @@ model QuickIssueVisitResponse {
   balance: VisitBalance;
 }
 
+model UpdateReservedVisitOrder {
+  @minValue(1) orderId?: int32;
+  @minValue(1) childId: int32;
+  @minValue(1) costumeId: int32;
+  @minValue(0) rentPrice: int32;
+  notes?: string;
+}
+
+model UpdateReservedVisitRequest {
+  @format("uuid") commandId: string;
+  @minValue(1) expectedVersion: int32;
+  startDateTime: plainDate;
+  issueTimeFrom: TimeString;
+  issueTimeTo: TimeString;
+  endDateTime: plainDate;
+  returnTimeUntil: TimeString;
+  notes?: string;
+  @minItems(1)
+  orders: UpdateReservedVisitOrder[];
+}
+
 model CompleteReturnRequest {
   depositReturned: boolean;
   notes?: string;
@@ -280,6 +301,8 @@ enum VisitHistorySource {
 
 enum VisitHistoryAction {
   visitCreated: "visit.created",
+  visitUpdated: "visit.updated",
+  tagInvalidated: "tag.invalidated",
   tagWritten: "tag.written",
   visitIssued: "visit.issued",
   visitUnissued: "visit.unissued",
@@ -292,11 +315,15 @@ enum VisitHistoryAction {
 
 model VisitHistoryOrderSnapshot {
   orderId: int32;
+  childId?: int32;
   childName: string;
+  costumeId?: int32;
   costumeName: string;
   inventoryCode: CostumeApp.Costumes.InventoryCode;
   rentPrice: int32;
   prepaymentAmount: int32;
+  tagStatus?: TagStatus;
+  notes?: string | null;
 }
 
 model VisitCreatedHistoryPayload {
@@ -307,6 +334,37 @@ model VisitCreatedHistoryPayload {
   startDateTime: plainDate;
   endDateTime: plainDate;
   orders: VisitHistoryOrderSnapshot[];
+}
+
+model VisitUpdatedHistoryOrderChange {
+  change: "added" | "updated" | "removed";
+  orderId: int32;
+  before?: VisitHistoryOrderSnapshot;
+  after?: VisitHistoryOrderSnapshot;
+}
+
+model VisitUpdatedHistoryPayload {
+  kind: "visit.updated";
+  changedFields: {
+    startDateTime?: { before: plainDate; after: plainDate };
+    issueTimeFrom?: { before: TimeString; after: TimeString };
+    issueTimeTo?: { before: TimeString; after: TimeString };
+    endDateTime?: { before: plainDate; after: plainDate };
+    returnTimeUntil?: { before: TimeString; after: TimeString };
+    notes?: { before: string | null; after: string | null };
+  };
+  orderChanges: VisitUpdatedHistoryOrderChange[];
+}
+
+model TagInvalidatedHistoryPayload {
+  kind: "tag.invalidated";
+  orderId: int32;
+  childName: string;
+  costumeName: string;
+  inventoryCode: CostumeApp.Costumes.InventoryCode;
+  reason: "date_changed" | "window_changed" | "child_changed" | "costume_changed";
+  previousTagStatus: "written";
+  tagStatus: "not_written";
 }
 
 model TagWrittenHistoryPayload {
@@ -368,6 +426,8 @@ model MoneyRefundedHistoryPayload {
 
 union VisitHistoryPayload {
   visitCreated: VisitCreatedHistoryPayload,
+  visitUpdated: VisitUpdatedHistoryPayload,
+  tagInvalidated: TagInvalidatedHistoryPayload,
   tagWritten: TagWrittenHistoryPayload,
   visitIssued: VisitIssuedHistoryPayload,
   visitUnissued: VisitUnissuedHistoryPayload,
@@ -611,6 +671,16 @@ interface VisitOperation {
   quickIssue(@body body: QuickIssueVisitRequest): {
     @statusCode statusCode: 201;
     @body body: QuickIssueVisitResponse;
+  } | Common.Error;
+
+  @patch
+  @route("{visitId}")
+  updateReserved(
+    @path visitId: int32,
+    @body body: UpdateReservedVisitRequest,
+  ): {
+    @statusCode statusCode: 200;
+    @body body: VisitReadDetail;
   } | Common.Error;
 
   @get

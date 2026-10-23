@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Button, MantineProvider } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
 import { QueryClientProvider } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -12,12 +13,18 @@ import { createTestQueryClient, renderWithProviders } from "../../test/render";
 import { VisitsPage } from "./VisitsPage";
 import { VisitDetailPage } from "./VisitDetailPage";
 import { useMarkCostumeAsWritten } from "src/features/visits/hooks/useVisits";
+import { useAuthStore } from "src/stores/auth.store";
 
 const emptyHistory = { items: [], total: 0, page: 1, limit: 20, hasMore: false };
 
 function MarkTagTrigger() {
   const mutation = useMarkCostumeAsWritten();
   return <Button onClick={() => mutation.mutate(51)}>Тест: записать бирку</Button>;
+}
+
+function RefetchDetailTrigger() {
+  const queryClient = useQueryClient();
+  return <Button onClick={() => void queryClient.invalidateQueries({ queryKey: ["visit", "detail", 41] })}>Тест: обновить визит</Button>;
 }
 
 function visitDetail(overrides: Partial<VisitReadDetailDto> = {}): VisitReadDetailDto {
@@ -214,5 +221,52 @@ describe("visit read pages", () => {
       expect(detailRequests).toHaveBeenCalledTimes(2);
       expect(historyRequests).toHaveBeenCalledTimes(2);
     });
+  });
+
+  it("keeps the opening version when detail refetches while the edit draft is open", async () => {
+    useAuthStore.getState().setAuth({ accessToken: "test-token", user: { login: "worker1", name: "Алия" } });
+    let reads = 0;
+    let submittedBody: Record<string, unknown> | undefined;
+    server.use(
+      http.get(`${API_URL}/visits/41`, () => {
+        reads += 1;
+        return HttpResponse.json(visitDetail({ version: reads > 1 ? 2 : 1, notes: reads > 1 ? "Другая версия" : "Позвонить перед выдачей" }));
+      }),
+      http.get(`${API_URL}/visits/41/history`, () => HttpResponse.json(emptyHistory)),
+      http.patch(`${API_URL}/visits/41`, async ({ request }) => {
+        submittedBody = await request.json() as Record<string, unknown>;
+        return HttpResponse.json(visitDetail({ version: 2 }));
+      }),
+    );
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MantineProvider>
+          <Notifications />
+          <MemoryRouter initialEntries={["/bookings/visits/41"]}>
+            <>
+              <Routes><Route path="/bookings/visits/:visitId" element={<VisitDetailPage />} /></Routes>
+              <RefetchDetailTrigger />
+            </>
+          </MemoryRouter>
+        </MantineProvider>
+      </QueryClientProvider>,
+    );
+
+    await screen.findByRole("heading", { name: /Визит #0041/ });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Редактировать бронь" }));
+    const visitNotes = await screen.findByLabelText("Примечание к визиту");
+    await user.clear(visitNotes);
+    await user.type(visitNotes, "Моё изменение");
+    await user.click(screen.getByRole("button", { name: "Тест: обновить визит" }));
+    await waitFor(() => expect(reads).toBeGreaterThanOrEqual(2));
+    await user.click(screen.getByRole("button", { name: "Сохранить изменения" }));
+
+    await waitFor(() => expect(submittedBody).toBeDefined());
+    expect(submittedBody).toEqual(expect.objectContaining({
+      expectedVersion: 1,
+      notes: "Моё изменение",
+    }));
   });
 });

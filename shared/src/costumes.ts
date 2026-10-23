@@ -1,4 +1,5 @@
 import { schemas } from "./schemas.js";
+import type { get_CostumeOperations_searchAvailable } from "./openapi-client.js";
 import { z } from "zod";
 
 export type CreateCostumesRequestDto = z.infer<
@@ -21,6 +22,9 @@ export type CostumesAvailabilityResponseDto = z.infer<
 >;
 export type CostumesListResponseDto = z.infer<
   typeof schemas.Costumes_GetCostumesList
+>;
+export type SearchAvailableCostumesQueryDto = NonNullable<
+  get_CostumeOperations_searchAvailable["parameters"]["query"]
 >;
 
 export const CreateCostumesRequestSchema =

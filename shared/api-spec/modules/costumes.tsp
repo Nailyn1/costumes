@@ -74,7 +74,8 @@ interface CostumeOperations {
   searchAvailable(
     @query q?: string,
     @query startDate: string,
-    @query endDate: string
+    @query endDate: string,
+    @query excludeVisitId?: int32
   ): AvailableCostume[] | Common.Error;
 
   @get

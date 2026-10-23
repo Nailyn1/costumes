@@ -62,11 +62,13 @@ export class CostumesController {
     @Query('q') q: string,
     @Query('startDate') startDate: string,
     @Query('endDate') endDate: string,
+    @Query('excludeVisitId') excludeVisitId?: string,
   ): Promise<CostumesSearchAvailableResponseDto[]> {
     return await this.costumesService.searchCostumeAvailable(
       q,
       startDate,
       endDate,
+      excludeVisitId,
     );
   }
 

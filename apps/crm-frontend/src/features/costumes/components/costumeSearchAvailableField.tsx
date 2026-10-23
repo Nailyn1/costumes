@@ -13,6 +13,7 @@ export const CostumeSearchAvailableField = memo(
     endDateTime,
     issueTimeFrom,
     returnTimeUntil,
+    excludeVisitId,
   }: CostumeSearchAvailableFieldProps) {
     const [search, setSearch] = useState("");
     const [debouncedSearch] = useDebouncedValue(search, 400);
@@ -24,6 +25,7 @@ export const CostumeSearchAvailableField = memo(
       debouncedSearch,
       apiStartDate,
       apiEndDate,
+      excludeVisitId,
     );
 
     const selectData = useMemo(() => {

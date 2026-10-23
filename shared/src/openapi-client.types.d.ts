@@ -322,6 +322,8 @@ export namespace Schemas {
   export type Visits_VisitHistorySource = "user" | "system" | "import";
   export type Visits_VisitHistoryAction =
     | "visit.created"
+    | "visit.updated"
+    | "tag.invalidated"
     | "tag.written"
     | "visit.issued"
     | "visit.unissued"
@@ -330,13 +332,18 @@ export namespace Schemas {
     | "deposit.returned"
     | "money.received"
     | "money.refunded";
+  export type Visits_TagStatus = "written" | "not_written" | "not_required";
   export type Visits_VisitHistoryOrderSnapshot = {
     orderId: number;
+    childId?: number;
     childName: string;
+    costumeId?: number;
     costumeName: string;
     inventoryCode: Costumes_InventoryCode;
     rentPrice: number;
     prepaymentAmount: number;
+    tagStatus?: Visits_TagStatus;
+    notes?: string | null;
   } & Record<string, unknown>;
   export type Visits_VisitCreatedHistoryPayload = {
     kind: "visit.created";
@@ -346,6 +353,35 @@ export namespace Schemas {
     startDateTime: string;
     endDateTime: string;
     orders: Array<Visits_VisitHistoryOrderSnapshot>;
+  } & Record<string, unknown>;
+  export type Visits_VisitUpdatedHistoryOrderChange = {
+    change: "added" | "updated" | "removed";
+    orderId: number;
+    before?: Visits_VisitHistoryOrderSnapshot;
+    after?: Visits_VisitHistoryOrderSnapshot;
+  } & Record<string, unknown>;
+  export type Visits_VisitUpdatedHistoryPayload = {
+    kind: "visit.updated";
+    changedFields: Partial<{
+      startDateTime: { before: string; after: string } & Record<string, unknown>;
+      issueTimeFrom: { before: Visits_TimeString; after: Visits_TimeString } & Record<string, unknown>;
+      issueTimeTo: { before: Visits_TimeString; after: Visits_TimeString } & Record<string, unknown>;
+      endDateTime: { before: string; after: string } & Record<string, unknown>;
+      returnTimeUntil: { before: Visits_TimeString; after: Visits_TimeString } & Record<string, unknown>;
+      notes: { before: string | null; after: string | null } & Record<string, unknown>;
+    }> &
+      Record<string, unknown>;
+    orderChanges: Array<Visits_VisitUpdatedHistoryOrderChange>;
+  } & Record<string, unknown>;
+  export type Visits_TagInvalidatedHistoryPayload = {
+    kind: "tag.invalidated";
+    orderId: number;
+    childName: string;
+    costumeName: string;
+    inventoryCode: Costumes_InventoryCode;
+    reason: "date_changed" | "window_changed" | "child_changed" | "costume_changed";
+    previousTagStatus: "written";
+    tagStatus: "not_written";
   } & Record<string, unknown>;
   export type Visits_TagWrittenHistoryPayload = {
     kind: "tag.written";
@@ -384,6 +420,8 @@ export namespace Schemas {
   } & Record<string, unknown>;
   export type Visits_VisitHistoryPayload =
     | Visits_VisitCreatedHistoryPayload
+    | Visits_VisitUpdatedHistoryPayload
+    | Visits_TagInvalidatedHistoryPayload
     | Visits_TagWrittenHistoryPayload
     | Visits_VisitIssuedHistoryPayload
     | Visits_VisitUnissuedHistoryPayload
@@ -460,7 +498,24 @@ export namespace Schemas {
     version: number;
     balance: Visits_VisitBalance;
   } & Record<string, unknown>;
-  export type Visits_TagStatus = "written" | "not_written" | "not_required";
+  export type Visits_UpdateReservedVisitOrder = {
+    orderId?: number;
+    childId: number;
+    costumeId: number;
+    rentPrice: number;
+    notes?: string;
+  } & Record<string, unknown>;
+  export type Visits_UpdateReservedVisitRequest = {
+    commandId: string;
+    expectedVersion: number;
+    startDateTime: string;
+    issueTimeFrom: Visits_TimeString;
+    issueTimeTo: Visits_TimeString;
+    endDateTime: string;
+    returnTimeUntil: Visits_TimeString;
+    notes?: string;
+    orders: Array<Visits_UpdateReservedVisitOrder>;
+  } & Record<string, unknown>;
   export type Visits_VisitOrder = {
     orderId: number;
     childName: Children_ChildName;
@@ -801,7 +856,7 @@ export namespace Endpoints {
     requestFormat: "json";
     responseFormat: "json";
     parameters: {
-      query: { q?: string; startDate: string; endDate: string };
+      query: { q?: string; startDate: string; endDate: string; excludeVisitId?: number };
     };
     responses: { 200: Array<Schemas.Costumes_AvailableCostume>; default: Schemas.Common_Error };
   };
@@ -992,6 +1047,18 @@ export namespace Endpoints {
     };
     responses: { 204: unknown; default: Schemas.Common_Error };
   };
+  export type patch_VisitOperation_updateReserved = {
+    method: "PATCH";
+    path: "/visits/{visitId}";
+    requestFormat: "json";
+    responseFormat: "json";
+    parameters: {
+      path: { visitId: number };
+
+      body: Schemas.Visits_UpdateReservedVisitRequest;
+    };
+    responses: { 200: Schemas.Visits_VisitReadDetail; default: Schemas.Common_Error };
+  };
   export type get_VisitOperation_getDetail = {
     method: "GET";
     path: "/visits/{visitId}";
@@ -1159,6 +1226,7 @@ export type EndpointByMethod = {
     "/children/{childId}": Endpoints.patch_ChildOperations_update;
     "/clients/{clientId}": Endpoints.patch_ClientOperations_update;
     "/costumes/{costumeId}": Endpoints.patch_CostumeOperations_update;
+    "/visits/{visitId}": Endpoints.patch_VisitOperation_updateReserved;
   };
   delete: {
     "/children/{childId}": Endpoints.delete_ChildOperations_delete;

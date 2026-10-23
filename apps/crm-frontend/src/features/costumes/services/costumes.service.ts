@@ -22,12 +22,14 @@ export const costumeService = {
     searchQuery: string,
     stardDate: string,
     endDate: string,
+    excludeVisitId?: number,
   ) {
     return apiClient.get("/costumes/search-available", {
       query: {
         q: searchQuery,
         startDate: stardDate,
         endDate: endDate,
+        excludeVisitId,
       },
     });
   },

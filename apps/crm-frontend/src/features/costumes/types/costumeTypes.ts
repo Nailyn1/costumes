@@ -12,6 +12,7 @@ export interface CostumeSearchAvailableFieldProps {
   endDateTime: Date | string | null;
   issueTimeFrom: string;
   returnTimeUntil: string;
+  excludeVisitId?: number;
 }
 
 export interface SelectedCostumeCardProps {
@@ -33,6 +34,8 @@ export interface CostumeSelectorProps {
   endDateTime: Date | string | null;
   issueTimeFrom: string;
   returnTimeUntil: string;
+  excludeVisitId?: number;
+  selectedCostume?: SelectedCostumeData | null;
 }
 
 export interface CostuneUpdateFormProps {
