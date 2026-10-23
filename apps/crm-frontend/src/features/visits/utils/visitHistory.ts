@@ -97,7 +97,8 @@ function formatOrderSnapshots(
       payload.kind === "visit.created" ||
       payload.kind === "visit.issued" ||
       payload.kind === "visit.unissued" ||
-      payload.kind === "visit.completed"
+      payload.kind === "visit.completed" ||
+      payload.kind === "orders.added_and_issued"
     ) {
       for (const order of payload.orders) {
         orders.set(
@@ -201,6 +202,7 @@ export function presentVisitHistoryGroup(
   const completed = payloads.find((payload) => payload.kind === "visit.completed");
   const tagWritten = payloads.find((payload) => payload.kind === "tag.written");
   const visitUpdated = payloads.find((payload) => payload.kind === "visit.updated");
+  const ordersAddedAndIssued = payloads.find((payload) => payload.kind === "orders.added_and_issued");
   const tagInvalidations = payloads.filter((payload) => payload.kind === "tag.invalidated");
   const depositReturned = payloads.find((payload) => payload.kind === "deposit.returned");
   const received = payloads.filter((payload) => payload.kind === "money.received");
@@ -223,6 +225,12 @@ export function presentVisitHistoryGroup(
     const amount = issuePayment?.amount ?? issued.additionalPayment;
     if (amount > 0) details.push(`Получено при выдаче: ${formatMoney(amount)}`);
     details.push(formatDeposit(issued.depositType, issued.depositAmount));
+  } else if (ordersAddedAndIssued) {
+    title = `Добавлены и выданы костюмы по визиту #${ordersAddedAndIssued.visitCode}`;
+    const issuePayment = received.find((payload) => payload.moneyKind === "issue_payment");
+    if (issuePayment && issuePayment.amount > 0) {
+      details.push(`Получено при выдаче: ${formatMoney(issuePayment.amount)}`);
+    }
   } else if (unissued) {
     title = `Выдача отменена по визиту #${unissued.visitCode}`;
     if (unissued.voidedPaymentAmount > 0) {
@@ -292,6 +300,7 @@ export function presentVisitHistoryGroup(
 
   for (const payment of received) {
     if (issued && payment.moneyKind === "issue_payment") continue;
+    if (ordersAddedAndIssued && payment.moneyKind === "issue_payment") continue;
     if (completed && payment.moneyKind === "debt_payment") continue;
     details.push(
       `${payment.moneyKind === "debt_payment" ? "Поступило" : "Оплачено"}: ${formatMoney(payment.amount)}`,

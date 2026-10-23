@@ -178,6 +178,21 @@ model UpdateReservedVisitRequest {
   orders: UpdateReservedVisitOrder[];
 }
 
+model AddAndIssueVisitRequestOrder {
+  @minValue(1) childId: int32;
+  @minValue(1) costumeId: int32;
+  @minValue(0) rentPrice: int32;
+  notes?: string;
+}
+
+model AddAndIssueVisitRequest {
+  @format("uuid") commandId: string;
+  @minValue(1) expectedVersion: int32;
+  @minItems(1)
+  orders: AddAndIssueVisitRequestOrder[];
+  @minValue(0) additionalPayment: int32;
+}
+
 model CompleteReturnRequest {
   depositReturned: boolean;
   notes?: string;
@@ -311,6 +326,7 @@ enum VisitHistoryAction {
   depositReturned: "deposit.returned",
   moneyReceived: "money.received",
   moneyRefunded: "money.refunded",
+  ordersAddedAndIssued: "orders.added_and_issued",
 }
 
 model VisitHistoryOrderSnapshot {
@@ -424,6 +440,12 @@ model MoneyRefundedHistoryPayload {
   amount: int32;
 }
 
+model OrdersAddedAndIssuedHistoryPayload {
+  kind: "orders.added_and_issued";
+  visitCode: VisitCode;
+  orders: VisitHistoryOrderSnapshot[];
+}
+
 union VisitHistoryPayload {
   visitCreated: VisitCreatedHistoryPayload,
   visitUpdated: VisitUpdatedHistoryPayload,
@@ -436,6 +458,7 @@ union VisitHistoryPayload {
   depositReturned: DepositReturnedHistoryPayload,
   moneyReceived: MoneyReceivedHistoryPayload,
   moneyRefunded: MoneyRefundedHistoryPayload,
+  ordersAddedAndIssued: OrdersAddedAndIssuedHistoryPayload,
 }
 
 model VisitHistoryEvent {
@@ -678,6 +701,16 @@ interface VisitOperation {
   updateReserved(
     @path visitId: int32,
     @body body: UpdateReservedVisitRequest,
+  ): {
+    @statusCode statusCode: 200;
+    @body body: VisitReadDetail;
+  } | Common.Error;
+
+  @post
+  @route("{visitId}/add-and-issue")
+  addAndIssue(
+    @path visitId: int32,
+    @body body: AddAndIssueVisitRequest,
   ): {
     @statusCode statusCode: 200;
     @body body: VisitReadDetail;

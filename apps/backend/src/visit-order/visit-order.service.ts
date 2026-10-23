@@ -45,6 +45,9 @@ import {
   UpdateReservedVisitRequestDto,
   UpdateReservedVisitResponseDto,
   UpdateReservedVisitResponseSchema,
+  AddAndIssueVisitRequestDto,
+  AddAndIssueVisitResponseDto,
+  AddAndIssueVisitResponseSchema,
 } from '@costumes/shared';
 import { OrderStatus, Prisma, VisitStatus } from '../prisma/generated/client';
 import { randomUUID } from 'node:crypto';
@@ -289,6 +292,10 @@ export class VisitOrderService {
           VISIT_ISSUE_REJECT_MESSAGES[
             error.context.status as Exclude<VisitStatus, 'reserved'>
           ],
+        );
+      case 'CANNOT_ADD_AND_ISSUE':
+        throw new BadRequestException(
+          'Добавлять и выдавать костюмы можно только в уже выданный визит',
         );
       case 'CANNOT_UNISSUE':
         throw new BadRequestException(
@@ -1359,6 +1366,229 @@ export class VisitOrderService {
       message:
         'Визит изменён другим сотрудником. Обновите данные и повторите действие',
     });
+  }
+
+  async addAndIssueVisitOrders(
+    visitId: number,
+    data: AddAndIssueVisitRequestDto,
+    actor: VisitAuditActor,
+  ): Promise<AddAndIssueVisitResponseDto> {
+    if (actor.source !== 'user') {
+      throw new BadRequestException(
+        'Добавление заказов требует сотрудника из токена',
+      );
+    }
+
+    return executeWithCommandReceipt(
+      this.prisma,
+      {
+        commandId: data.commandId,
+        actorUserId: actor.userId,
+        commandPath: `POST /visits/${visitId}/add-and-issue`,
+        requestHash: hashCommandRequest({ visitId, ...data }),
+      },
+      async (tx) => {
+        const visit = await tx.visit.findFirst({
+          where: { id: visitId, deletedAt: null },
+          include: {
+            client: {
+              select: {
+                id: true,
+                name: true,
+                isBlacklisted: true,
+                deletedAt: true,
+              },
+            },
+            orders: {
+              where: { deletedAt: null },
+              include: {
+                child: { select: { name: true } },
+                costume: { select: { name: true, inventoryCode: true } },
+              },
+            },
+          },
+        });
+        if (!visit) {
+          throw new NotFoundException(`Визит с ID ${visitId} не найден`);
+        }
+        if (visit.version !== data.expectedVersion) {
+          throw this.visitVersionConflict();
+        }
+        if (visit.client.deletedAt !== null) {
+          throw new NotFoundException(
+            `Клиент с ID ${visit.clientId} не найден`,
+          );
+        }
+        if (visit.client.isBlacklisted) {
+          throw new BadRequestException(
+            'Клиент в чёрном списке — добавить костюм невозможно',
+          );
+        }
+
+        let decision;
+        try {
+          decision = this.visitDomain({
+            status: visit.status,
+            notes: visit.notes,
+            orders: visit.orders,
+            moneyOperations: [],
+          }).addAndIssue(
+            data.orders.map(({ costumeId, rentPrice }) => ({
+              costumeId,
+              rentPrice,
+            })),
+            data.additionalPayment,
+            visit.orders.map((order) => order.costumeId),
+          );
+        } catch (error) {
+          this.rethrowVisitRule(error);
+        }
+
+        const childIds = [
+          ...new Set(data.orders.map((order) => order.childId)),
+        ];
+        const costumeIds = data.orders.map((order) => order.costumeId);
+        const [children, costumes] = await Promise.all([
+          tx.child.findMany({
+            where: {
+              id: { in: childIds },
+              clientId: visit.clientId,
+              deletedAt: null,
+            },
+            select: { id: true, name: true },
+          }),
+          tx.costume.findMany({
+            where: { id: { in: costumeIds }, deletedAt: null },
+            select: { id: true, name: true, inventoryCode: true },
+          }),
+        ]);
+        const childrenById = new Map(
+          children.map((child) => [child.id, child]),
+        );
+        const costumesById = new Map(
+          costumes.map((costume) => [costume.id, costume]),
+        );
+        const invalidIndex = data.orders.findIndex(
+          (order) =>
+            !childrenById.has(order.childId) ||
+            !costumesById.has(order.costumeId),
+        );
+        if (invalidIndex >= 0) {
+          throw new BadRequestException(
+            `Ребёнок или костюм в заказе ${invalidIndex + 1} не найден, удалён или не принадлежит клиенту`,
+          );
+        }
+
+        const busyCostumes = await this.isSuitAvailability(
+          costumeIds,
+          visit.startDateTime,
+          visit.endDateTime,
+          tx,
+        );
+        if (busyCostumes.length > 0) {
+          throw new BadRequestException(
+            `Костюмы ${busyCostumes.map((costume) => `«${costume.name}»`).join(', ')} заняты в этот период`,
+          );
+        }
+
+        const paymentsByCostume = new Map(
+          decision.addedOrders.map((order) => [
+            order.costumeId,
+            order.finalPayment,
+          ]),
+        );
+        const createdOrders = [];
+        for (const input of data.orders) {
+          const created = await tx.order.create({
+            data: {
+              visitId,
+              clientId: visit.clientId,
+              childId: input.childId,
+              costumeId: input.costumeId,
+              rentPrice: input.rentPrice,
+              prepaymentAmount: 0,
+              finalPayment: paymentsByCostume.get(input.costumeId) ?? 0,
+              startDateTime: visit.startDateTime,
+              endDateTime: visit.endDateTime,
+              notes: input.notes || null,
+              status: 'issued',
+              tagStatus: 'not_required',
+            },
+            include: {
+              child: { select: { name: true } },
+              costume: { select: { name: true, inventoryCode: true } },
+            },
+          });
+          createdOrders.push(created);
+        }
+
+        if (data.additionalPayment > 0) {
+          await tx.visitMoneyOperation.create({
+            data: {
+              visitId,
+              kind: 'issue_payment',
+              amount: data.additionalPayment,
+            },
+          });
+        }
+
+        const update = await tx.visit.updateMany({
+          where: {
+            id: visitId,
+            deletedAt: null,
+            status: 'issued',
+            version: data.expectedVersion,
+          },
+          data: { version: { increment: 1 } },
+        });
+        if (update.count !== 1) {
+          throw this.visitVersionConflict();
+        }
+
+        const snapshots = createdOrders.map((order) => ({
+          orderId: order.id,
+          childId: order.childId,
+          childName: order.child.name,
+          costumeId: order.costumeId,
+          costumeName: order.costume.name,
+          inventoryCode: order.costume.inventoryCode,
+          rentPrice: order.rentPrice,
+          prepaymentAmount: 0,
+          tagStatus: order.tagStatus,
+          notes: order.notes,
+        }));
+        const events: VisitAuditEventInput[] = [
+          {
+            action: 'orders.added_and_issued',
+            entityType: 'visit',
+            entityId: visitId,
+            visitId,
+            payload: {
+              kind: 'orders.added_and_issued',
+              visitCode: visit.visitCode,
+              orders: snapshots,
+            },
+          },
+        ];
+        if (data.additionalPayment > 0) {
+          events.push({
+            action: 'money.received',
+            entityType: 'visit',
+            entityId: visitId,
+            visitId,
+            payload: {
+              kind: 'money.received',
+              moneyKind: 'issue_payment',
+              amount: data.additionalPayment,
+            },
+          });
+        }
+        await this.recordAuditEvents(tx, actor, data.commandId, events);
+
+        return readVisitDetail(tx, visitId);
+      },
+      (value) => AddAndIssueVisitResponseSchema.parse(value),
+    );
   }
 
   async isSuitAvailability(

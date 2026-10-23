@@ -111,6 +111,41 @@ describe("visit history grouping", () => {
     expect(presentation.details).toContain("Залог: документ");
   });
 
+  it("groups added issued orders with their payment without counting the receipt twice", () => {
+    const added = makeEvent({
+      id: 15,
+      action: "orders.added_and_issued",
+      commandId: "add-issued-1",
+      occurredAt: "2026-10-22T07:00:00.000Z",
+      payload: {
+        kind: "orders.added_and_issued",
+        visitCode: "0065",
+        orders: [{
+          orderId: 71,
+          childName: "Амина",
+          costumeName: "Фея",
+          inventoryCode: "C-0071",
+          rentPrice: 8000,
+          prepaymentAmount: 0,
+        }],
+      },
+    });
+    const payment = makeEvent({
+      id: 16,
+      action: "money.received",
+      commandId: "add-issued-1",
+      occurredAt: "2026-10-22T07:00:00.000Z",
+      payload: { kind: "money.received", moneyKind: "issue_payment", amount: 3000 },
+    });
+
+    const presentation = presentVisitHistoryGroup(groupVisitHistoryEvents([payment, added])[0]!);
+
+    expect(presentation.title).toBe("Добавлены и выданы костюмы по визиту #0065");
+    expect(presentation.details).toContain("Амина — Фея (C-0071)");
+    expect(presentation.details.filter((detail) => detail.includes("3 000"))).toHaveLength(1);
+    expect(presentation.details).not.toContain("Без залога");
+  });
+
   it("uses the saved actor snapshot and renders cancellation reason", () => {
     const event = makeEvent({
       id: 10,

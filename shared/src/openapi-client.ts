@@ -230,6 +230,26 @@ export const Costumes_UpdateCostumeRequest = z
   .partial()
   .catchall(z.unknown());
 
+export type Visits_AddAndIssueVisitRequestOrder = __TypedOpenapi.Schemas.Visits_AddAndIssueVisitRequestOrder;
+export const Visits_AddAndIssueVisitRequestOrder = z
+  .object({
+    childId: z.number().int().min(1),
+    costumeId: z.number().int().min(1),
+    rentPrice: z.number().int().min(0),
+    notes: z.string().optional(),
+  })
+  .catchall(z.unknown());
+
+export type Visits_AddAndIssueVisitRequest = __TypedOpenapi.Schemas.Visits_AddAndIssueVisitRequest;
+export const Visits_AddAndIssueVisitRequest = z
+  .object({
+    commandId: z.uuid(),
+    expectedVersion: z.number().int().min(1),
+    orders: z.array(Visits_AddAndIssueVisitRequestOrder).min(1),
+    additionalPayment: z.number().int().min(0),
+  })
+  .catchall(z.unknown());
+
 export type Visits_VisitSettlementRequest = __TypedOpenapi.Schemas.Visits_VisitSettlementRequest;
 export const Visits_VisitSettlementRequest = z
   .object({ kind: z.enum(["debt_payment", "customer_refund"]), amount: z.number().int().min(1) })
@@ -474,6 +494,35 @@ export const Visits_Notification = z
   })
   .catchall(z.unknown());
 
+export type Visits_TagStatus = __TypedOpenapi.Schemas.Visits_TagStatus;
+export const Visits_TagStatus = z.enum(["written", "not_written", "not_required"]);
+
+export type Visits_VisitHistoryOrderSnapshot = __TypedOpenapi.Schemas.Visits_VisitHistoryOrderSnapshot;
+export const Visits_VisitHistoryOrderSnapshot = z
+  .object({
+    orderId: z.number().int(),
+    childId: z.number().int().optional(),
+    childName: z.string(),
+    costumeId: z.number().int().optional(),
+    costumeName: z.string(),
+    inventoryCode: Costumes_InventoryCode,
+    rentPrice: z.number().int(),
+    prepaymentAmount: z.number().int(),
+    tagStatus: Visits_TagStatus.optional(),
+    notes: z.string().nullable().optional(),
+  })
+  .catchall(z.unknown());
+
+export type Visits_OrdersAddedAndIssuedHistoryPayload =
+  __TypedOpenapi.Schemas.Visits_OrdersAddedAndIssuedHistoryPayload;
+export const Visits_OrdersAddedAndIssuedHistoryPayload = z
+  .object({
+    kind: z.literal("orders.added_and_issued"),
+    visitCode: Costumes_VisitCode,
+    orders: z.array(Visits_VisitHistoryOrderSnapshot),
+  })
+  .catchall(z.unknown());
+
 export type Visits_PaginatedReservedResponse = __TypedOpenapi.Schemas.Visits_PaginatedReservedResponse;
 export const Visits_PaginatedReservedResponse = z
   .object({
@@ -524,26 +573,8 @@ export const Visits_VisitHistoryAction = z.enum([
   "deposit.returned",
   "money.received",
   "money.refunded",
+  "orders.added_and_issued",
 ]);
-
-export type Visits_TagStatus = __TypedOpenapi.Schemas.Visits_TagStatus;
-export const Visits_TagStatus = z.enum(["written", "not_written", "not_required"]);
-
-export type Visits_VisitHistoryOrderSnapshot = __TypedOpenapi.Schemas.Visits_VisitHistoryOrderSnapshot;
-export const Visits_VisitHistoryOrderSnapshot = z
-  .object({
-    orderId: z.number().int(),
-    childId: z.number().int().optional(),
-    childName: z.string(),
-    costumeId: z.number().int().optional(),
-    costumeName: z.string(),
-    inventoryCode: Costumes_InventoryCode,
-    rentPrice: z.number().int(),
-    prepaymentAmount: z.number().int(),
-    tagStatus: Visits_TagStatus.optional(),
-    notes: z.string().nullable().optional(),
-  })
-  .catchall(z.unknown());
 
 export type Visits_VisitCreatedHistoryPayload = __TypedOpenapi.Schemas.Visits_VisitCreatedHistoryPayload;
 export const Visits_VisitCreatedHistoryPayload = z
@@ -665,6 +696,7 @@ export const Visits_VisitHistoryPayload = z.union([
   Visits_DepositReturnedHistoryPayload,
   Visits_MoneyReceivedHistoryPayload,
   Visits_MoneyRefundedHistoryPayload,
+  Visits_OrdersAddedAndIssuedHistoryPayload,
 ]);
 
 export type Visits_VisitHistoryEvent = __TypedOpenapi.Schemas.Visits_VisitHistoryEvent;
@@ -1447,6 +1479,16 @@ export const get_VisitOperation_getDetail = {
   responses: { 200: Visits_VisitReadDetail, default: Common_Error },
 };
 
+export type post_VisitOperation_addAndIssue = __TypedOpenapi.Endpoints.post_VisitOperation_addAndIssue;
+export const post_VisitOperation_addAndIssue = {
+  method: z.literal("POST"),
+  path: z.literal("/visits/{visitId}/add-and-issue"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { path: z.strictObject({ visitId: z.coerce.number().int() }), body: Visits_AddAndIssueVisitRequest },
+  responses: { 200: Visits_VisitReadDetail, default: Common_Error },
+};
+
 export type get_VisitOperation_getBalance = __TypedOpenapi.Endpoints.get_VisitOperation_getBalance;
 export const get_VisitOperation_getBalance = {
   method: z.literal("GET"),
@@ -1576,6 +1618,7 @@ export const EndpointByMethod = {
     "/visits/preview-code": post_VisitOperation_previewCode,
     "/visits/quick-issue": post_VisitOperation_quickIssue,
     "/visits/{orderId}/mark-tag-written": post_VisitOperation_markTagWritten,
+    "/visits/{visitId}/add-and-issue": post_VisitOperation_addAndIssue,
     "/visits/{visitId}/cancel": post_VisitOperation_cancel,
     "/visits/{visitId}/complete-return": post_VisitOperation_completeReturn,
     "/visits/{visitId}/issue": post_VisitOperation_issue,
@@ -1671,6 +1714,7 @@ export const endpointParameterStyles = {
     "/visits/{orderId}/mark-tag-written": {
       path: { orderId: { style: "simple", explode: false, allowReserved: false } },
     },
+    "/visits/{visitId}/add-and-issue": { path: { visitId: { style: "simple", explode: false, allowReserved: false } } },
     "/visits/{visitId}/cancel": { path: { visitId: { style: "simple", explode: false, allowReserved: false } } },
     "/visits/{visitId}/complete-return": {
       path: { visitId: { style: "simple", explode: false, allowReserved: false } },

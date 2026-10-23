@@ -1,4 +1,5 @@
 import {
+  Alert,
   Anchor,
   Badge,
   Button,
@@ -21,6 +22,8 @@ import { notifications } from "@mantine/notifications";
 import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
+  AddAndIssueVisitRequestSchema,
+  type AddAndIssueVisitRequestDto,
   VisitCancelRequestSchema,
   type UpdateReservedVisitRequestDto,
   type VisitReadDetailDto,
@@ -29,12 +32,14 @@ import {
 import { VisitEditModal } from "src/features/visits/components/edit/VisitEditModal";
 import type { VisitEditDraft } from "src/features/visits/components/edit/visitEditDraft";
 import { VisitHistory } from "src/features/visits/components/history/VisitHistory";
+import { AddIssuedDraftModal } from "src/features/visits/components/add-issued/AddIssuedDraftModal";
 import { OrderTagStatusBadge } from "src/features/visits/components/OrderTagStatusBadge";
 import { IssueModal } from "src/features/visits/components/issuePage/IssueModal";
 import { MarkDepositModal } from "src/features/visits/components/returnPage/MarkDepositModal";
 import { ReturnModal } from "src/features/visits/components/returnPage/ReturnModal";
 import { SettleBalanceModal } from "src/features/visits/components/returnPage/SettleBalanceModal";
 import { useCancelVisit, useVisitForIssue, useVisitForReturn } from "src/features/visits/hooks/useVisits";
+import { useAddAndIssueVisit } from "src/features/visits/hooks/useAddAndIssueVisit";
 import { useUpdateReservedVisit, useVisitReadDetail } from "src/features/visits/hooks/useVisitReads";
 import {
   formatVisitDate,
@@ -54,6 +59,15 @@ import {
   isVisitVersionConflict,
   visitEditFailureMessage,
 } from "src/features/visits/utils/visitEditRequestFailure";
+import {
+  isAmbiguousAddIssuedFailure,
+  isStaleVisitVersionConflict,
+} from "src/features/visits/components/add-issued/addIssuedFailures";
+import {
+  clearPendingAddIssuedRequest,
+  getPendingAddIssuedRequest,
+  savePendingAddIssuedRequest,
+} from "src/features/visits/utils/addIssuedRequestStorage";
 
 function StatusBadge({ status }: { status: "reserved" | "issued" | "completed" | "cancelled" }) {
   const color = status === "reserved" ? "blue" : status === "issued" ? "orange" : status === "completed" ? "green" : "gray";
@@ -99,6 +113,13 @@ function VisitDetailContent({ userLogin }: { userLogin: string | null }) {
   const [settleOpened, setSettleOpened] = useState(false);
   const [depositOpened, setDepositOpened] = useState(false);
   const [cancelOpened, setCancelOpened] = useState(false);
+  const [pendingAddIssuedRequest, setPendingAddIssuedRequest] = useState<AddAndIssueVisitRequestDto | null>(() =>
+    visitId === null ? null : getPendingAddIssuedRequest(userLogin, visitId),
+  );
+  const [addIssuedOpened, setAddIssuedOpened] = useState(() => Boolean(pendingAddIssuedRequest));
+  const [addIssuedSourceVisit, setAddIssuedSourceVisit] = useState<VisitReadDetailDto | null>(null);
+  const [addIssuedStaleSnapshot, setAddIssuedStaleSnapshot] = useState<{ currentVersion: number | null } | null>(null);
+  const [addIssuedError, setAddIssuedError] = useState<string | null>(null);
   const [pendingEditRequest, setPendingEditRequest] = useState<UpdateReservedVisitRequestDto | null>(() =>
     visitId === null ? null : getPendingVisitEditRequest(userLogin, visitId),
   );
@@ -108,6 +129,7 @@ function VisitDetailContent({ userLogin }: { userLogin: string | null }) {
   const [editExpectedVersion, setEditExpectedVersion] = useState<number | null>(null);
   const [editErrorMessage, setEditErrorMessage] = useState<string | null>(null);
   const updateVisitMutation = useUpdateReservedVisit();
+  const addIssuedMutation = useAddAndIssueVisit();
   const cancelMutation = useCancelVisit();
   const cancelForm = useForm<visitCancelRequestDto>({
     initialValues: { reason: "" },
@@ -212,6 +234,95 @@ function VisitDetailContent({ userLogin }: { userLogin: string | null }) {
     setEditErrorMessage(null);
   };
 
+  const runAddIssuedCommand = async (
+    request: AddAndIssueVisitRequestDto,
+    alreadyPersisted = false,
+  ) => {
+    if (visitId === null) return;
+    if (!alreadyPersisted && !savePendingAddIssuedRequest(userLogin, visitId, request)) {
+      setAddIssuedError("Не удалось сохранить команду для безопасного повтора. Разрешите хранение данных сеанса и повторите выдачу.");
+      return;
+    }
+    setAddIssuedError(null);
+    try {
+      await addIssuedMutation.mutateAsync({ visitId, body: request });
+      clearPendingAddIssuedRequest(userLogin, visitId);
+      setPendingAddIssuedRequest(null);
+      setAddIssuedStaleSnapshot(null);
+      setAddIssuedOpened(false);
+      setAddIssuedSourceVisit(null);
+    } catch (error) {
+      if (isStaleVisitVersionConflict(error)) {
+        clearPendingAddIssuedRequest(userLogin, visitId);
+        setPendingAddIssuedRequest(null);
+        setAddIssuedStaleSnapshot({ currentVersion: null });
+        setAddIssuedError(null);
+        return;
+      }
+      if (isAmbiguousAddIssuedFailure(error)) {
+        setPendingAddIssuedRequest(request);
+        setAddIssuedError("Результат выдачи пока неизвестен. Повторите отправку этой же команды.");
+        return;
+      }
+      clearPendingAddIssuedRequest(userLogin, visitId);
+      setPendingAddIssuedRequest(null);
+      setAddIssuedError("Не удалось добавить костюм. Проверьте данные визита и повторите попытку.");
+    }
+  };
+
+  const openAddIssuedDraft = () => {
+    if (!visit || visit.status !== "issued" || pendingAddIssuedRequest || addIssuedMutation.isPending) return;
+    setAddIssuedSourceVisit(visit);
+    setAddIssuedError(null);
+    setAddIssuedStaleSnapshot(null);
+    setAddIssuedOpened(true);
+  };
+
+  const openSavedAddIssuedCommand = () => {
+    if (!visit || visit.status !== "issued" || !pendingAddIssuedRequest) return;
+    setAddIssuedSourceVisit(visit);
+    setAddIssuedError(null);
+    setAddIssuedOpened(true);
+  };
+
+  const submitAddIssuedDraft = (request: AddAndIssueVisitRequestDto) => {
+    const parsed = AddAndIssueVisitRequestSchema.safeParse(request);
+    if (!parsed.success) {
+      setAddIssuedError("Проверьте состав заказов, стоимость и полученную сумму.");
+      return;
+    }
+    void runAddIssuedCommand(parsed.data);
+  };
+
+  const retryPendingAddIssued = () => {
+    if (!pendingAddIssuedRequest) return;
+    void runAddIssuedCommand(pendingAddIssuedRequest, true);
+  };
+
+  const rebaseAddIssuedDraft = async (): Promise<VisitReadDetailDto> => {
+    const refreshed = await detailQuery.refetch();
+    if (refreshed.isError || !refreshed.data) {
+      setAddIssuedError("Не удалось обновить визит. Черновик сохранён; попробуйте обновить ещё раз.");
+      throw new Error("Не удалось обновить визит");
+    }
+    if (refreshed.data.status !== "issued") {
+      setAddIssuedError("Визит уже не выдан. Добавить костюм в него нельзя.");
+      throw new Error("Визит больше не выдан");
+    }
+    setAddIssuedStaleSnapshot(null);
+    setAddIssuedError(null);
+    setAddIssuedSourceVisit(refreshed.data);
+    return refreshed.data;
+  };
+
+  const closeAddIssuedDraft = () => {
+    if (addIssuedMutation.isPending || pendingAddIssuedRequest) return;
+    setAddIssuedOpened(false);
+    setAddIssuedSourceVisit(null);
+    setAddIssuedStaleSnapshot(null);
+    setAddIssuedError(null);
+  };
+
   if (visitId === null) {
     return <Paper withBorder p="lg"><Text c="red">Некорректный номер визита.</Text></Paper>;
   }
@@ -247,8 +358,40 @@ function VisitDetailContent({ userLogin }: { userLogin: string | null }) {
             <Button fullWidth={isMobile} variant="light" color="red" onClick={() => setCancelOpened(true)}>Отменить визит</Button>
           </Group>
         )}
-        {visit.status === "issued" && <Button fullWidth={isMobile} color="green" onClick={() => setReturnOpened(true)}>Оформить возврат</Button>}
+        {visit.status === "issued" && (
+          <Group grow={isMobile}>
+            <Button fullWidth={isMobile} variant="light" onClick={openAddIssuedDraft} disabled={Boolean(pendingAddIssuedRequest) || addIssuedMutation.isPending}>
+              Добавить и выдать
+            </Button>
+            <Button fullWidth={isMobile} color="green" onClick={() => setReturnOpened(true)}>Оформить возврат</Button>
+          </Group>
+        )}
       </Group>
+
+      {pendingAddIssuedRequest && !addIssuedOpened && (
+        <Alert color="orange" title="Результат выдачи ещё не подтверждён">
+          <Stack gap="xs">
+            <Text size="sm">
+              Сохранённая команда содержит {pendingAddIssuedRequest.orders.length} заказ(а/ов) на аренду {formatVisitMoney(
+                pendingAddIssuedRequest.orders.reduce((total, order) => total + order.rentPrice, 0),
+              )}; получено сейчас {formatVisitMoney(pendingAddIssuedRequest.additionalPayment)}.
+            </Text>
+            <Text size="sm">Повторная отправка использует то же тело запроса и идентификатор команды.</Text>
+            {addIssuedError && <Text size="sm" c="red">{addIssuedError}</Text>}
+            <Button variant="default" onClick={openSavedAddIssuedCommand} disabled={addIssuedMutation.isPending} w={{ base: "100%", sm: "fit-content" }}>
+              Открыть сохранённую команду
+            </Button>
+            <Button loading={addIssuedMutation.isPending} onClick={retryPendingAddIssued} w={{ base: "100%", sm: "fit-content" }}>
+              Повторить выдачу
+            </Button>
+          </Stack>
+        </Alert>
+      )}
+      {!addIssuedOpened && !pendingAddIssuedRequest && addIssuedError && (
+        <Alert color="red" title="Не удалось добавить костюм">
+          {addIssuedError}
+        </Alert>
+      )}
 
       <SimpleGrid cols={{ base: 1, sm: 2 }}>
         <Paper withBorder p="md" radius="md">
@@ -358,6 +501,20 @@ function VisitDetailContent({ userLogin }: { userLogin: string | null }) {
         onRetryPending={retryPendingVisitEdit}
         versionConflict={editVersionConflict}
         onRebaseVersion={rebaseVisitEditVersion}
+      />
+
+      <AddIssuedDraftModal
+        opened={addIssuedOpened}
+        onClose={closeAddIssuedDraft}
+        visitSnapshot={addIssuedSourceVisit ?? visit}
+        onConfirm={submitAddIssuedDraft}
+        pendingRequest={pendingAddIssuedRequest}
+        onRetryPending={retryPendingAddIssued}
+        retrying={addIssuedMutation.isPending}
+        locked={addIssuedMutation.isPending || Boolean(pendingAddIssuedRequest)}
+        staleSnapshot={addIssuedStaleSnapshot}
+        onRebase={rebaseAddIssuedDraft}
+        errorMessage={addIssuedError}
       />
 
       <IssueModal opened={issueOpened} onClose={() => setIssueOpened(false)} visitId={visitId} isMobile={isMobile} data={issueQuery.data} isLoading={issueQuery.isLoading} isError={issueQuery.isError} />

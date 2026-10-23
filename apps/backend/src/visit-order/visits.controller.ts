@@ -29,6 +29,7 @@ import {
   QuickIssueVisitRequest,
   VisitSettlementRequest,
   UpdateReservedVisitRequest,
+  AddAndIssueVisitRequest,
 } from './dto/visit-order.dto';
 import {
   CreateVisitResponseDto,
@@ -49,6 +50,7 @@ import {
   visitNotificationResponseDto,
   visitUnreturnedDepositsResponseDto,
   VisitReadDetailDto,
+  AddAndIssueVisitResponseDto,
 } from '@costumes/shared';
 
 function auditActor(req: RequestWithUser): VisitAuditActor {
@@ -102,6 +104,21 @@ export class VisitController {
     @Req() req: RequestWithUser,
   ): Promise<VisitReadDetailDto> {
     return this.visitOrderService.updateReservedVisit(
+      visitId,
+      dto,
+      auditActor(req),
+    );
+  }
+
+  @Post(':visitId/add-and-issue')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.OK)
+  async addAndIssueVisitOrders(
+    @Param('visitId', ParseIntPipe) visitId: number,
+    @Body() dto: AddAndIssueVisitRequest,
+    @Req() req: RequestWithUser,
+  ): Promise<AddAndIssueVisitResponseDto> {
+    return this.visitOrderService.addAndIssueVisitOrders(
       visitId,
       dto,
       auditActor(req),

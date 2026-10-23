@@ -3,6 +3,7 @@ import type {
   get_VisitOperation_getHistory,
   get_VisitOperation_list,
   patch_VisitOperation_updateReserved,
+  post_VisitOperation_addAndIssue,
 } from "./openapi-client.js";
 import { z } from "zod";
 
@@ -66,6 +67,19 @@ export const UpdateReservedVisitRequestSchema =
   schemas.Visits_UpdateReservedVisitRequest;
 export type UpdateReservedVisitResponseDto = VisitReadDetailDto;
 export const UpdateReservedVisitResponseSchema = VisitReadDetailSchema;
+export type AddAndIssueVisitOrderDto = z.infer<
+  typeof schemas.Visits_AddAndIssueVisitRequestOrder
+>;
+export type AddAndIssueVisitRequestDto = z.infer<
+  typeof schemas.Visits_AddAndIssueVisitRequest
+>;
+export const AddAndIssueVisitRequestSchema =
+  schemas.Visits_AddAndIssueVisitRequest;
+export type AddAndIssueVisitResponseDto = VisitReadDetailDto;
+export const AddAndIssueVisitResponseSchema = VisitReadDetailSchema;
+export type AddAndIssueVisitPathDto = NonNullable<
+  post_VisitOperation_addAndIssue["parameters"]["path"]
+>;
 export type UpdateReservedVisitPathDto = NonNullable<
   patch_VisitOperation_updateReserved["parameters"]["path"]
 >;

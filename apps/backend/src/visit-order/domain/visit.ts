@@ -38,7 +38,8 @@ export type VisitRuleCode =
   | 'ORDERS_NOT_ISSUED'
   | 'CANNOT_CANCEL'
   | 'BALANCE_NOT_AVAILABLE'
-  | 'CANNOT_SETTLE';
+  | 'CANNOT_SETTLE'
+  | 'CANNOT_ADD_AND_ISSUE';
 
 export class VisitRuleError extends Error {
   constructor(
@@ -69,6 +70,11 @@ export interface VisitIssueDecision {
   orderPayments: ReadonlyArray<{ orderId: number; finalPayment: number }>;
   issuePayment: number | null;
   notes: string | null;
+}
+
+export interface VisitAddAndIssueDecision {
+  addedOrders: ReadonlyArray<{ costumeId: number; finalPayment: number }>;
+  issuePayment: number | null;
 }
 
 export interface VisitUnissueDecision {
@@ -151,6 +157,40 @@ export class Visit {
       notes: notes
         ? `${this.snapshot.notes ? `${this.snapshot.notes}\n` : ''}${notes}`
         : this.snapshot.notes,
+    };
+  }
+
+  addAndIssue(
+    orders: ReadonlyArray<{ costumeId: number; rentPrice: number }>,
+    additionalPayment: number,
+    existingCostumeIds: ReadonlyArray<number> = [],
+  ): VisitAddAndIssueDecision {
+    if (this.snapshot.status !== 'issued') {
+      throw new VisitRuleError('CANNOT_ADD_AND_ISSUE', {
+        status: this.snapshot.status,
+      });
+    }
+    if (this.snapshot.orders.some((order) => order.status !== 'issued')) {
+      throw new VisitRuleError('ORDERS_NOT_ISSUED');
+    }
+    Visit.validateIssuePayment(additionalPayment);
+    const allCostumeIds = [
+      ...existingCostumeIds,
+      ...orders.map((order) => order.costumeId),
+    ];
+    if (new Set(allCostumeIds).size !== allCostumeIds.length) {
+      throw new VisitRuleError('DUPLICATE_COSTUME');
+    }
+
+    let remainingPayment = additionalPayment;
+    const addedOrders = orders.map((order) => {
+      const finalPayment = Math.min(remainingPayment, order.rentPrice);
+      remainingPayment -= finalPayment;
+      return { costumeId: order.costumeId, finalPayment };
+    });
+    return {
+      addedOrders,
+      issuePayment: additionalPayment > 0 ? additionalPayment : null,
     };
   }
 

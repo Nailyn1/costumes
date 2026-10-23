@@ -132,6 +132,18 @@ export namespace Schemas {
     hasMore: boolean;
   } & Record<string, unknown>;
   export type Costumes_UpdateCostumeRequest = Partial<{ name: string }> & Record<string, unknown>;
+  export type Visits_AddAndIssueVisitRequestOrder = {
+    childId: number;
+    costumeId: number;
+    rentPrice: number;
+    notes?: string;
+  } & Record<string, unknown>;
+  export type Visits_AddAndIssueVisitRequest = {
+    commandId: string;
+    expectedVersion: number;
+    orders: Array<Visits_AddAndIssueVisitRequestOrder>;
+    additionalPayment: number;
+  } & Record<string, unknown>;
   export type Visits_VisitSettlementRequest = { kind: "debt_payment" | "customer_refund"; amount: number } & Record<
     string,
     unknown
@@ -298,6 +310,24 @@ export namespace Schemas {
     status: "pending" | "sent" | "delivered" | "failed" | "read";
     createdAt: string;
   } & Record<string, unknown>;
+  export type Visits_TagStatus = "written" | "not_written" | "not_required";
+  export type Visits_VisitHistoryOrderSnapshot = {
+    orderId: number;
+    childId?: number;
+    childName: string;
+    costumeId?: number;
+    costumeName: string;
+    inventoryCode: Costumes_InventoryCode;
+    rentPrice: number;
+    prepaymentAmount: number;
+    tagStatus?: Visits_TagStatus;
+    notes?: string | null;
+  } & Record<string, unknown>;
+  export type Visits_OrdersAddedAndIssuedHistoryPayload = {
+    kind: "orders.added_and_issued";
+    visitCode: Costumes_VisitCode;
+    orders: Array<Visits_VisitHistoryOrderSnapshot>;
+  } & Record<string, unknown>;
   export type Visits_PaginatedReservedResponse = {
     items: Array<Visits_GetReservedResponse>;
     total: number;
@@ -331,20 +361,8 @@ export namespace Schemas {
     | "visit.completed"
     | "deposit.returned"
     | "money.received"
-    | "money.refunded";
-  export type Visits_TagStatus = "written" | "not_written" | "not_required";
-  export type Visits_VisitHistoryOrderSnapshot = {
-    orderId: number;
-    childId?: number;
-    childName: string;
-    costumeId?: number;
-    costumeName: string;
-    inventoryCode: Costumes_InventoryCode;
-    rentPrice: number;
-    prepaymentAmount: number;
-    tagStatus?: Visits_TagStatus;
-    notes?: string | null;
-  } & Record<string, unknown>;
+    | "money.refunded"
+    | "orders.added_and_issued";
   export type Visits_VisitCreatedHistoryPayload = {
     kind: "visit.created";
     visitCode: Costumes_VisitCode;
@@ -429,7 +447,8 @@ export namespace Schemas {
     | Visits_VisitCompletedHistoryPayload
     | Visits_DepositReturnedHistoryPayload
     | Visits_MoneyReceivedHistoryPayload
-    | Visits_MoneyRefundedHistoryPayload;
+    | Visits_MoneyRefundedHistoryPayload
+    | Visits_OrdersAddedAndIssuedHistoryPayload;
   export type Visits_VisitHistoryEvent = {
     id: number;
     occurredAt: string;
@@ -1069,6 +1088,18 @@ export namespace Endpoints {
     };
     responses: { 200: Schemas.Visits_VisitReadDetail; default: Schemas.Common_Error };
   };
+  export type post_VisitOperation_addAndIssue = {
+    method: "POST";
+    path: "/visits/{visitId}/add-and-issue";
+    requestFormat: "json";
+    responseFormat: "json";
+    parameters: {
+      path: { visitId: number };
+
+      body: Schemas.Visits_AddAndIssueVisitRequest;
+    };
+    responses: { 200: Schemas.Visits_VisitReadDetail; default: Schemas.Common_Error };
+  };
   export type get_VisitOperation_getBalance = {
     method: "GET";
     path: "/visits/{visitId}/balance";
@@ -1215,6 +1246,7 @@ export type EndpointByMethod = {
     "/visits/preview-code": Endpoints.post_VisitOperation_previewCode;
     "/visits/quick-issue": Endpoints.post_VisitOperation_quickIssue;
     "/visits/{orderId}/mark-tag-written": Endpoints.post_VisitOperation_markTagWritten;
+    "/visits/{visitId}/add-and-issue": Endpoints.post_VisitOperation_addAndIssue;
     "/visits/{visitId}/cancel": Endpoints.post_VisitOperation_cancel;
     "/visits/{visitId}/complete-return": Endpoints.post_VisitOperation_completeReturn;
     "/visits/{visitId}/issue": Endpoints.post_VisitOperation_issue;

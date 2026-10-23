@@ -52,6 +52,55 @@ describe('Visit creation rules', () => {
 });
 
 describe('Visit transitions', () => {
+  it('adds issued orders to an issued visit without changing old order payments', () => {
+    const snapshot = {
+      ...reserved,
+      status: 'issued' as const,
+      orders: reserved.orders.map((order) => ({
+        ...order,
+        status: 'issued' as const,
+      })),
+    };
+    expect(
+      Visit.from(snapshot).addAndIssue(
+        [
+          { costumeId: 3, rentPrice: 4000 },
+          { costumeId: 4, rentPrice: 3000 },
+        ],
+        5000,
+        [1, 2],
+      ),
+    ).toEqual({
+      addedOrders: [
+        { costumeId: 3, finalPayment: 4000 },
+        { costumeId: 4, finalPayment: 1000 },
+      ],
+      issuePayment: 5000,
+    });
+    expect(() =>
+      Visit.from(snapshot).addAndIssue(
+        [{ costumeId: 1, rentPrice: 100 }],
+        0,
+        [1, 2],
+      ),
+    ).toThrow(new VisitRuleError('DUPLICATE_COSTUME'));
+  });
+
+  it('rejects add-and-issue unless the visit and all old orders are issued', () => {
+    expect(() =>
+      Visit.from(reserved).addAndIssue([{ costumeId: 3, rentPrice: 100 }], 0),
+    ).toThrow(
+      new VisitRuleError('CANNOT_ADD_AND_ISSUE', { status: 'reserved' }),
+    );
+    expect(() =>
+      Visit.from({
+        ...reserved,
+        status: 'issued',
+        orders: [{ ...reserved.orders[0], status: 'reserved' }],
+      }).addAndIssue([{ costumeId: 3, rentPrice: 100 }], 0),
+    ).toThrow(new VisitRuleError('ORDERS_NOT_ISSUED'));
+  });
+
   it('issues every order, caps historic finalPayment but records full payment', () => {
     const decision = Visit.from(reserved).issue(9000, 'Выдано');
     expect(decision).toEqual({
