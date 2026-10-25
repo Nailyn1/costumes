@@ -33,7 +33,11 @@
 
 ## План
 
-<!-- заполняется при взятии в работу -->
+1. **shared** (первым коммитом, по нему пишется фронтенд T-112): `CostumePhoto`, `CostumePhotoSummary` (`coverThumbUrl?`, `photoCount`) в `Costume` и в заказах бирок / выдачи / возврата / деталей визита; multipart-загрузка, список, порядок, удаление.
+2. **backend**: `S3Module` (`src/storage/`), миграция `CostumePhoto`, модуль `costume-photos` (контроллер, сервис, проверка сигнатуры, лимиты multer), `CostumePhotoSummaryService` для `coverThumbUrl/photoCount` в костюмах и заказах.
+3. **infra**: `client_max_body_size 6m` для `/api/`, `.env.example`.
+4. **тесты**: unit сервиса фото (мок S3 и Prisma) + integration (мок `S3StorageService` в `test-app.ts`).
+5. **доки**: `architecture.md` (S3, ключи, env), `setup.md` (env), `backend.md`/`domain.md` при необходимости.
 
 ## Результат
 

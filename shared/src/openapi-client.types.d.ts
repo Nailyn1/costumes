@@ -104,23 +104,57 @@ export namespace Schemas {
     costumeId: number;
     name: string;
     inventoryCode: Costumes_InventoryCode;
+    /**
+     * URL превью обложки (первое фото по порядку); нет фото — поле отсутствует.
+     */
+    coverThumbUrl?: string;
+    photoCount: number;
     status: Costumes_CostumeStatus;
   } & Record<string, unknown>;
-  export type Costumes_Costume = { costumeId: number; name: string; inventoryCode: Costumes_InventoryCode } & Record<
-    string,
-    unknown
-  >;
+  export type Costumes_Costume = {
+    costumeId: number;
+    name: string;
+    inventoryCode: Costumes_InventoryCode;
+    /**
+     * URL превью обложки (первое фото по порядку); нет фото — поле отсутствует.
+     */
+    coverThumbUrl?: string;
+    photoCount: number;
+  } & Record<string, unknown>;
   export type Costumes_CostumeFullAvailability = {
     costumeId: number;
     name: string;
     inventoryCode: Costumes_InventoryCode;
+    /**
+     * URL превью обложки (первое фото по порядку); нет фото — поле отсутствует.
+     */
+    coverThumbUrl?: string;
+    photoCount: number;
     periods: Array<Costumes_AvailabilityPeriod>;
     noPeriodsMessage: string | null;
+  } & Record<string, unknown>;
+  export type Costumes_CostumePhoto = {
+    id: number;
+    /**
+     * Публичный URL основного фото (~1600 px).
+     */
+    url: string;
+    /**
+     * Публичный URL превью (~320 px).
+     */
+    thumbUrl: string;
+    width: number;
+    height: number;
   } & Record<string, unknown>;
   export type Costumes_CostumeSearchResult = {
     costumeId: number;
     name: string;
     inventoryCode: Costumes_InventoryCode;
+    /**
+     * URL превью обложки (первое фото по порядку); нет фото — поле отсутствует.
+     */
+    coverThumbUrl?: string;
+    photoCount: number;
     display: string;
   } & Record<string, unknown>;
   export type Costumes_CreateCostumeRequest = { name: string } & Record<string, unknown>;
@@ -131,7 +165,26 @@ export namespace Schemas {
     limit: number;
     hasMore: boolean;
   } & Record<string, unknown>;
+  export type Costumes_PhotoDimension = number;
+  export type Costumes_ReorderCostumePhotosRequest = {
+    /**
+     * Все id активных фото костюма в новом порядке; первое — обложка.
+     */
+    photoIds: Array<number>;
+  } & Record<string, unknown>;
   export type Costumes_UpdateCostumeRequest = Partial<{ name: string }> & Record<string, unknown>;
+  export type Costumes_UploadCostumePhotoForm = {
+    /**
+     * Основное фото: image/jpeg или image/webp, до 2 МБ.
+     */
+    image: unknown;
+    /**
+     * Превью: image/jpeg или image/webp, до 200 КБ.
+     */
+    thumb: unknown;
+    width: Costumes_PhotoDimension;
+    height: Costumes_PhotoDimension;
+  } & Record<string, unknown>;
   export type Visits_AddAndIssueVisitRequestOrder = {
     childId: number;
     costumeId: number;
@@ -299,6 +352,11 @@ export namespace Schemas {
     rentPrice: number;
     prepaymentAmount: number;
     notes: string;
+    /**
+     * URL превью обложки (первое фото по порядку); нет фото — поле отсутствует.
+     */
+    coverThumbUrl?: string;
+    photoCount: number;
   } & Record<string, unknown>;
   export type Visits_NotWrittenOrdersResponse = { items: Array<Visits_Order>; message?: string } & Record<
     string,
@@ -573,6 +631,20 @@ export namespace Schemas {
     reason: string;
   }> &
     Record<string, unknown>;
+  export type Visits_VisitIssueOrder = {
+    orderId: number;
+    childName: Children_ChildName;
+    costumeName: string;
+    inventoryCode: Costumes_InventoryCode;
+    rentPrice: number;
+    prepaymentAmount: number;
+    tagStatus: Visits_TagStatus;
+    /**
+     * URL превью обложки (первое фото по порядку); нет фото — поле отсутствует.
+     */
+    coverThumbUrl?: string;
+    photoCount: number;
+  } & Record<string, unknown>;
   export type Visits_VisitForIssueResponse = {
     visitId: number;
     visitCode: Costumes_VisitCode;
@@ -586,7 +658,7 @@ export namespace Schemas {
     totalPrepayment: number;
     remainingToPay: number;
     notes: string;
-    orders: Array<Visits_VisitOrder>;
+    orders: Array<Visits_VisitIssueOrder>;
   } & Record<string, unknown>;
   export type Visits_VisitReturnOrder = {
     orderId: number;
@@ -597,6 +669,11 @@ export namespace Schemas {
     prepaymentAmount: number;
     finalPayment: number;
     returned: boolean;
+    /**
+     * URL превью обложки (первое фото по порядку); нет фото — поле отсутствует.
+     */
+    coverThumbUrl?: string;
+    photoCount: number;
   } & Record<string, unknown>;
   export type Visits_VisitForReturnResponse = {
     visitId: number;
@@ -629,6 +706,11 @@ export namespace Schemas {
     prepaymentAmount: number;
     finalPayment?: number;
     notes?: string;
+    /**
+     * URL превью обложки (первое фото по порядку); нет фото — поле отсутствует.
+     */
+    coverThumbUrl?: string;
+    photoCount: number;
   } & Record<string, unknown>;
   export type Visits_VisitReadMoneyOperation = {
     id: number;
@@ -914,6 +996,56 @@ export namespace Endpoints {
       path: { costumeId: number };
     };
     responses: { 200: Schemas.Costumes_CostumeFullAvailability; default: Schemas.Common_Error };
+  };
+  /**
+   * Загрузка через бэкенд, multipart/form-data. Лимит — 15 фото на костюм (409).
+   */
+  export type post_CostumePhotoOperations_upload = {
+    method: "POST";
+    path: "/costumes/{costumeId}/photos";
+    requestFormat: "form-data";
+    responseFormat: "json";
+    parameters: {
+      path: { costumeId: number };
+
+      body: Schemas.Costumes_UploadCostumePhotoForm;
+    };
+    responses: { 201: Schemas.Costumes_CostumePhoto; default: Schemas.Common_Error };
+  };
+  export type get_CostumePhotoOperations_list = {
+    method: "GET";
+    path: "/costumes/{costumeId}/photos";
+    requestFormat: "json";
+    responseFormat: "json";
+    parameters: {
+      path: { costumeId: number };
+    };
+    responses: { 200: Array<Schemas.Costumes_CostumePhoto>; default: Schemas.Common_Error };
+  };
+  /**
+   * Объявлен до `{photoId}`: статический путь.
+   */
+  export type patch_CostumePhotoOperations_reorder = {
+    method: "PATCH";
+    path: "/costumes/{costumeId}/photos/order";
+    requestFormat: "json";
+    responseFormat: "json";
+    parameters: {
+      path: { costumeId: number };
+
+      body: Schemas.Costumes_ReorderCostumePhotosRequest;
+    };
+    responses: { 200: Array<Schemas.Costumes_CostumePhoto>; default: Schemas.Common_Error };
+  };
+  export type delete_CostumePhotoOperations_delete = {
+    method: "DELETE";
+    path: "/costumes/{costumeId}/photos/{photoId}";
+    requestFormat: "json";
+    responseFormat: "json";
+    parameters: {
+      path: { costumeId: number; photoId: number };
+    };
+    responses: { 204: unknown; default: Schemas.Common_Error };
   };
   export type post_VisitOperation_create = {
     method: "POST";
@@ -1246,6 +1378,7 @@ export type EndpointByMethod = {
     "/clients": Endpoints.post_ClientOperations_create;
     "/clients/{clientId}/blacklist": Endpoints.post_ClientOperations_addClientInBlackList;
     "/costumes": Endpoints.post_CostumeOperations_create;
+    "/costumes/{costumeId}/photos": Endpoints.post_CostumePhotoOperations_upload;
     "/visits": Endpoints.post_VisitOperation_create;
     "/visits/preview-code": Endpoints.post_VisitOperation_previewCode;
     "/visits/quick-issue": Endpoints.post_VisitOperation_quickIssue;
@@ -1262,6 +1395,7 @@ export type EndpointByMethod = {
     "/children/{childId}": Endpoints.patch_ChildOperations_update;
     "/clients/{clientId}": Endpoints.patch_ClientOperations_update;
     "/costumes/{costumeId}": Endpoints.patch_CostumeOperations_update;
+    "/costumes/{costumeId}/photos/order": Endpoints.patch_CostumePhotoOperations_reorder;
     "/visits/{visitId}": Endpoints.patch_VisitOperation_updateReserved;
   };
   delete: {
@@ -1269,6 +1403,7 @@ export type EndpointByMethod = {
     "/clients/{clientId}": Endpoints.delete_ClientOperations_delete;
     "/clients/{clientId}/blacklist": Endpoints.delete_ClientOperations_removeClientFromBlackList;
     "/costumes/{costumeId}": Endpoints.delete_CostumeOperations_delete;
+    "/costumes/{costumeId}/photos/{photoId}": Endpoints.delete_CostumePhotoOperations_delete;
   };
   get: {
     "/clients/detail/{clientId}": Endpoints.get_ClientOperations_getClientDetail;
@@ -1279,6 +1414,7 @@ export type EndpointByMethod = {
     "/costumes/search": Endpoints.get_CostumeOperations_searchAvailability;
     "/costumes/search-available": Endpoints.get_CostumeOperations_searchAvailable;
     "/costumes/{costumeId}/availability": Endpoints.get_CostumeOperations_getDetailedAvailability;
+    "/costumes/{costumeId}/photos": Endpoints.get_CostumePhotoOperations_list;
     "/visits": Endpoints.get_VisitOperation_list;
     "/visits/issued": Endpoints.get_VisitOperation_getIssuedVisits;
     "/visits/issued-for-return": Endpoints.get_VisitOperation_getIssuedForReturn;

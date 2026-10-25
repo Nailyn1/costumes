@@ -91,6 +91,7 @@ model Order {
   rentPrice: int32;
   prepaymentAmount: int32;
   notes: string;
+  ...CostumeApp.Costumes.CostumePhotoSummary;
 }
 
 model NotWrittenOrdersResponse {
@@ -256,6 +257,7 @@ model VisitReadOrder {
   prepaymentAmount: int32;
   finalPayment?: int32;
   notes?: string;
+  ...CostumeApp.Costumes.CostumePhotoSummary;
 }
 
 model VisitReadDeposit {
@@ -530,6 +532,11 @@ model VisitsSearchResponse {
     costumesNames: string;
 }
 
+model VisitIssueOrder {
+  ...VisitOrder;
+  ...CostumeApp.Costumes.CostumePhotoSummary;
+}
+
 model VisitForIssueResponse {
   visitId: int32;
   visitCode: VisitCode;
@@ -543,7 +550,7 @@ model VisitForIssueResponse {
   totalPrepayment: int32;
   remainingToPay: int32;
   notes: string;
-  orders: VisitOrder[];
+  orders: VisitIssueOrder[];
 }
 
 model IssuedForReturnResponse {
@@ -578,6 +585,7 @@ model VisitReturnOrder {
   prepaymentAmount: int32;
   finalPayment: int32;
   returned: boolean;
+  ...CostumeApp.Costumes.CostumePhotoSummary;
 }
 
 model VisitDepositInfo {

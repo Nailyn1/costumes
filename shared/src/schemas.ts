@@ -35,6 +35,10 @@ export const schemas = {
   Costumes_CostumeFullAvailability: generated.Costumes_CostumeFullAvailability,
   Costumes_CostumeSearchResult: generated.Costumes_CostumeSearchResult,
   Costumes_CreateCostumeRequest: generated.Costumes_CreateCostumeRequest,
+  Costumes_CostumePhoto: generated.Costumes_CostumePhoto,
+  Costumes_ReorderCostumePhotosRequest:
+    generated.Costumes_ReorderCostumePhotosRequest,
+  Costumes_UploadCostumePhotoForm: generated.Costumes_UploadCostumePhotoForm,
   Costumes_GetCostumesList: generated.Costumes_GetCostumesList,
   Costumes_UpdateCostumeRequest: generated.Costumes_UpdateCostumeRequest,
   Visits_CompleteReturnRequest: generated.Visits_CompleteReturnRequest,
