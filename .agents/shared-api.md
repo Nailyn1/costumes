@@ -13,8 +13,7 @@ shared/
 │   │   ├── auth.tsp
 │   │   ├── clients.tsp       # namespace CostumeApp.Clients
 │   │   ├── children.tsp      # namespace CostumeApp.Children
-│   │   ├── costume-categories.tsp # namespace CostumeApp.CostumeCategories (справочник категорий костюмов)
-│   │   ├── costumes.tsp      # namespace CostumeApp.Costumes (+ scalars InventoryCode, VisitCode)
+│   │   ├── costumes.tsp      # namespace CostumeApp.Costumes (+ scalars InventoryCode, VisitCode, справочник категорий костюмов)
 │   │   └── visits.tsp        # namespace CostumeApp.Visits (+ TimeString)
 │   ├── tspconfig.yaml        # emitter @typespec/openapi3, OpenAPI 3.1
 │   └── tsp-output/           # сгенерированный openapi.yaml (в .gitignore)
@@ -24,7 +23,6 @@ shared/
 │   ├── schemas.ts            # ручной namespace `schemas.*` для DTO экспорта
 │   ├── auth.ts               # ручные экспорты: типы *Dto и схемы *Schema
 │   ├── children-client.ts
-│   ├── costume-categories.ts
 │   ├── costumes.ts
 │   ├── visits-orders.ts
 │   └── index.ts              # реэкспорт всего

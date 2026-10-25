@@ -1,16 +1,22 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
 import {
+  CostumeCategoryDto,
+  CostumeCategoryNodeDto,
   CostumesAvailabilityResponseDto,
   CostumesListResponseDto,
   CostumesSearchAvailableResponseDto,
   CostumesSearchResponseDto,
+  CreateCostumeCategoryRequestDto,
   CreateCostumesRequestDto,
   CreateUpdateCostumesResponseDto,
+  findDuplicateCostumePart,
+  normalizeCostumeParts,
+  UpdateCostumeCategoryRequestDto,
   UpdateCostumesRequestDto,
 } from '@costumes/shared';
 import { Prisma } from '../prisma/generated/client';
@@ -26,23 +32,19 @@ import {
   scoreTextMatch,
   sortBySearchScore,
 } from '../common/utils/search.utils';
-import {
-  costumeCatalogInclude,
-  toCostumeCatalogFields,
-} from './costume.mapper';
-import {
-  findDuplicateCostumePart,
-  normalizeCostumeParts,
-} from '@costumes/shared';
+import { toCostumeCatalogFields } from './costume.mapper';
 import {
   assertHeightRange,
   buildCostumeFilterWhere,
   CostumeFilters,
 } from './costume-filters';
+import { CostumesRepository } from './costumes.repository';
 
 @Injectable()
 export class CostumesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly repo: CostumesRepository) {}
+
+  // --- костюмы ---
 
   async createCostume(
     data: CreateCostumesRequestDto,
@@ -53,17 +55,14 @@ export class CostumesService {
       await this.assertCategoryActive(data.categoryId);
     }
 
-    const costume = await this.prisma.costume.create({
-      data: {
-        name: data.name,
-        categoryId: data.categoryId,
-        gender: data.gender,
-        heightFrom: data.heightFrom,
-        heightTo: data.heightTo,
-        sizeLabel: data.sizeLabel?.trim() || null,
-        parts,
-      },
-      include: costumeCatalogInclude,
+    const costume = await this.repo.create({
+      name: data.name,
+      categoryId: data.categoryId,
+      gender: data.gender,
+      heightFrom: data.heightFrom,
+      heightTo: data.heightTo,
+      sizeLabel: data.sizeLabel?.trim() || null,
+      parts,
     });
     return toCostumeCatalogFields(costume);
   }
@@ -74,10 +73,7 @@ export class CostumesService {
   ): Promise<CreateUpdateCostumesResponseDto> {
     if (data.heightFrom !== undefined || data.heightTo !== undefined) {
       // Диапазон проверяем вместе с тем, что уже сохранено
-      const current = await this.prisma.costume.findFirst({
-        where: { id: costumeId, deletedAt: null },
-        select: { heightFrom: true, heightTo: true },
-      });
+      const current = await this.repo.findHeightRange(costumeId);
       if (!current) {
         throw new NotFoundException(`Костюм с ID ${costumeId} не найден`);
       }
@@ -91,42 +87,28 @@ export class CostumesService {
       await this.assertCategoryActive(data.categoryId);
     }
 
-    const costume = await this.prisma.costume
-      .update({
-        where: { id: costumeId, deletedAt: null },
-        data: {
-          name: data.name,
-          categoryId: data.categoryId,
-          gender: data.gender,
-          heightFrom: data.heightFrom,
-          heightTo: data.heightTo,
-          sizeLabel:
-            data.sizeLabel === undefined
-              ? undefined
-              : data.sizeLabel?.trim() || null,
-          parts,
-        },
-        include: costumeCatalogInclude,
-      })
-      .catch((err) => {
-        if (err.code === 'P2025') {
-          throw new NotFoundException(`Костюм с ID ${costumeId} не найден`);
-        }
-        throw err;
-      });
-
+    const costume = await this.repo.update(costumeId, {
+      name: data.name,
+      categoryId: data.categoryId,
+      gender: data.gender,
+      heightFrom: data.heightFrom,
+      heightTo: data.heightTo,
+      sizeLabel:
+        data.sizeLabel === undefined
+          ? undefined
+          : data.sizeLabel?.trim() || null,
+      parts,
+    });
+    if (!costume) {
+      throw new NotFoundException(`Костюм с ID ${costumeId} не найден`);
+    }
     return toCostumeCatalogFields(costume);
   }
 
   async deleteCostume(costumeId: number): Promise<void> {
-    await this.prisma.costume
-      .update({
-        where: { id: costumeId, deletedAt: null },
-        data: { deletedAt: new Date() },
-      })
-      .catch(() => {
-        throw new NotFoundException(`Костюм с ID ${costumeId} не найден`);
-      });
+    if (!(await this.repo.softDelete(costumeId))) {
+      throw new NotFoundException(`Костюм с ID ${costumeId} не найден`);
+    }
   }
 
   async searchCostume(
@@ -161,16 +143,6 @@ export class CostumesService {
       })),
     ];
 
-    const include = {
-      ...costumeCatalogInclude,
-      orders: {
-        where: { deletedAt: null },
-        include: {
-          child: true,
-          visit: true,
-        },
-      },
-    } satisfies Prisma.CostumeInclude;
     const exactText = buildExactTextFilter(search);
     const exactFilters: Prisma.CostumeWhereInput[] = [
       { name: exactText },
@@ -183,22 +155,14 @@ export class CostumesService {
       },
     ];
     const [exactCostumes, broadCostumes] = await Promise.all([
-      this.prisma.costume.findMany({
-        where: {
-          AND: [...catalogWhere, { OR: exactFilters }],
-          deletedAt: null,
-        },
-        include,
-        take: 20,
-      }),
-      this.prisma.costume.findMany({
-        where: {
-          AND: [...catalogWhere, { OR: searchFilters }],
-          deletedAt: null,
-        },
-        include,
-        take: 20,
-      }),
+      this.repo.searchWithOrders(
+        { AND: [...catalogWhere, { OR: exactFilters }], deletedAt: null },
+        20,
+      ),
+      this.repo.searchWithOrders(
+        { AND: [...catalogWhere, { OR: searchFilters }], deletedAt: null },
+        20,
+      ),
     ]);
     const costumes = mergeUniqueById(exactCostumes, broadCostumes);
 
@@ -252,10 +216,7 @@ export class CostumesService {
       if (!Number.isSafeInteger(excludeVisitId) || excludeVisitId < 1) {
         throw new BadRequestException('Некорректный ID визита');
       }
-      const visit = await this.prisma.visit.findFirst({
-        where: { id: excludeVisitId, deletedAt: null },
-        select: { id: true, status: true },
-      });
+      const visit = await this.repo.findActiveVisit(excludeVisitId);
       if (!visit) {
         throw new NotFoundException(`Визит с ID ${excludeVisitId} не найден`);
       }
@@ -275,50 +236,44 @@ export class CostumesService {
       })),
     ];
 
-    const include = {
-      ...costumeCatalogInclude,
-      orders: {
-        where: {
+    const busyOrders = {
+      where: {
+        deletedAt: null,
+        status: { in: ['reserved', 'issued'] },
+        visit: {
           deletedAt: null,
-          status: { in: ['reserved', 'issued'] },
-          visit: {
-            deletedAt: null,
-            status: { not: 'cancelled' },
-            ...(excludeVisitId === undefined
-              ? {}
-              : { id: { not: excludeVisitId } }),
-            AND: [
-              { startDateTime: { lt: requestedEnd } },
-              { endDateTime: { gt: requestedStart } },
-            ],
-          },
-        },
-        include: {
-          visit: true,
+          status: { not: 'cancelled' },
+          ...(excludeVisitId === undefined
+            ? {}
+            : { id: { not: excludeVisitId } }),
+          AND: [
+            { startDateTime: { lt: requestedEnd } },
+            { endDateTime: { gt: requestedStart } },
+          ],
         },
       },
-    } satisfies Prisma.CostumeInclude;
+      include: {
+        visit: true,
+      },
+    } satisfies Prisma.CostumeInclude['orders'];
     const exactText = buildExactTextFilter(search);
     const [exactCostumes, broadCostumes] = await Promise.all([
-      this.prisma.costume.findMany({
-        where: {
+      this.repo.searchWithBusyOrders(
+        {
           AND: [
             ...catalogWhere,
             { OR: [{ name: exactText }, { inventoryCode: exactText }] },
           ],
           deletedAt: null,
         },
-        include,
-        take: 30,
-      }),
-      this.prisma.costume.findMany({
-        where: {
-          AND: [...catalogWhere, { OR: searchFilters }],
-          deletedAt: null,
-        },
-        include,
-        take: 30,
-      }),
+        30,
+        busyOrders,
+      ),
+      this.repo.searchWithBusyOrders(
+        { AND: [...catalogWhere, { OR: searchFilters }], deletedAt: null },
+        30,
+        busyOrders,
+      ),
     ]);
     const costumes = mergeUniqueById(exactCostumes, broadCostumes);
 
@@ -338,33 +293,7 @@ export class CostumesService {
   async costumesAvailability(
     costumeId: number,
   ): Promise<CostumesAvailabilityResponseDto> {
-    const costume = await this.prisma.costume.findUnique({
-      where: {
-        id: costumeId,
-        deletedAt: null,
-      },
-      include: {
-        ...costumeCatalogInclude,
-        orders: {
-          where: {
-            status: { in: ['reserved', 'issued'] },
-            deletedAt: null,
-            visit: {
-              deletedAt: null,
-              status: { not: 'cancelled' },
-            },
-          },
-          include: {
-            visit: true,
-            child: true,
-            client: true,
-          },
-          orderBy: {
-            startDateTime: 'asc',
-          },
-        },
-      },
-    });
+    const costume = await this.repo.findWithActiveOrders(costumeId);
 
     if (!costume) {
       throw new NotFoundException(`Костюм с ID ${costumeId} не найден`);
@@ -406,35 +335,11 @@ export class CostumesService {
   ): Promise<CostumesListResponseDto> {
     const skip = (page - 1) * limit;
 
-    const whereCondition: Prisma.CostumeWhereInput = {
-      deletedAt: null,
-      AND: buildCostumeFilterWhere(filters),
-    };
-
-    const [rawItems, total] = await this.prisma.$transaction([
-      this.prisma.costume.findMany({
-        where: whereCondition,
-        skip,
-        take: limit,
-        select: {
-          id: true,
-          name: true,
-          inventoryCode: true,
-          gender: true,
-          heightFrom: true,
-          heightTo: true,
-          sizeLabel: true,
-          parts: true,
-          category: costumeCatalogInclude.category,
-        },
-        orderBy: {
-          id: 'desc',
-        },
-      }),
-      this.prisma.costume.count({
-        where: whereCondition,
-      }),
-    ]);
+    const [rawItems, total] = await this.repo.listPage(
+      { deletedAt: null, AND: buildCostumeFilterWhere(filters) },
+      skip,
+      limit,
+    );
 
     const items = rawItems.map(toCostumeCatalogFields);
 
@@ -446,6 +351,80 @@ export class CostumesService {
       hasMore: skip + items.length < total,
     };
   }
+
+  // --- справочник категорий ---
+
+  async listCategories(): Promise<CostumeCategoryNodeDto[]> {
+    const roots = await this.repo.listRootCategories();
+    return roots.map((root) => ({
+      id: root.id,
+      name: root.name,
+      sortOrder: root.sortOrder,
+      children: root.children.map((child) => ({
+        id: child.id,
+        name: child.name,
+        sortOrder: child.sortOrder,
+      })),
+    }));
+  }
+
+  async createCategory(
+    data: CreateCostumeCategoryRequestDto,
+  ): Promise<CostumeCategoryDto> {
+    const name = data.name.trim();
+    const parentId = data.parentId ?? null;
+
+    if (parentId !== null) {
+      const parent = await this.repo.findActiveCategory(parentId);
+      if (!parent) {
+        throw new NotFoundException(`Категория с ID ${parentId} не найдена`);
+      }
+      if (parent.parentId !== null) {
+        throw new BadRequestException(
+          'Подкатегорию нельзя создать внутри другой подкатегории',
+        );
+      }
+    }
+
+    await this.assertCategoryNameFree(name, parentId);
+
+    const last = await this.repo.lastCategorySortOrder(parentId);
+    return this.toCategoryDto(
+      await this.repo.createCategory({ name, parentId, sortOrder: last + 1 }),
+    );
+  }
+
+  async updateCategory(
+    categoryId: number,
+    data: UpdateCostumeCategoryRequestDto,
+  ): Promise<CostumeCategoryDto> {
+    const category = await this.findActiveCategory(categoryId);
+    const name = data.name?.trim();
+
+    if (name !== undefined && name !== category.name) {
+      await this.assertCategoryNameFree(name, category.parentId, categoryId);
+    }
+
+    return this.toCategoryDto(
+      await this.repo.updateCategory(categoryId, {
+        name,
+        sortOrder: data.sortOrder,
+      }),
+    );
+  }
+
+  async deleteCategory(categoryId: number): Promise<void> {
+    await this.findActiveCategory(categoryId);
+
+    if ((await this.repo.countActiveSubcategories(categoryId)) > 0) {
+      throw new ConflictException(
+        'Нельзя удалить категорию, пока в ней есть подкатегории',
+      );
+    }
+    await this.repo.softDeleteCategory(categoryId);
+  }
+
+  // --- вспомогательное ---
 
   /** Нормализует состав из запроса; `undefined` — состав не меняем. */
   private prepareParts(
@@ -468,12 +447,40 @@ export class CostumesService {
   }
 
   private async assertCategoryActive(categoryId: number): Promise<void> {
-    const category = await this.prisma.costumeCategory.findFirst({
-      where: { id: categoryId, deletedAt: null },
-      select: { id: true },
-    });
-    if (!category) {
+    if (!(await this.repo.categoryExists(categoryId))) {
       throw new BadRequestException(`Категория с ID ${categoryId} не найдена`);
     }
+  }
+
+  private async findActiveCategory(categoryId: number) {
+    const category = await this.repo.findActiveCategory(categoryId);
+    if (!category) {
+      throw new NotFoundException(`Категория с ID ${categoryId} не найдена`);
+    }
+    return category;
+  }
+
+  private async assertCategoryNameFree(
+    name: string,
+    parentId: number | null,
+    exceptId?: number,
+  ): Promise<void> {
+    if (await this.repo.categoryNameTaken(name, parentId, exceptId)) {
+      throw new ConflictException(`Категория «${name}» уже существует`);
+    }
+  }
+
+  private toCategoryDto(category: {
+    id: number;
+    name: string;
+    parentId: number | null;
+    sortOrder: number;
+  }): CostumeCategoryDto {
+    return {
+      id: category.id,
+      name: category.name,
+      parentId: category.parentId,
+      sortOrder: category.sortOrder,
+    };
   }
 }

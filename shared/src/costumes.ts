@@ -51,3 +51,27 @@ export const CostumesSearchAvailableResponseSchema =
   schemas.Costumes_AvailableCostume;
 export const CostumesAvailabilityResponseSchema =
   schemas.Costumes_CostumeFullAvailability;
+
+export type CostumeCategoryDto = z.infer<
+  typeof schemas.Costumes_CostumeCategory
+>;
+export type CostumeCategoryNodeDto = z.infer<
+  typeof schemas.Costumes_CostumeCategoryNode
+>;
+export type CostumeCategoryRefDto = z.infer<
+  typeof schemas.Costumes_CostumeCategoryRef
+>;
+export type CreateCostumeCategoryRequestDto = z.infer<
+  typeof schemas.Costumes_CreateCostumeCategoryRequest
+>;
+export type UpdateCostumeCategoryRequestDto = z.infer<
+  typeof schemas.Costumes_UpdateCostumeCategoryRequest
+>;
+
+export const CostumeCategorySchema = schemas.Costumes_CostumeCategory;
+export const CostumeCategoryNodeSchema =
+  schemas.Costumes_CostumeCategoryNode;
+export const CreateCostumeCategoryRequestSchema =
+  schemas.Costumes_CreateCostumeCategoryRequest;
+export const UpdateCostumeCategoryRequestSchema =
+  schemas.Costumes_UpdateCostumeCategoryRequest;

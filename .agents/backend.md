@@ -11,7 +11,7 @@ src/
 ├── app.module.ts
 ├── auth/                   # login / refresh / logout, JWT-стратегии, guards (HTTP + WS)
 ├── client-child/           # клиенты, дети, чёрный список (2 контроллера, 1 сервис)
-├── costumes/               # костюмы, поиск, занятость, справочник категорий (costume-categories.*), фильтры каталога (costume-filters.ts), маппер ответа (costume.mapper.ts); чтение состава — `common/utils/costume-parts.ts`
+├── costumes/               # костюмы, поиск, занятость, справочник категорий (в тех же controller/service), `costumes.repository.ts` — весь доступ к Prisma (по просьбе владельца для этого модуля), фильтры каталога (costume-filters.ts), маппер ответа (costume.mapper.ts); чтение состава — `common/utils/costume-parts.ts`
 ├── visit-order/            # визиты и заказы; domain/visit.ts — решения по переходам, domain/visit-balance.ts — расчёт аренды
 ├── notification/           # WhatsApp: сервис, BullMQ-процессор, Green-API провайдер, вебхук, WS-gateway
 ├── prisma/                 # PrismaService, seed.ts, generated/ (НЕ редактировать, НЕ коммитить)

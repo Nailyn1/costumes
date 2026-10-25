@@ -88,47 +88,6 @@ export namespace Schemas {
     code?: string;
     fieldErrors?: Record<string, Array<string>>;
   } & Record<string, unknown>;
-  export type CostumeCategories_CategoryName = string;
-  export type CostumeCategories_CostumeCategory = {
-    id: number;
-    name: string;
-    parentId: number | null;
-    sortOrder: number;
-  } & Record<string, unknown>;
-  export type CostumeCategories_CostumeSubcategory = { id: number; name: string; sortOrder: number } & Record<
-    string,
-    unknown
-  >;
-  /**
-   * Основная категория с подкатегориями (максимум два уровня).
-   */
-  export type CostumeCategories_CostumeCategoryNode = {
-    id: number;
-    name: string;
-    sortOrder: number;
-    children: Array<CostumeCategories_CostumeSubcategory>;
-  } & Record<string, unknown>;
-  /**
-   * Краткая ссылка на категорию в ответах по костюму.
-   */
-  export type CostumeCategories_CostumeCategoryRef = {
-    id: number;
-    name: string;
-    parentId: number | null;
-    parentName: string | null;
-  } & Record<string, unknown>;
-  export type CostumeCategories_CreateCostumeCategoryRequest = {
-    name: CostumeCategories_CategoryName;
-    /**
-     * Не задан — основная категория; задан — подкатегория этой основной категории.
-     */
-    parentId?: number;
-  } & Record<string, unknown>;
-  export type CostumeCategories_UpdateCostumeCategoryRequest = Partial<{
-    name: CostumeCategories_CategoryName;
-    sortOrder: number;
-  }> &
-    Record<string, unknown>;
   export type Costumes_AvailabilityPeriod = {
     visitCode: Costumes_VisitCode;
     clientName: string;
@@ -140,6 +99,15 @@ export namespace Schemas {
     returnTimeUntil: Visits_TimeString;
   } & Record<string, unknown>;
   export type Costumes_InventoryCode = string;
+  /**
+   * Краткая ссылка на категорию в ответах по костюму.
+   */
+  export type Costumes_CostumeCategoryRef = {
+    id: number;
+    name: string;
+    parentId: number | null;
+    parentName: string | null;
+  } & Record<string, unknown>;
   export type Costumes_CostumeGender = "girl" | "boy" | "unisex";
   export type Costumes_HeightCm = number;
   export type Costumes_SizeLabel = string;
@@ -152,7 +120,7 @@ export namespace Schemas {
     costumeId: number;
     name: string;
     inventoryCode: Costumes_InventoryCode;
-    category?: CostumeCategories_CostumeCategoryRef | null;
+    category?: Costumes_CostumeCategoryRef | null;
     gender?: Costumes_CostumeGender | null;
     heightFrom?: Costumes_HeightCm | null;
     heightTo?: Costumes_HeightCm | null;
@@ -160,22 +128,39 @@ export namespace Schemas {
     parts?: Array<Costumes_CostumePart>;
     status: Costumes_CostumeStatus;
   } & Record<string, unknown>;
+  export type Costumes_CategoryName = string;
   export type Costumes_Costume = {
     costumeId: number;
     name: string;
     inventoryCode: Costumes_InventoryCode;
-    category?: CostumeCategories_CostumeCategoryRef | null;
+    category?: Costumes_CostumeCategoryRef | null;
     gender?: Costumes_CostumeGender | null;
     heightFrom?: Costumes_HeightCm | null;
     heightTo?: Costumes_HeightCm | null;
     sizeLabel?: Costumes_SizeLabel | null;
     parts?: Array<Costumes_CostumePart>;
   } & Record<string, unknown>;
+  export type Costumes_CostumeCategory = {
+    id: number;
+    name: string;
+    parentId: number | null;
+    sortOrder: number;
+  } & Record<string, unknown>;
+  export type Costumes_CostumeSubcategory = { id: number; name: string; sortOrder: number } & Record<string, unknown>;
+  /**
+   * Основная категория с подкатегориями (максимум два уровня).
+   */
+  export type Costumes_CostumeCategoryNode = {
+    id: number;
+    name: string;
+    sortOrder: number;
+    children: Array<Costumes_CostumeSubcategory>;
+  } & Record<string, unknown>;
   export type Costumes_CostumeFullAvailability = {
     costumeId: number;
     name: string;
     inventoryCode: Costumes_InventoryCode;
-    category?: CostumeCategories_CostumeCategoryRef | null;
+    category?: Costumes_CostumeCategoryRef | null;
     gender?: Costumes_CostumeGender | null;
     heightFrom?: Costumes_HeightCm | null;
     heightTo?: Costumes_HeightCm | null;
@@ -188,13 +173,20 @@ export namespace Schemas {
     costumeId: number;
     name: string;
     inventoryCode: Costumes_InventoryCode;
-    category?: CostumeCategories_CostumeCategoryRef | null;
+    category?: Costumes_CostumeCategoryRef | null;
     gender?: Costumes_CostumeGender | null;
     heightFrom?: Costumes_HeightCm | null;
     heightTo?: Costumes_HeightCm | null;
     sizeLabel?: Costumes_SizeLabel | null;
     parts?: Array<Costumes_CostumePart>;
     display: string;
+  } & Record<string, unknown>;
+  export type Costumes_CreateCostumeCategoryRequest = {
+    name: Costumes_CategoryName;
+    /**
+     * Не задан — основная категория; задан — подкатегория этой основной категории.
+     */
+    parentId?: number;
   } & Record<string, unknown>;
   export type Costumes_CreateCostumeRequest = {
     name: string;
@@ -212,6 +204,8 @@ export namespace Schemas {
     limit: number;
     hasMore: boolean;
   } & Record<string, unknown>;
+  export type Costumes_UpdateCostumeCategoryRequest = Partial<{ name: Costumes_CategoryName; sortOrder: number }> &
+    Record<string, unknown>;
   export type Costumes_UpdateCostumeRequest = Partial<{
     name: string;
     categoryId: number | null;
@@ -967,7 +961,7 @@ export namespace Endpoints {
     requestFormat: "json";
     responseFormat: "json";
     parameters: never;
-    responses: { 200: Array<Schemas.CostumeCategories_CostumeCategoryNode>; default: Schemas.Common_Error };
+    responses: { 200: Array<Schemas.Costumes_CostumeCategoryNode>; default: Schemas.Common_Error };
   };
   export type post_CostumeCategoryOperations_create = {
     method: "POST";
@@ -975,9 +969,9 @@ export namespace Endpoints {
     requestFormat: "json";
     responseFormat: "json";
     parameters: {
-      body: Schemas.CostumeCategories_CreateCostumeCategoryRequest;
+      body: Schemas.Costumes_CreateCostumeCategoryRequest;
     };
-    responses: { 201: Schemas.CostumeCategories_CostumeCategory; default: Schemas.Common_Error };
+    responses: { 201: Schemas.Costumes_CostumeCategory; default: Schemas.Common_Error };
   };
   export type patch_CostumeCategoryOperations_update = {
     method: "PATCH";
@@ -987,9 +981,9 @@ export namespace Endpoints {
     parameters: {
       path: { categoryId: number };
 
-      body: Schemas.CostumeCategories_UpdateCostumeCategoryRequest;
+      body: Schemas.Costumes_UpdateCostumeCategoryRequest;
     };
-    responses: { 200: Schemas.CostumeCategories_CostumeCategory; default: Schemas.Common_Error };
+    responses: { 200: Schemas.Costumes_CostumeCategory; default: Schemas.Common_Error };
   };
   export type delete_CostumeCategoryOperations_delete = {
     method: "DELETE";

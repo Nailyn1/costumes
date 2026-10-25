@@ -159,57 +159,6 @@ export const Common_Error = z
   })
   .catchall(z.unknown());
 
-export type CostumeCategories_CategoryName = __TypedOpenapi.Schemas.CostumeCategories_CategoryName;
-export const CostumeCategories_CategoryName = z.string().min(2).max(40);
-
-export type CostumeCategories_CostumeCategory = __TypedOpenapi.Schemas.CostumeCategories_CostumeCategory;
-export const CostumeCategories_CostumeCategory = z
-  .object({
-    id: z.number().int(),
-    name: z.string(),
-    parentId: z.number().int().nullable(),
-    sortOrder: z.number().int(),
-  })
-  .catchall(z.unknown());
-
-export type CostumeCategories_CostumeSubcategory = __TypedOpenapi.Schemas.CostumeCategories_CostumeSubcategory;
-export const CostumeCategories_CostumeSubcategory = z
-  .object({ id: z.number().int(), name: z.string(), sortOrder: z.number().int() })
-  .catchall(z.unknown());
-
-export type CostumeCategories_CostumeCategoryNode = __TypedOpenapi.Schemas.CostumeCategories_CostumeCategoryNode;
-export const CostumeCategories_CostumeCategoryNode = z
-  .object({
-    id: z.number().int(),
-    name: z.string(),
-    sortOrder: z.number().int(),
-    children: z.array(CostumeCategories_CostumeSubcategory),
-  })
-  .catchall(z.unknown());
-
-export type CostumeCategories_CostumeCategoryRef = __TypedOpenapi.Schemas.CostumeCategories_CostumeCategoryRef;
-export const CostumeCategories_CostumeCategoryRef = z
-  .object({
-    id: z.number().int(),
-    name: z.string(),
-    parentId: z.number().int().nullable(),
-    parentName: z.string().nullable(),
-  })
-  .catchall(z.unknown());
-
-export type CostumeCategories_CreateCostumeCategoryRequest =
-  __TypedOpenapi.Schemas.CostumeCategories_CreateCostumeCategoryRequest;
-export const CostumeCategories_CreateCostumeCategoryRequest = z
-  .object({ name: CostumeCategories_CategoryName, parentId: z.number().int().optional() })
-  .catchall(z.unknown());
-
-export type CostumeCategories_UpdateCostumeCategoryRequest =
-  __TypedOpenapi.Schemas.CostumeCategories_UpdateCostumeCategoryRequest;
-export const CostumeCategories_UpdateCostumeCategoryRequest = z
-  .object({ name: CostumeCategories_CategoryName, sortOrder: z.number().int() })
-  .partial()
-  .catchall(z.unknown());
-
 export type Costumes_AvailabilityPeriod = __TypedOpenapi.Schemas.Costumes_AvailabilityPeriod;
 export const Costumes_AvailabilityPeriod = z
   .object({
@@ -226,6 +175,16 @@ export const Costumes_AvailabilityPeriod = z
 
 export type Costumes_InventoryCode = __TypedOpenapi.Schemas.Costumes_InventoryCode;
 export const Costumes_InventoryCode = z.string().regex(new RegExp("^C-\\d{4}$"));
+
+export type Costumes_CostumeCategoryRef = __TypedOpenapi.Schemas.Costumes_CostumeCategoryRef;
+export const Costumes_CostumeCategoryRef = z
+  .object({
+    id: z.number().int(),
+    name: z.string(),
+    parentId: z.number().int().nullable(),
+    parentName: z.string().nullable(),
+  })
+  .catchall(z.unknown());
 
 export type Costumes_CostumeGender = __TypedOpenapi.Schemas.Costumes_CostumeGender;
 export const Costumes_CostumeGender = z.enum(["girl", "boy", "unisex"]);
@@ -250,7 +209,7 @@ export const Costumes_AvailableCostume = z
     costumeId: z.number().int(),
     name: z.string(),
     inventoryCode: Costumes_InventoryCode,
-    category: CostumeCategories_CostumeCategoryRef.nullable().optional(),
+    category: Costumes_CostumeCategoryRef.nullable().optional(),
     gender: Costumes_CostumeGender.nullable().optional(),
     heightFrom: Costumes_HeightCm.nullable().optional(),
     heightTo: Costumes_HeightCm.nullable().optional(),
@@ -260,18 +219,46 @@ export const Costumes_AvailableCostume = z
   })
   .catchall(z.unknown());
 
+export type Costumes_CategoryName = __TypedOpenapi.Schemas.Costumes_CategoryName;
+export const Costumes_CategoryName = z.string().min(2).max(40);
+
 export type Costumes_Costume = __TypedOpenapi.Schemas.Costumes_Costume;
 export const Costumes_Costume = z
   .object({
     costumeId: z.number().int(),
     name: z.string(),
     inventoryCode: Costumes_InventoryCode,
-    category: CostumeCategories_CostumeCategoryRef.nullable().optional(),
+    category: Costumes_CostumeCategoryRef.nullable().optional(),
     gender: Costumes_CostumeGender.nullable().optional(),
     heightFrom: Costumes_HeightCm.nullable().optional(),
     heightTo: Costumes_HeightCm.nullable().optional(),
     sizeLabel: Costumes_SizeLabel.nullable().optional(),
     parts: z.array(Costumes_CostumePart).optional(),
+  })
+  .catchall(z.unknown());
+
+export type Costumes_CostumeCategory = __TypedOpenapi.Schemas.Costumes_CostumeCategory;
+export const Costumes_CostumeCategory = z
+  .object({
+    id: z.number().int(),
+    name: z.string(),
+    parentId: z.number().int().nullable(),
+    sortOrder: z.number().int(),
+  })
+  .catchall(z.unknown());
+
+export type Costumes_CostumeSubcategory = __TypedOpenapi.Schemas.Costumes_CostumeSubcategory;
+export const Costumes_CostumeSubcategory = z
+  .object({ id: z.number().int(), name: z.string(), sortOrder: z.number().int() })
+  .catchall(z.unknown());
+
+export type Costumes_CostumeCategoryNode = __TypedOpenapi.Schemas.Costumes_CostumeCategoryNode;
+export const Costumes_CostumeCategoryNode = z
+  .object({
+    id: z.number().int(),
+    name: z.string(),
+    sortOrder: z.number().int(),
+    children: z.array(Costumes_CostumeSubcategory),
   })
   .catchall(z.unknown());
 
@@ -281,7 +268,7 @@ export const Costumes_CostumeFullAvailability = z
     costumeId: z.number().int(),
     name: z.string(),
     inventoryCode: Costumes_InventoryCode,
-    category: CostumeCategories_CostumeCategoryRef.nullable().optional(),
+    category: Costumes_CostumeCategoryRef.nullable().optional(),
     gender: Costumes_CostumeGender.nullable().optional(),
     heightFrom: Costumes_HeightCm.nullable().optional(),
     heightTo: Costumes_HeightCm.nullable().optional(),
@@ -298,7 +285,7 @@ export const Costumes_CostumeSearchResult = z
     costumeId: z.number().int(),
     name: z.string(),
     inventoryCode: Costumes_InventoryCode,
-    category: CostumeCategories_CostumeCategoryRef.nullable().optional(),
+    category: Costumes_CostumeCategoryRef.nullable().optional(),
     gender: Costumes_CostumeGender.nullable().optional(),
     heightFrom: Costumes_HeightCm.nullable().optional(),
     heightTo: Costumes_HeightCm.nullable().optional(),
@@ -306,6 +293,11 @@ export const Costumes_CostumeSearchResult = z
     parts: z.array(Costumes_CostumePart).optional(),
     display: z.string(),
   })
+  .catchall(z.unknown());
+
+export type Costumes_CreateCostumeCategoryRequest = __TypedOpenapi.Schemas.Costumes_CreateCostumeCategoryRequest;
+export const Costumes_CreateCostumeCategoryRequest = z
+  .object({ name: Costumes_CategoryName, parentId: z.number().int().optional() })
   .catchall(z.unknown());
 
 export type Costumes_CreateCostumeRequest = __TypedOpenapi.Schemas.Costumes_CreateCostumeRequest;
@@ -330,6 +322,12 @@ export const Costumes_GetCostumesList = z
     limit: z.number().int(),
     hasMore: z.boolean(),
   })
+  .catchall(z.unknown());
+
+export type Costumes_UpdateCostumeCategoryRequest = __TypedOpenapi.Schemas.Costumes_UpdateCostumeCategoryRequest;
+export const Costumes_UpdateCostumeCategoryRequest = z
+  .object({ name: Costumes_CategoryName, sortOrder: z.number().int() })
+  .partial()
   .catchall(z.unknown());
 
 export type Costumes_UpdateCostumeRequest = __TypedOpenapi.Schemas.Costumes_UpdateCostumeRequest;
@@ -1332,7 +1330,7 @@ export const get_CostumeCategoryOperations_list = {
   requestFormat: z.literal("json"),
   responseFormat: z.literal("json"),
   parameters: z.never(),
-  responses: { 200: z.array(CostumeCategories_CostumeCategoryNode), default: Common_Error },
+  responses: { 200: z.array(Costumes_CostumeCategoryNode), default: Common_Error },
 };
 
 export type post_CostumeCategoryOperations_create = __TypedOpenapi.Endpoints.post_CostumeCategoryOperations_create;
@@ -1341,8 +1339,8 @@ export const post_CostumeCategoryOperations_create = {
   path: z.literal("/costume-categories"),
   requestFormat: z.literal("json"),
   responseFormat: z.literal("json"),
-  parameters: { body: CostumeCategories_CreateCostumeCategoryRequest },
-  responses: { 201: CostumeCategories_CostumeCategory, default: Common_Error },
+  parameters: { body: Costumes_CreateCostumeCategoryRequest },
+  responses: { 201: Costumes_CostumeCategory, default: Common_Error },
 };
 
 export type patch_CostumeCategoryOperations_update = __TypedOpenapi.Endpoints.patch_CostumeCategoryOperations_update;
@@ -1353,9 +1351,9 @@ export const patch_CostumeCategoryOperations_update = {
   responseFormat: z.literal("json"),
   parameters: {
     path: z.strictObject({ categoryId: z.coerce.number().int() }),
-    body: CostumeCategories_UpdateCostumeCategoryRequest,
+    body: Costumes_UpdateCostumeCategoryRequest,
   },
-  responses: { 200: CostumeCategories_CostumeCategory, default: Common_Error },
+  responses: { 200: Costumes_CostumeCategory, default: Common_Error },
 };
 
 export type delete_CostumeCategoryOperations_delete = __TypedOpenapi.Endpoints.delete_CostumeCategoryOperations_delete;
