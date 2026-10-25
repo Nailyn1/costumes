@@ -6,25 +6,26 @@ import {
   Text,
   Divider,
   Paper,
-  SimpleGrid,
-  SegmentedControl,
   Textarea,
   Button,
   Center,
   Loader,
 } from "@mantine/core";
-import { IconCheck, IconX } from "@tabler/icons-react";
+import { IconX } from "@tabler/icons-react";
 import type {
   GetVisitForIssueDto,
   VisitIssueRequestDto,
 } from "@costumes/shared";
 import { useCancelVisit, useIssueVisit } from "../../hooks/useVisits";
-import { MoneyInput } from "src/components/MoneyInput";
 import { formatPhoneNumber, formatStayDates } from "src/utils/formatters";
 import { useForm } from "@mantine/form";
 import { useState } from "react";
-import { issueBalance } from "../../utils/visitBalance";
 import { OrderTagStatusBadge } from "../OrderTagStatusBadge";
+import {
+  IssueOrderCard,
+  IssuePaymentFields,
+  IssueSubmitButton,
+} from "./IssueDetails";
 
 interface IssueModalProps {
   opened: boolean;
@@ -65,9 +66,6 @@ export function IssueModal({
       ? data.remainingToPay
       : Number(form.values.extraPayment) || 0
     : 0;
-  const balanceAfterIssue = data
-    ? issueBalance(data.remainingToPay, actualPayment)
-    : null;
 
   const handleClose = () => {
     form.reset();
@@ -185,106 +183,35 @@ export function IssueModal({
 
             <Stack gap="xs">
               {data.orders.map((order) => (
-                <Paper
+                <IssueOrderCard
                   key={order.orderId}
-                  withBorder
-                  p="sm"
-                  radius="sm"
-                  bg="gray.0"
-                >
-                  <Group
-                    justify="space-between"
-                    align="flex-start"
-                    wrap="nowrap"
-                  >
-                    <Box style={{ flex: 1, minWidth: 0 }}>
-                      <Text size="md" fw={700}>
-                        {order.childName} — {order.costumeName}
-                      </Text>
-                      <Group gap="sm" mt={4}>
-                        <Text size="md" c="dimmed">
-                          Код: {order.inventoryCode}
-                        </Text>
-                        <OrderTagStatusBadge tagStatus={order.tagStatus} />
-                      </Group>
-                    </Box>
-                    <Box
-                      style={{
-                        textAlign: "right",
-                        whiteSpace: "nowrap",
-                        flexShrink: 0,
-                      }}
-                    >
-                      <Text size="md" fw={600}>
-                        {order.rentPrice} ₸
-                      </Text>
-                      <Text size="md" c="green.7">
-                        Оплачено: {order.prepaymentAmount} ₸
-                      </Text>
-                      <Text size="md" c="red.7" fw={500}>
-                        Остаток: {order.rentPrice - order.prepaymentAmount} ₸
-                      </Text>
-                    </Box>
-                  </Group>
-                </Paper>
+                  childName={order.childName}
+                  costumeName={order.costumeName}
+                  inventoryCode={order.inventoryCode}
+                  rentPrice={order.rentPrice}
+                  prepaymentAmount={order.prepaymentAmount}
+                  tagBadge={<OrderTagStatusBadge tagStatus={order.tagStatus} />}
+                />
               ))}
             </Stack>
-
-            <Box p="md" bg="blue.0" style={{ borderRadius: "8px" }}>
-              <Stack gap="sm">
-                <Group justify="space-between">
-                  <Text fw={700}>Итого к доплате:</Text>
-                  <Text fw={700} size="xl" c="blue.9">
-                    {data.remainingToPay} ₸
-                  </Text>
-                </Group>
-
-                <SimpleGrid cols={isMobile ? 1 : 2}>
-                  <MoneyInput
-                    label="Сумма доплаты (факт)"
-                    size="md"
-                    {...form.getInputProps("extraPayment")}
-                    value={
-                      form.values.extraPayment === ""
-                        ? data.remainingToPay
-                        : form.values.extraPayment
-                    }
-                  />
-                  <Box>
-                    <Text size="md" fw={500} mb={3}>
-                      Тип залога
-                    </Text>
-                    <SegmentedControl
-                      fullWidth
-                      size="md"
-                      data={[
-                        { label: "Нал", value: "cash" },
-                        { label: "Док", value: "document" },
-                        { label: "Нет", value: "none" },
-                      ]}
-                      {...form.getInputProps("depositType")}
-                    />
-                  </Box>
-                </SimpleGrid>
-
-                {balanceAfterIssue && (
-                  <Text fw={600} c={balanceAfterIssue.debt > 0 ? "orange.9" : balanceAfterIssue.refundDue > 0 ? "red.8" : "green.8"}>
-                    {balanceAfterIssue.debt > 0
-                      ? `После выдачи останется долг: ${balanceAfterIssue.debt} ₸`
-                      : balanceAfterIssue.refundDue > 0
-                        ? `Вернуть клиенту: ${balanceAfterIssue.refundDue} ₸`
-                        : "Аренда оплачена полностью"}
-                  </Text>
-                )}
-
-                {form.values.depositType === "cash" && (
-                  <MoneyInput
-                    label="Сумма залога"
-                    {...form.getInputProps("depositAmount")}
-                  />
-                )}
-              </Stack>
-            </Box>
+            <IssuePaymentFields
+              remainingToPay={data.remainingToPay}
+              payment={actualPayment}
+              onPaymentChange={(value) =>
+                form.setFieldValue("extraPayment", value)
+              }
+              depositType={
+                form.values.depositType as "cash" | "document" | "none"
+              }
+              onDepositTypeChange={(value) =>
+                form.setFieldValue("depositType", value)
+              }
+              depositAmount={form.values.depositAmount}
+              onDepositAmountChange={(value) =>
+                form.setFieldValue("depositAmount", value)
+              }
+              isMobile={isMobile}
+            />
 
             <Textarea
               label="Комментарий к выдаче"
@@ -296,17 +223,10 @@ export function IssueModal({
 
             {!isCanceling ? (
               <Stack gap="sm" mt="md">
-                <Button
-                  type="submit"
-                  size="lg"
-                  fullWidth
-                  color="green"
-                  leftSection={<IconCheck size={20} />}
+                <IssueSubmitButton
                   loading={issueMutation.isPending}
                   disabled={cancelMutation.isPending}
-                >
-                  Выдать костюмы
-                </Button>
+                />
 
                 <Button
                   type="button"

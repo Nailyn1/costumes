@@ -180,6 +180,7 @@ async function prepareQuickReview(user: User) {
 }
 
 beforeEach(() => {
+  notifications.clean();
   // «сегодня» = 10 декабря 2026: от него считаются умные даты
   vi.useFakeTimers({ toFake: ["Date"], now: new Date("2026-12-10T09:00:00") });
   window.sessionStorage.clear();
@@ -187,6 +188,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  notifications.clean();
   vi.restoreAllMocks();
   window.sessionStorage.clear();
   useAuthStore.getState().logout();
@@ -625,7 +627,7 @@ describe("CreateBookingPage", () => {
     expect(within(dialog).queryByText("[object Object]")).not.toBeInTheDocument();
   });
 
-  it("creates an immediate issue without WhatsApp and keeps selections when return date changes", async () => {
+  it("creates an immediate issue without sending a message, checks WhatsApp and keeps selections when return date changes", async () => {
     const { whatsappChecks } = mockBackend();
     useAuthStore.getState().setAuth({
       accessToken: "test-token",
@@ -668,17 +670,18 @@ describe("CreateBookingPage", () => {
     expect(screen.getByText("Маша")).toBeInTheDocument();
     expect(screen.getByText("Эльза")).toBeInTheDocument();
 
-    await fillMoney(user, "Получено сейчас", "9000");
-    await user.click(screen.getByRole("radio", { name: "Деньги" }));
-    await fillMoney(user, "Сумма денежного залога", "5000");
     const dialog = await (async () => {
       await user.click(screen.getByRole("button", { name: "Проверить и выдать" }));
       return screen.findByRole("dialog");
     })();
+    expect(within(dialog).getByLabelText("Получено сейчас")).toHaveValue("8 000 ₸");
+    await fillMoney(user, "Получено сейчас", "9000");
+    await user.click(within(dialog).getByRole("radio", { name: "Нал" }));
+    await fillMoney(user, "Сумма залога", "5000");
     expect(within(dialog).getByText(/Маша — Эльза/)).toBeInTheDocument();
     expect(within(dialog).getByText(/Возврат: 12\.12\.2026 до 18:00/)).toBeInTheDocument();
-    expect(within(dialog).getByText("Залог: Деньги · 5 000 ₸")).toBeInTheDocument();
-    await user.click(within(dialog).getByRole("button", { name: "Подтвердить и выдать" }));
+    expect(within(dialog).getByLabelText("Сумма залога")).toHaveValue("5 000 ₸");
+    await user.click(within(dialog).getByRole("button", { name: "Выдать костюмы" }));
 
     await waitFor(() => expect(requests).toHaveLength(1));
     expect(requests[0]).toMatchObject({
@@ -695,12 +698,12 @@ describe("CreateBookingPage", () => {
     });
     expect((requests[0].orders as Record<string, unknown>[])[0]).not.toHaveProperty("prepaymentAmount");
     expect(requests[0]).not.toHaveProperty("sendNotification");
-    expect(whatsappChecks).not.toHaveBeenCalled();
+    expect(whatsappChecks).toHaveBeenCalled();
     expect(requests[0]).toMatchObject({ endDateTime: "2026-12-12" });
-    expect(await screen.findByRole("link", { name: "Открыть визит" })).toHaveAttribute(
-      "href",
-      "/bookings/visits/321",
-    );
+    expect(await screen.findByText("Визит №1648 создан")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Имя или телефон")).toHaveValue("");
+    expect(screen.getByRole("heading", { name: "Быстрая выдача" })).toBeInTheDocument();
+    expect(screen.queryByText("Выдача оформлена")).not.toBeInTheDocument();
   });
 
   it("retries an ambiguous 401/5xx sequence with the exact command body", async () => {
@@ -733,14 +736,14 @@ describe("CreateBookingPage", () => {
     renderPage();
 
     const dialog = await prepareQuickReview(user);
-    await user.click(within(dialog).getByRole("button", { name: "Подтвердить и выдать" }));
+    await user.click(within(dialog).getByRole("button", { name: "Выдать костюмы" }));
     expect(await screen.findByRole("button", { name: "Повторить выдачу" })).toBeInTheDocument();
     expect(requests).toHaveLength(2);
     expect(requests[0]).toEqual(requests[1]);
-    expect(whatsappChecks).not.toHaveBeenCalled();
+    expect(whatsappChecks).toHaveBeenCalled();
 
     await user.click(screen.getByRole("button", { name: "Повторить выдачу" }));
-    await screen.findByRole("link", { name: "Открыть визит" });
+    await screen.findByText("Визит №1648 создан");
     expect(requests).toHaveLength(3);
     expect(requests[0]).toEqual(requests[2]);
   });
@@ -772,11 +775,13 @@ describe("CreateBookingPage", () => {
     renderPage();
 
     const firstDialog = await prepareQuickReview(user);
-    await user.click(within(firstDialog).getByRole("button", { name: "Подтвердить и выдать" }));
+    await user.click(within(firstDialog).getByRole("button", { name: "Выдать костюмы" }));
     await screen.findByRole("button", { name: "Повторить выдачу" });
     await user.click(screen.getByRole("button", { name: "Повторить выдачу" }));
     await waitFor(() => expect(requests).toHaveLength(2));
     expect(requests[0]).toEqual(requests[1]);
+    const expiredDialog = await screen.findByRole("dialog");
+    await user.click(within(expiredDialog).getByRole("button", { name: "Назад" }));
     expect(await screen.findByRole("button", { name: "Проверить и выдать" })).toBeInTheDocument();
 
     const secondDialogPromise = (async () => {
@@ -784,8 +789,8 @@ describe("CreateBookingPage", () => {
       return screen.findByRole("dialog");
     })();
     const secondDialog = await secondDialogPromise;
-    await user.click(within(secondDialog).getByRole("button", { name: "Подтвердить и выдать" }));
-    await screen.findByRole("link", { name: "Открыть визит" });
+    await user.click(within(secondDialog).getByRole("button", { name: "Выдать костюмы" }));
+    await screen.findByText("Визит №1648 создан");
     expect(requests).toHaveLength(3);
     expect(requests[2].commandId).not.toBe(requests[0].commandId);
   });
@@ -804,17 +809,22 @@ describe("CreateBookingPage", () => {
     const returnDate = screen.getByLabelText("Дата возврата");
     await user.clear(returnDate);
     await user.type(returnDate, "12{Enter}");
+    await user.click(screen.getByRole("button", { name: "Проверить и выдать" }));
+    const quickDialog = await screen.findByRole("dialog");
     await fillMoney(user, "Получено сейчас", "9000");
-    await user.click(screen.getByRole("radio", { name: "Деньги" }));
-    await fillMoney(user, "Сумма денежного залога", "5000");
+    await user.click(within(quickDialog).getByRole("radio", { name: "Нал" }));
+    await fillMoney(user, "Сумма залога", "5000");
+    await user.click(within(quickDialog).getByRole("button", { name: "Назад" }));
 
     await user.click(screen.getByText("Бронь"));
     expect(screen.getByLabelText("Предоплата")).toHaveValue("3 000 ₸");
     await user.click(screen.getByText("Выдать сейчас"));
     expect(screen.getByLabelText("Дата возврата")).toHaveValue("12.12");
-    expect(screen.getByLabelText("Получено сейчас")).toHaveValue("9 000 ₸");
-    expect(screen.getByRole("radio", { name: "Деньги" })).toBeChecked();
-    expect(screen.getByLabelText("Сумма денежного залога")).toHaveValue("5 000 ₸");
+    await user.click(screen.getByRole("button", { name: "Проверить и выдать" }));
+    const reopened = await screen.findByRole("dialog");
+    expect(within(reopened).getByLabelText("Получено сейчас")).toHaveValue("9 000 ₸");
+    expect(within(reopened).getByRole("radio", { name: "Нал" })).toBeChecked();
+    expect(within(reopened).getByLabelText("Сумма залога")).toHaveValue("5 000 ₸");
   });
 
   it("restores an unresolved request for the same user immediately after reload", async () => {
@@ -896,7 +906,7 @@ describe("CreateBookingPage", () => {
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
       throw new DOMException("storage denied", "QuotaExceededError");
     });
-    await user.click(within(dialog).getByRole("button", { name: "Подтвердить и выдать" }));
+    await user.click(within(dialog).getByRole("button", { name: "Выдать костюмы" }));
 
     expect(previewCode).toHaveBeenCalledOnce();
     expect(issue).not.toHaveBeenCalled();

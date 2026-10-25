@@ -19,7 +19,9 @@ export function CreateBookingForm() {
   const restoredRequest = getPendingQuickIssueRequest(
     useAuthStore.getState().user?.login ?? null,
   );
-  const [mode, setMode] = useState<CreationMode>(restoredRequest ? "quick" : "booking");
+  const [mode, setMode] = useState<CreationMode>(
+    restoredRequest ? "quick" : "booking",
+  );
   const [quickPending, setQuickPending] = useState(Boolean(restoredRequest));
   const onPendingChange = useCallback((pending: boolean) => {
     setQuickPending(pending);
@@ -71,11 +73,14 @@ export function CreateBookingForm() {
 
   return (
     <Stack key={formKey} gap="xl" pb={100}>
-      <Title order={2}>{mode === "booking" ? "Создание брони" : "Быстрая выдача"}</Title>
+      <Title order={2}>
+        {mode === "booking" ? "Создание брони" : "Быстрая выдача"}
+      </Title>
       <SegmentedControl
         value={mode}
         onChange={(value) => {
-          if (!(quickPending && mode === "quick")) setMode(value as CreationMode);
+          if (!(quickPending && mode === "quick"))
+            setMode(value as CreationMode);
         }}
         disabled={quickPending}
         data={[
@@ -84,21 +89,29 @@ export function CreateBookingForm() {
         ]}
         fullWidth
       />
-      <Fieldset variant="unstyled" disabled={quickPending && mode === "quick"}>
+      <Fieldset
+        variant="unstyled"
+        disabled={quickPending && mode === "quick"}
+        data-quick-field="clientId"
+      >
         <ClientSelector
           value={form.values.clientId}
-        showWhatsappAvailability={mode === "booking"}
+          showWhatsappAvailability
           onChange={(clientId) => {
             const changed = clientId !== form.values.clientId;
             form.setFieldValue("clientId", clientId);
+            form.clearFieldError("clientId");
             if (mode === "quick" && changed) {
               form.setFieldValue(
                 "orders",
-                form.values.orders.map((order) => ({ ...order, childId: null })),
+                form.values.orders.map((order) => ({
+                  ...order,
+                  childId: null,
+                })),
               );
             }
           }}
-          error={mode === "booking" ? form.errors.clientId : undefined}
+          error={form.errors.clientId}
         />
       </Fieldset>
 
@@ -123,7 +136,10 @@ export function CreateBookingForm() {
               }
             }}
           />
-          <OrderList form={form} clientId={Number(form.values.clientId) || null} />
+          <OrderList
+            form={form}
+            clientId={Number(form.values.clientId) || null}
+          />
           <VisitSummaryPanel form={form} onSuccessfullyCreated={handleReset} />
         </Stack>
       )}
@@ -138,6 +154,11 @@ export function CreateBookingForm() {
         onNotesChange={(notes) => form.setFieldValue("notes", notes)}
         onStartAnother={handleQuickNext}
         onPendingChange={onPendingChange}
+        onClientError={(error) =>
+          error
+            ? form.setFieldError("clientId", error)
+            : form.clearFieldError("clientId")
+        }
       />
     </Stack>
   );
