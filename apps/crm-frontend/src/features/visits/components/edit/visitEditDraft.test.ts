@@ -22,6 +22,7 @@ function source(overrides: Partial<EditSource> = {}): EditSource {
       costumeId: 31,
       costumeName: "Фея",
       inventoryCode: "C-0031",
+      photoCount: 0,
       status: "reserved",
       tagStatus: "written",
       rentPrice: 7000,

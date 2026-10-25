@@ -26,6 +26,7 @@ const visit: GetVisitForIssueDto = {
       childName: "Маша",
       costumeName: "Эльза",
       inventoryCode: "C-0020",
+      photoCount: 0,
       tagStatus: "written",
       rentPrice: 5000,
       prepaymentAmount: 2800,
