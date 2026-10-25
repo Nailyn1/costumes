@@ -123,7 +123,7 @@ interface CostumeOperations {
 model CostumePhotoSummary {
   /** URL превью обложки (первое фото по порядку); нет фото — поле отсутствует. */
   coverThumbUrl?: string;
-  photoCount: int32;
+  photoCount: int32 = 0;
 }
 
 model CostumePhoto {

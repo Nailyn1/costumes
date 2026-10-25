@@ -186,7 +186,7 @@ export const Costumes_AvailableCostume = z
     name: z.string(),
     inventoryCode: Costumes_InventoryCode,
     coverThumbUrl: z.string().optional(),
-    photoCount: z.number().int(),
+    photoCount: z.number().int().default(0),
     status: Costumes_CostumeStatus,
   })
   .catchall(z.unknown());
@@ -198,7 +198,7 @@ export const Costumes_Costume = z
     name: z.string(),
     inventoryCode: Costumes_InventoryCode,
     coverThumbUrl: z.string().optional(),
-    photoCount: z.number().int(),
+    photoCount: z.number().int().default(0),
   })
   .catchall(z.unknown());
 
@@ -209,7 +209,7 @@ export const Costumes_CostumeFullAvailability = z
     name: z.string(),
     inventoryCode: Costumes_InventoryCode,
     coverThumbUrl: z.string().optional(),
-    photoCount: z.number().int(),
+    photoCount: z.number().int().default(0),
     periods: z.array(Costumes_AvailabilityPeriod),
     noPeriodsMessage: z.string().nullable(),
   })
@@ -233,7 +233,7 @@ export const Costumes_CostumeSearchResult = z
     name: z.string(),
     inventoryCode: Costumes_InventoryCode,
     coverThumbUrl: z.string().optional(),
-    photoCount: z.number().int(),
+    photoCount: z.number().int().default(0),
     display: z.string(),
   })
   .catchall(z.unknown());
@@ -518,7 +518,7 @@ export const Visits_Order = z
     prepaymentAmount: z.number().int(),
     notes: z.string(),
     coverThumbUrl: z.string().optional(),
-    photoCount: z.number().int(),
+    photoCount: z.number().int().default(0),
   })
   .catchall(z.unknown());
 
@@ -924,7 +924,7 @@ export const Visits_VisitIssueOrder = z
     prepaymentAmount: z.number().int(),
     tagStatus: Visits_TagStatus,
     coverThumbUrl: z.string().optional(),
-    photoCount: z.number().int(),
+    photoCount: z.number().int().default(0),
   })
   .catchall(z.unknown());
 
@@ -959,7 +959,7 @@ export const Visits_VisitReturnOrder = z
     finalPayment: z.number().int(),
     returned: z.boolean(),
     coverThumbUrl: z.string().optional(),
-    photoCount: z.number().int(),
+    photoCount: z.number().int().default(0),
   })
   .catchall(z.unknown());
 
@@ -1005,7 +1005,7 @@ export const Visits_VisitReadOrder = z
     finalPayment: z.number().int().optional(),
     notes: z.string().optional(),
     coverThumbUrl: z.string().optional(),
-    photoCount: z.number().int(),
+    photoCount: z.number().int().default(0),
   })
   .catchall(z.unknown());
 
