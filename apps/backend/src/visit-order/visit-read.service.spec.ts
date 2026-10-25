@@ -1,9 +1,9 @@
 import { NotFoundException } from '@nestjs/common';
 import { VisitReadService } from './visit-read.service';
-import { createPrismaMock } from '../test-utils';
+import { createPrismaMock, noPhotos } from '../test-utils';
 
 const { prisma, reset } = createPrismaMock();
-const service = new VisitReadService(prisma as never);
+const service = new VisitReadService(prisma as never, noPhotos as never);
 
 describe('VisitReadService', () => {
   beforeEach(() => reset());

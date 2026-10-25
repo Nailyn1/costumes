@@ -2,6 +2,7 @@ import { NotFoundException } from '@nestjs/common';
 import { VisitReadDetailDto, VisitReadDetailSchema } from '@costumes/shared';
 import { Prisma } from '../prisma/generated/client';
 import { calculateVisitBalance } from './domain/visit-balance';
+import type { CostumePhotosService } from '../costume-photos/costume-photos.service';
 
 type VisitReadDatabase = Pick<Prisma.TransactionClient, 'visit'>;
 
@@ -9,6 +10,7 @@ type VisitReadDatabase = Pick<Prisma.TransactionClient, 'visit'>;
 export async function readVisitDetail(
   db: VisitReadDatabase,
   visitId: number,
+  photos: Pick<CostumePhotosService, 'summaries'>,
 ): Promise<VisitReadDetailDto> {
   const visit = await db.visit.findFirst({
     where: { id: visitId, deletedAt: null },
@@ -48,6 +50,10 @@ export async function readVisitDetail(
         })
       : undefined;
 
+  const summaries = await photos.summaries(
+    visit.orders.map((order) => order.costumeId),
+  );
+
   return VisitReadDetailSchema.parse({
     id: visit.id,
     visitCode: visit.visitCode,
@@ -68,6 +74,8 @@ export async function readVisitDetail(
       costumeId: order.costumeId,
       costumeName: order.costume.name,
       inventoryCode: order.costume.inventoryCode,
+      photoCount: 0,
+      ...summaries.get(order.costumeId),
       status: order.status,
       tagStatus: order.tagStatus,
       rentPrice: order.rentPrice,

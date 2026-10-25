@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { CostumePhotosService } from '../costume-photos/costume-photos.service';
 import {
   CostumesAvailabilityResponseDto,
   CostumesListResponseDto,
@@ -29,7 +30,10 @@ import {
 
 @Injectable()
 export class CostumesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly photos: CostumePhotosService,
+  ) {}
 
   async createCostume(
     data: CreateCostumesRequestDto,
@@ -39,6 +43,7 @@ export class CostumesService {
       costumeId: costume.id,
       name: costume.name,
       inventoryCode: costume.inventoryCode,
+      photoCount: 0,
     };
     return response;
   }
@@ -62,10 +67,13 @@ export class CostumesService {
       });
 
     const { name, inventoryCode } = costume;
+    const summary = (await this.photos.summaries([costumeId])).get(costumeId);
     return {
       costumeId,
       name,
       inventoryCode,
+      photoCount: 0,
+      ...summary,
     };
   }
 
@@ -142,7 +150,7 @@ export class CostumesService {
     ]);
     const costumes = mergeUniqueById(exactCostumes, broadCostumes);
 
-    return sortBySearchScore(costumes, (costume) =>
+    const ranked = sortBySearchScore(costumes, (costume) =>
       maxScore([
         scoreTextMatch(costume.name, search),
         scoreIdentifierMatch(costume.inventoryCode, search),
@@ -153,14 +161,17 @@ export class CostumesService {
           ]),
         ),
       ]),
-    )
-      .slice(0, 20)
-      .map((c) => ({
-        costumeId: c.id,
-        name: c.name,
-        inventoryCode: c.inventoryCode,
-        display: `${c.name} (${c.inventoryCode})`,
-      }));
+    ).slice(0, 20);
+    const summaries = await this.photos.summaries(ranked.map((c) => c.id));
+
+    return ranked.map((c) => ({
+      costumeId: c.id,
+      name: c.name,
+      inventoryCode: c.inventoryCode,
+      photoCount: 0,
+      ...summaries.get(c.id),
+      display: `${c.name} (${c.inventoryCode})`,
+    }));
   }
 
   async searchCostumeAvailable(
@@ -255,19 +266,22 @@ export class CostumesService {
     ]);
     const costumes = mergeUniqueById(exactCostumes, broadCostumes);
 
-    return sortBySearchScore(costumes, (costume) =>
+    const ranked = sortBySearchScore(costumes, (costume) =>
       maxScore([
         scoreTextMatch(costume.name, search),
         scoreIdentifierMatch(costume.inventoryCode, search),
       ]),
-    )
-      .slice(0, 30)
-      .map((c) => ({
-        costumeId: c.id,
-        name: c.name,
-        inventoryCode: c.inventoryCode,
-        status: c.orders.length > 0 ? 'issued' : 'available',
-      }));
+    ).slice(0, 30);
+    const summaries = await this.photos.summaries(ranked.map((c) => c.id));
+
+    return ranked.map((c) => ({
+      costumeId: c.id,
+      name: c.name,
+      inventoryCode: c.inventoryCode,
+      photoCount: 0,
+      ...summaries.get(c.id),
+      status: c.orders.length > 0 ? 'issued' : 'available',
+    }));
   }
 
   async costumesAvailability(
@@ -323,10 +337,14 @@ export class CostumesService {
       };
     });
 
+    const summary = (await this.photos.summaries([costume.id])).get(costume.id);
+
     return {
       costumeId: costume.id,
       name: costume.name,
       inventoryCode: costume.inventoryCode,
+      photoCount: 0,
+      ...summary,
       periods: periods,
       noPeriodsMessage:
         periods.length === 0
@@ -364,10 +382,13 @@ export class CostumesService {
       }),
     ]);
 
+    const summaries = await this.photos.summaries(rawItems.map((i) => i.id));
     const items = rawItems.map((item) => ({
       costumeId: item.id,
       name: item.name,
       inventoryCode: item.inventoryCode,
+      photoCount: 0,
+      ...summaries.get(item.id),
     }));
 
     return {

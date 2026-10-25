@@ -2,13 +2,14 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { CostumesService } from './costumes.service';
 import {
   createPrismaMock,
+  noPhotos,
   makeCostume,
   makeOrder,
   makeVisit,
 } from '../test-utils';
 
 const { prisma, reset } = createPrismaMock();
-const service = () => new CostumesService(prisma as never);
+const service = () => new CostumesService(prisma as never, noPhotos as never);
 const start = '2026-12-20T10:00:00Z';
 const end = '2026-12-21T10:00:00Z';
 
@@ -20,6 +21,7 @@ describe('CostumesService', () => {
     await expect(service().createCostume({ name: 'Эльза' })).resolves.toEqual({
       costumeId: 1,
       name: 'Эльза',
+      photoCount: 0,
       inventoryCode: 'C-0001',
     });
     expect(prisma.costume.create).toHaveBeenCalledWith({
@@ -246,7 +248,9 @@ describe('CostumesService', () => {
       5,
     ]);
     await expect(service().getCostumesList(2, 2)).resolves.toEqual({
-      items: [{ costumeId: 2, name: 'Анна', inventoryCode: 'C-0002' }],
+      items: [
+        { costumeId: 2, name: 'Анна', inventoryCode: 'C-0002', photoCount: 0 },
+      ],
       total: 5,
       page: 2,
       limit: 2,

@@ -8,6 +8,7 @@ import {
 import { Prisma } from '../prisma/generated/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { readVisitDetail } from './visit-read.mapper';
+import { CostumePhotosService } from '../costume-photos/costume-photos.service';
 import {
   buildIdentifierFilters,
   buildPhoneFilters,
@@ -29,7 +30,10 @@ type VisitListQueryInput = Omit<VisitListQueryDto, 'status'> & {
 
 @Injectable()
 export class VisitReadService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly photos: CostumePhotosService,
+  ) {}
 
   private optionalQueryString(value: unknown): string | undefined {
     if (value === undefined) return undefined;
@@ -231,6 +235,6 @@ export class VisitReadService {
   }
 
   async detail(visitId: number): Promise<VisitReadDetailDto> {
-    return readVisitDetail(this.prisma, visitId);
+    return readVisitDetail(this.prisma, visitId, this.photos);
   }
 }

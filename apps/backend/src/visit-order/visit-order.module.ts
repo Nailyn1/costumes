@@ -4,10 +4,11 @@ import { VisitController } from './visits.controller';
 import { VisitReadController } from './visit-read.controller';
 import { VisitReadService } from './visit-read.service';
 import { AuthModule } from '../auth/auth.module';
+import { CostumePhotosModule } from '../costume-photos/costume-photos.module';
 import { NotificationModule } from '../notification/notification.module';
 
 @Module({
-  imports: [AuthModule, NotificationModule],
+  imports: [AuthModule, NotificationModule, CostumePhotosModule],
   controllers: [VisitController, VisitReadController],
   providers: [VisitOrderService, VisitReadService],
 })
