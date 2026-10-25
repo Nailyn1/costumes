@@ -21,9 +21,182 @@ describe('CostumesService', () => {
       costumeId: 1,
       name: 'Эльза',
       inventoryCode: 'C-0001',
+      category: null,
+      gender: null,
+      heightFrom: null,
+      heightTo: null,
+      sizeLabel: null,
     });
-    expect(prisma.costume.create).toHaveBeenCalledWith({
-      data: { name: 'Эльза' },
+    expect(prisma.costume.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ name: 'Эльза' }) as never,
+      }) as never,
+    );
+  });
+
+  it('creates a costume with category, gender and size and returns the category with its parent', async () => {
+    prisma.costumeCategory.findFirst.mockResolvedValue({ id: 3 });
+    prisma.costume.create.mockResolvedValue(
+      makeCostume({
+        categoryId: 3,
+        gender: 'girl',
+        heightFrom: 104,
+        heightTo: 116,
+        sizeLabel: 'Р32',
+        category: {
+          id: 3,
+          name: 'Кавказские',
+          parentId: 1,
+          deletedAt: null,
+          parent: { name: 'Национальные' },
+        },
+      } as never),
+    );
+
+    await expect(
+      service().createCostume({
+        name: 'Кавказский',
+        categoryId: 3,
+        gender: 'girl',
+        heightFrom: 104,
+        heightTo: 116,
+        sizeLabel: ' Р32 ',
+      }),
+    ).resolves.toMatchObject({
+      category: {
+        id: 3,
+        name: 'Кавказские',
+        parentId: 1,
+        parentName: 'Национальные',
+      },
+      gender: 'girl',
+      heightFrom: 104,
+      heightTo: 116,
+      sizeLabel: 'Р32',
+    });
+    expect(prisma.costumeCategory.findFirst).toHaveBeenCalledWith({
+      where: { id: 3, deletedAt: null },
+      select: { id: true },
+    });
+    expect(prisma.costume.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: {
+          name: 'Кавказский',
+          categoryId: 3,
+          gender: 'girl',
+          heightFrom: 104,
+          heightTo: 116,
+          sizeLabel: 'Р32',
+        },
+      }) as never,
+    );
+  });
+
+  it('does not report a soft deleted category on the costume', async () => {
+    prisma.costume.create.mockResolvedValue(
+      makeCostume({
+        categoryId: 3,
+        category: {
+          id: 3,
+          name: 'Кавказские',
+          parentId: 1,
+          deletedAt: new Date(),
+          parent: null,
+        },
+      } as never),
+    );
+    await expect(
+      service().createCostume({ name: 'Кавказский' }),
+    ).resolves.toMatchObject({ category: null });
+  });
+
+  it('rejects an inverted height range and an unknown category on create', async () => {
+    await expect(
+      service().createCostume({
+        name: 'Кавказский',
+        heightFrom: 120,
+        heightTo: 104,
+      }),
+    ).rejects.toThrow(BadRequestException);
+
+    prisma.costumeCategory.findFirst.mockResolvedValue(null);
+    await expect(
+      service().createCostume({ name: 'Кавказский', categoryId: 99 }),
+    ).rejects.toThrow(new BadRequestException('Категория с ID 99 не найдена'));
+    expect(prisma.costume.create).not.toHaveBeenCalled();
+  });
+
+  it('validates an updated height bound against the stored one', async () => {
+    prisma.costume.findFirst.mockResolvedValue({
+      heightFrom: 104,
+      heightTo: 116,
+    });
+    await expect(service().updateCostume({ heightTo: 100 }, 1)).rejects.toThrow(
+      BadRequestException,
+    );
+    expect(prisma.costume.update).not.toHaveBeenCalled();
+
+    prisma.costume.update.mockResolvedValue(makeCostume({ heightTo: 120 }));
+    await service().updateCostume({ heightTo: 120 }, 1);
+    expect(prisma.costume.update).toHaveBeenCalledTimes(1);
+  });
+
+  it('clears the category and size label with null', async () => {
+    prisma.costume.update.mockResolvedValue(makeCostume());
+    await service().updateCostume({ categoryId: null, sizeLabel: null }, 1);
+    expect(prisma.costume.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          categoryId: null,
+          sizeLabel: null,
+        }) as never,
+      }) as never,
+    );
+  });
+
+  it('combines catalog filters with search without losing exact matches', async () => {
+    prisma.costume.findMany.mockResolvedValue([]);
+    await service().searchCostume('Эльза', { categoryId: 2, gender: 'girl' });
+
+    const calls = prisma.costume.findMany.mock.calls as [
+      { where: { AND: unknown[]; deletedAt: null } },
+    ][];
+    expect(calls).toHaveLength(2);
+    for (const [args] of calls) {
+      expect(args.where.deletedAt).toBeNull();
+      expect(args.where.AND).toHaveLength(3);
+      expect(args.where.AND).toEqual(
+        expect.arrayContaining([
+          { category: { deletedAt: null, OR: [{ id: 2 }, { parentId: 2 }] } },
+          { gender: 'girl' },
+        ]),
+      );
+    }
+  });
+
+  it('applies catalog filters to the availability search and the list', async () => {
+    prisma.costume.findMany.mockResolvedValue([]);
+    await service().searchCostumeAvailable('Эльза', start, end, undefined, {
+      withoutCategory: true,
+    });
+    for (const [args] of prisma.costume.findMany.mock.calls as [
+      { where: { AND: unknown[] } },
+    ][]) {
+      expect(args.where.AND[0]).toEqual({
+        OR: [{ categoryId: null }, { category: { deletedAt: { not: null } } }],
+      });
+    }
+
+    prisma.costume.findMany.mockClear();
+    prisma.$transaction.mockResolvedValue([[], 0]);
+    await service().getCostumesList(1, 20, { height: 110 });
+    expect(prisma.costume.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { deletedAt: null, AND: expect.any(Array) as never },
+      }) as never,
+    );
+    expect(prisma.costume.count).toHaveBeenCalledWith({
+      where: { deletedAt: null, AND: expect.any(Array) as never },
     });
   });
 
@@ -35,10 +208,12 @@ describe('CostumesService', () => {
       name: 'Анна',
       inventoryCode: 'C-0001',
     });
-    expect(prisma.costume.update).toHaveBeenCalledWith({
-      where: { id: 1, deletedAt: null },
-      data: { name: 'Анна' },
-    });
+    expect(prisma.costume.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 1, deletedAt: null },
+        data: expect.objectContaining({ name: 'Анна' }) as never,
+      }) as never,
+    );
   });
 
   it('rejects updating a costume that was already deleted', async () => {
@@ -46,10 +221,12 @@ describe('CostumesService', () => {
     await expect(service().updateCostume({ name: 'Анна' }, 1)).rejects.toThrow(
       new NotFoundException('Костюм с ID 1 не найден'),
     );
-    expect(prisma.costume.update).toHaveBeenCalledWith({
-      where: { id: 1, deletedAt: null },
-      data: { name: 'Анна' },
-    });
+    expect(prisma.costume.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 1, deletedAt: null },
+        data: expect.objectContaining({ name: 'Анна' }) as never,
+      }) as never,
+    );
   });
 
   it('soft deletes a costume', async () => {
@@ -142,6 +319,7 @@ describe('CostumesService', () => {
       expect.objectContaining({
         where: expect.objectContaining({ deletedAt: null }) as never,
         include: {
+          category: expect.anything() as never,
           orders: {
             where: {
               deletedAt: null,
@@ -245,7 +423,7 @@ describe('CostumesService', () => {
       [{ id: 2, name: 'Анна', inventoryCode: 'C-0002' }],
       5,
     ]);
-    await expect(service().getCostumesList(2, 2)).resolves.toEqual({
+    await expect(service().getCostumesList(2, 2)).resolves.toMatchObject({
       items: [{ costumeId: 2, name: 'Анна', inventoryCode: 'C-0002' }],
       total: 5,
       page: 2,
@@ -254,14 +432,14 @@ describe('CostumesService', () => {
     });
     expect(prisma.costume.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { deletedAt: null },
+        where: { deletedAt: null, AND: [] },
         skip: 2,
         take: 2,
         orderBy: { id: 'desc' },
       }),
     );
     expect(prisma.costume.count).toHaveBeenCalledWith({
-      where: { deletedAt: null },
+      where: { deletedAt: null, AND: [] },
     });
   });
 
@@ -274,6 +452,7 @@ describe('CostumesService', () => {
     expect(prisma.costume.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         include: {
+          category: expect.anything() as never,
           orders: expect.objectContaining({
             where: expect.objectContaining({
               status: { in: ['reserved', 'issued'] },
@@ -292,6 +471,7 @@ describe('CostumesService', () => {
     expect(prisma.costume.findUnique).toHaveBeenCalledWith(
       expect.objectContaining({
         include: {
+          category: expect.anything() as never,
           orders: expect.objectContaining({
             where: expect.objectContaining({
               status: { in: ['reserved', 'issued'] },
@@ -334,6 +514,7 @@ describe('CostumesService', () => {
     expect(prisma.costume.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         include: {
+          category: expect.anything() as never,
           orders: {
             where: {
               deletedAt: null,

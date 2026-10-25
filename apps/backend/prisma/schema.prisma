@@ -71,14 +71,46 @@ model Costume {
   inventoryCode String        @unique @default(dbgenerated("generate_costume_code()")) @map("inventory_code")
   name          String
   notes         String?
-  
+
+  categoryId    Int?          @map("category_id")
+  category      CostumeCategory? @relation(fields: [categoryId], references: [id])
+  gender        CostumeGender?
+  heightFrom    Int?          @map("height_from")
+  heightTo      Int?          @map("height_to")
+  sizeLabel     String?       @map("size_label")
+
   orders        Order[]
 
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
   deletedAt     DateTime?     @map("deleted_at")
 
+  @@index([categoryId])
   @@map("costumes")
+}
+
+model CostumeCategory {
+  id        Int       @id @default(autoincrement())
+  name      String
+  parentId  Int?      @map("parent_id")
+  parent    CostumeCategory?  @relation("CostumeCategoryTree", fields: [parentId], references: [id])
+  children  CostumeCategory[] @relation("CostumeCategoryTree")
+  sortOrder Int       @default(0) @map("sort_order")
+
+  costumes  Costume[]
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@index([parentId])
+  @@map("costume_categories")
+}
+
+enum CostumeGender {
+  girl
+  boy
+  unisex
 }
 
 model Visit {

@@ -19,6 +19,7 @@ import {
   CreateCostumesRequest,
   UpdateCostumesRequest,
 } from './dto/costumes.dto';
+import { CostumeFiltersQuery } from './dto/costume-filters.dto';
 import {
   CostumesListResponseDto,
   CostumesSearchAvailableResponseDto,
@@ -51,9 +52,10 @@ export class CostumesController {
   @UseGuards(JwtAuthGuard)
   async searchCostume(
     @Query('q') q: string,
+    @Query() filters: CostumeFiltersQuery,
   ): Promise<CostumesSearchResponseDto[]> {
     if (!q || q.length < 2) return [];
-    return await this.costumesService.searchCostume(q);
+    return await this.costumesService.searchCostume(q, filters);
   }
 
   @Get('search-available')
@@ -62,13 +64,15 @@ export class CostumesController {
     @Query('q') q: string,
     @Query('startDate') startDate: string,
     @Query('endDate') endDate: string,
-    @Query('excludeVisitId') excludeVisitId?: string,
+    @Query('excludeVisitId') excludeVisitId: string | undefined,
+    @Query() filters: CostumeFiltersQuery,
   ): Promise<CostumesSearchAvailableResponseDto[]> {
     return await this.costumesService.searchCostumeAvailable(
       q,
       startDate,
       endDate,
       excludeVisitId,
+      filters,
     );
   }
 
@@ -92,7 +96,8 @@ export class CostumesController {
   async costumesList(
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number = 1,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number = 20,
+    @Query() filters: CostumeFiltersQuery,
   ): Promise<CostumesListResponseDto> {
-    return await this.costumesService.getCostumesList(page, limit);
+    return await this.costumesService.getCostumesList(page, limit, filters);
   }
 }

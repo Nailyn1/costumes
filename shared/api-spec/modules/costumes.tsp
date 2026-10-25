@@ -18,10 +18,28 @@ enum CostumeStatus {
   issued: "issued",
 }
 
+enum CostumeGender {
+  girl: "girl",
+  boy: "boy",
+  unisex: "unisex",
+}
+
+@minValue(50)
+@maxValue(200)
+scalar HeightCm extends int32;
+
+@maxLength(20)
+scalar SizeLabel extends string;
+
 model Costume {
   costumeId: int32;
   name: string;
   inventoryCode: InventoryCode;
+  category?: CostumeApp.CostumeCategories.CostumeCategoryRef | null;
+  gender?: CostumeGender | null;
+  heightFrom?: HeightCm | null;
+  heightTo?: HeightCm | null;
+  sizeLabel?: SizeLabel | null;
 }
 
 model AvailableCostume {
@@ -60,11 +78,21 @@ model GetCostumesList{
 model CreateCostumeRequest {
   @minLength(2)
   name: string;
+  categoryId?: int32 | null;
+  gender?: CostumeGender | null;
+  heightFrom?: HeightCm | null;
+  heightTo?: HeightCm | null;
+  sizeLabel?: SizeLabel | null;
 }
 
 model UpdateCostumeRequest {
   @minLength(2)
   name?: string;
+  categoryId?: int32 | null;
+  gender?: CostumeGender | null;
+  heightFrom?: HeightCm | null;
+  heightTo?: HeightCm | null;
+  sizeLabel?: SizeLabel | null;
 }
 
 @route("/costumes")
@@ -75,12 +103,22 @@ interface CostumeOperations {
     @query q?: string,
     @query startDate: string,
     @query endDate: string,
-    @query excludeVisitId?: int32
+    @query excludeVisitId?: int32,
+    @query categoryId?: int32,
+    @query gender?: CostumeGender,
+    @query height?: HeightCm,
+    @query withoutCategory?: boolean
   ): AvailableCostume[] | Common.Error;
 
   @get
   @route("search")
-  searchAvailability(@query q: string): CostumeSearchResult[] | Common.Error;
+  searchAvailability(
+    @query q: string,
+    @query categoryId?: int32,
+    @query gender?: CostumeGender,
+    @query height?: HeightCm,
+    @query withoutCategory?: boolean
+  ): CostumeSearchResult[] | Common.Error;
 
   @get
   @route("{costumeId}/availability")
@@ -110,7 +148,14 @@ interface CostumeOperations {
 
   @get
   @route("list")
-  getCostumesList(@query page?: int32, @query limit?: int32): {
+  getCostumesList(
+    @query page?: int32,
+    @query limit?: int32,
+    @query categoryId?: int32,
+    @query gender?: CostumeGender,
+    @query height?: HeightCm,
+    @query withoutCategory?: boolean
+  ): {
     @statusCode statusCode: 200;
     @body body: GetCostumesList} | Common.Error;
 }

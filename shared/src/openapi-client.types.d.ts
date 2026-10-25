@@ -88,6 +88,47 @@ export namespace Schemas {
     code?: string;
     fieldErrors?: Record<string, Array<string>>;
   } & Record<string, unknown>;
+  export type CostumeCategories_CategoryName = string;
+  export type CostumeCategories_CostumeCategory = {
+    id: number;
+    name: string;
+    parentId: number | null;
+    sortOrder: number;
+  } & Record<string, unknown>;
+  export type CostumeCategories_CostumeSubcategory = { id: number; name: string; sortOrder: number } & Record<
+    string,
+    unknown
+  >;
+  /**
+   * Основная категория с подкатегориями (максимум два уровня).
+   */
+  export type CostumeCategories_CostumeCategoryNode = {
+    id: number;
+    name: string;
+    sortOrder: number;
+    children: Array<CostumeCategories_CostumeSubcategory>;
+  } & Record<string, unknown>;
+  /**
+   * Краткая ссылка на категорию в ответах по костюму.
+   */
+  export type CostumeCategories_CostumeCategoryRef = {
+    id: number;
+    name: string;
+    parentId: number | null;
+    parentName: string | null;
+  } & Record<string, unknown>;
+  export type CostumeCategories_CreateCostumeCategoryRequest = {
+    name: CostumeCategories_CategoryName;
+    /**
+     * Не задан — основная категория; задан — подкатегория этой основной категории.
+     */
+    parentId?: number;
+  } & Record<string, unknown>;
+  export type CostumeCategories_UpdateCostumeCategoryRequest = Partial<{
+    name: CostumeCategories_CategoryName;
+    sortOrder: number;
+  }> &
+    Record<string, unknown>;
   export type Costumes_AvailabilityPeriod = {
     visitCode: Costumes_VisitCode;
     clientName: string;
@@ -99,21 +140,40 @@ export namespace Schemas {
     returnTimeUntil: Visits_TimeString;
   } & Record<string, unknown>;
   export type Costumes_InventoryCode = string;
+  export type Costumes_CostumeGender = "girl" | "boy" | "unisex";
+  export type Costumes_HeightCm = number;
+  export type Costumes_SizeLabel = string;
   export type Costumes_CostumeStatus = "available" | "issued";
   export type Costumes_AvailableCostume = {
     costumeId: number;
     name: string;
     inventoryCode: Costumes_InventoryCode;
+    category?: CostumeCategories_CostumeCategoryRef | null;
+    gender?: Costumes_CostumeGender | null;
+    heightFrom?: Costumes_HeightCm | null;
+    heightTo?: Costumes_HeightCm | null;
+    sizeLabel?: Costumes_SizeLabel | null;
     status: Costumes_CostumeStatus;
   } & Record<string, unknown>;
-  export type Costumes_Costume = { costumeId: number; name: string; inventoryCode: Costumes_InventoryCode } & Record<
-    string,
-    unknown
-  >;
+  export type Costumes_Costume = {
+    costumeId: number;
+    name: string;
+    inventoryCode: Costumes_InventoryCode;
+    category?: CostumeCategories_CostumeCategoryRef | null;
+    gender?: Costumes_CostumeGender | null;
+    heightFrom?: Costumes_HeightCm | null;
+    heightTo?: Costumes_HeightCm | null;
+    sizeLabel?: Costumes_SizeLabel | null;
+  } & Record<string, unknown>;
   export type Costumes_CostumeFullAvailability = {
     costumeId: number;
     name: string;
     inventoryCode: Costumes_InventoryCode;
+    category?: CostumeCategories_CostumeCategoryRef | null;
+    gender?: Costumes_CostumeGender | null;
+    heightFrom?: Costumes_HeightCm | null;
+    heightTo?: Costumes_HeightCm | null;
+    sizeLabel?: Costumes_SizeLabel | null;
     periods: Array<Costumes_AvailabilityPeriod>;
     noPeriodsMessage: string | null;
   } & Record<string, unknown>;
@@ -121,9 +181,21 @@ export namespace Schemas {
     costumeId: number;
     name: string;
     inventoryCode: Costumes_InventoryCode;
+    category?: CostumeCategories_CostumeCategoryRef | null;
+    gender?: Costumes_CostumeGender | null;
+    heightFrom?: Costumes_HeightCm | null;
+    heightTo?: Costumes_HeightCm | null;
+    sizeLabel?: Costumes_SizeLabel | null;
     display: string;
   } & Record<string, unknown>;
-  export type Costumes_CreateCostumeRequest = { name: string } & Record<string, unknown>;
+  export type Costumes_CreateCostumeRequest = {
+    name: string;
+    categoryId?: number | null;
+    gender?: Costumes_CostumeGender | null;
+    heightFrom?: Costumes_HeightCm | null;
+    heightTo?: Costumes_HeightCm | null;
+    sizeLabel?: Costumes_SizeLabel | null;
+  } & Record<string, unknown>;
   export type Costumes_GetCostumesList = {
     items: Array<Costumes_Costume>;
     total: number;
@@ -131,7 +203,15 @@ export namespace Schemas {
     limit: number;
     hasMore: boolean;
   } & Record<string, unknown>;
-  export type Costumes_UpdateCostumeRequest = Partial<{ name: string }> & Record<string, unknown>;
+  export type Costumes_UpdateCostumeRequest = Partial<{
+    name: string;
+    categoryId: number | null;
+    gender: Costumes_CostumeGender | null;
+    heightFrom: Costumes_HeightCm | null;
+    heightTo: Costumes_HeightCm | null;
+    sizeLabel: Costumes_SizeLabel | null;
+  }> &
+    Record<string, unknown>;
   export type Visits_AddAndIssueVisitRequestOrder = {
     childId: number;
     costumeId: number;
@@ -843,6 +923,46 @@ export namespace Endpoints {
     };
     responses: { 200: Schemas.Clients_WhatsappAvailability; default: Schemas.Common_Error };
   };
+  export type get_CostumeCategoryOperations_list = {
+    method: "GET";
+    path: "/costume-categories";
+    requestFormat: "json";
+    responseFormat: "json";
+    parameters: never;
+    responses: { 200: Array<Schemas.CostumeCategories_CostumeCategoryNode>; default: Schemas.Common_Error };
+  };
+  export type post_CostumeCategoryOperations_create = {
+    method: "POST";
+    path: "/costume-categories";
+    requestFormat: "json";
+    responseFormat: "json";
+    parameters: {
+      body: Schemas.CostumeCategories_CreateCostumeCategoryRequest;
+    };
+    responses: { 201: Schemas.CostumeCategories_CostumeCategory; default: Schemas.Common_Error };
+  };
+  export type patch_CostumeCategoryOperations_update = {
+    method: "PATCH";
+    path: "/costume-categories/{categoryId}";
+    requestFormat: "json";
+    responseFormat: "json";
+    parameters: {
+      path: { categoryId: number };
+
+      body: Schemas.CostumeCategories_UpdateCostumeCategoryRequest;
+    };
+    responses: { 200: Schemas.CostumeCategories_CostumeCategory; default: Schemas.Common_Error };
+  };
+  export type delete_CostumeCategoryOperations_delete = {
+    method: "DELETE";
+    path: "/costume-categories/{categoryId}";
+    requestFormat: "json";
+    responseFormat: "json";
+    parameters: {
+      path: { categoryId: number };
+    };
+    responses: { 204: unknown; default: Schemas.Common_Error };
+  };
   export type post_CostumeOperations_create = {
     method: "POST";
     path: "/costumes";
@@ -859,7 +979,14 @@ export namespace Endpoints {
     requestFormat: "json";
     responseFormat: "json";
     parameters: {
-      query?: Partial<{ page: number; limit: number }>;
+      query?: Partial<{
+        page: number;
+        limit: number;
+        categoryId: number;
+        gender: Schemas.Costumes_CostumeGender;
+        height: Schemas.Costumes_HeightCm;
+        withoutCategory: boolean;
+      }>;
     };
     responses: { 200: Schemas.Costumes_GetCostumesList; default: Schemas.Common_Error };
   };
@@ -869,7 +996,13 @@ export namespace Endpoints {
     requestFormat: "json";
     responseFormat: "json";
     parameters: {
-      query: { q: string };
+      query: {
+        q: string;
+        categoryId?: number;
+        gender?: Schemas.Costumes_CostumeGender;
+        height?: Schemas.Costumes_HeightCm;
+        withoutCategory?: boolean;
+      };
     };
     responses: { 200: Array<Schemas.Costumes_CostumeSearchResult>; default: Schemas.Common_Error };
   };
@@ -879,7 +1012,16 @@ export namespace Endpoints {
     requestFormat: "json";
     responseFormat: "json";
     parameters: {
-      query: { q?: string; startDate: string; endDate: string; excludeVisitId?: number };
+      query: {
+        q?: string;
+        startDate: string;
+        endDate: string;
+        excludeVisitId?: number;
+        categoryId?: number;
+        gender?: Schemas.Costumes_CostumeGender;
+        height?: Schemas.Costumes_HeightCm;
+        withoutCategory?: boolean;
+      };
     };
     responses: { 200: Array<Schemas.Costumes_AvailableCostume>; default: Schemas.Common_Error };
   };
@@ -1245,6 +1387,7 @@ export type EndpointByMethod = {
     "/children": Endpoints.post_ChildOperations_create;
     "/clients": Endpoints.post_ClientOperations_create;
     "/clients/{clientId}/blacklist": Endpoints.post_ClientOperations_addClientInBlackList;
+    "/costume-categories": Endpoints.post_CostumeCategoryOperations_create;
     "/costumes": Endpoints.post_CostumeOperations_create;
     "/visits": Endpoints.post_VisitOperation_create;
     "/visits/preview-code": Endpoints.post_VisitOperation_previewCode;
@@ -1261,6 +1404,7 @@ export type EndpointByMethod = {
   patch: {
     "/children/{childId}": Endpoints.patch_ChildOperations_update;
     "/clients/{clientId}": Endpoints.patch_ClientOperations_update;
+    "/costume-categories/{categoryId}": Endpoints.patch_CostumeCategoryOperations_update;
     "/costumes/{costumeId}": Endpoints.patch_CostumeOperations_update;
     "/visits/{visitId}": Endpoints.patch_VisitOperation_updateReserved;
   };
@@ -1268,6 +1412,7 @@ export type EndpointByMethod = {
     "/children/{childId}": Endpoints.delete_ChildOperations_delete;
     "/clients/{clientId}": Endpoints.delete_ClientOperations_delete;
     "/clients/{clientId}/blacklist": Endpoints.delete_ClientOperations_removeClientFromBlackList;
+    "/costume-categories/{categoryId}": Endpoints.delete_CostumeCategoryOperations_delete;
     "/costumes/{costumeId}": Endpoints.delete_CostumeOperations_delete;
   };
   get: {
@@ -1275,6 +1420,7 @@ export type EndpointByMethod = {
     "/clients/list": Endpoints.get_ClientOperations_getClientList;
     "/clients/search": Endpoints.get_ClientOperations_search;
     "/clients/{clientId}/whatsapp-availability": Endpoints.get_ClientOperations_checkWhatsappAvailability;
+    "/costume-categories": Endpoints.get_CostumeCategoryOperations_list;
     "/costumes/list": Endpoints.get_CostumeOperations_getCostumesList;
     "/costumes/search": Endpoints.get_CostumeOperations_searchAvailability;
     "/costumes/search-available": Endpoints.get_CostumeOperations_searchAvailable;

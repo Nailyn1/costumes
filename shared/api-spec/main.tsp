@@ -6,6 +6,7 @@ import "./common/errors.tsp";
 import "./modules/auth.tsp";
 import "./modules/clients.tsp";
 import "./modules/children.tsp";
+import "./modules/costume-categories.tsp";
 import "./modules/costumes.tsp";
 import "./modules/visits.tsp";
 

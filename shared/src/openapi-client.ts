@@ -159,6 +159,57 @@ export const Common_Error = z
   })
   .catchall(z.unknown());
 
+export type CostumeCategories_CategoryName = __TypedOpenapi.Schemas.CostumeCategories_CategoryName;
+export const CostumeCategories_CategoryName = z.string().min(2).max(40);
+
+export type CostumeCategories_CostumeCategory = __TypedOpenapi.Schemas.CostumeCategories_CostumeCategory;
+export const CostumeCategories_CostumeCategory = z
+  .object({
+    id: z.number().int(),
+    name: z.string(),
+    parentId: z.number().int().nullable(),
+    sortOrder: z.number().int(),
+  })
+  .catchall(z.unknown());
+
+export type CostumeCategories_CostumeSubcategory = __TypedOpenapi.Schemas.CostumeCategories_CostumeSubcategory;
+export const CostumeCategories_CostumeSubcategory = z
+  .object({ id: z.number().int(), name: z.string(), sortOrder: z.number().int() })
+  .catchall(z.unknown());
+
+export type CostumeCategories_CostumeCategoryNode = __TypedOpenapi.Schemas.CostumeCategories_CostumeCategoryNode;
+export const CostumeCategories_CostumeCategoryNode = z
+  .object({
+    id: z.number().int(),
+    name: z.string(),
+    sortOrder: z.number().int(),
+    children: z.array(CostumeCategories_CostumeSubcategory),
+  })
+  .catchall(z.unknown());
+
+export type CostumeCategories_CostumeCategoryRef = __TypedOpenapi.Schemas.CostumeCategories_CostumeCategoryRef;
+export const CostumeCategories_CostumeCategoryRef = z
+  .object({
+    id: z.number().int(),
+    name: z.string(),
+    parentId: z.number().int().nullable(),
+    parentName: z.string().nullable(),
+  })
+  .catchall(z.unknown());
+
+export type CostumeCategories_CreateCostumeCategoryRequest =
+  __TypedOpenapi.Schemas.CostumeCategories_CreateCostumeCategoryRequest;
+export const CostumeCategories_CreateCostumeCategoryRequest = z
+  .object({ name: CostumeCategories_CategoryName, parentId: z.number().int().optional() })
+  .catchall(z.unknown());
+
+export type CostumeCategories_UpdateCostumeCategoryRequest =
+  __TypedOpenapi.Schemas.CostumeCategories_UpdateCostumeCategoryRequest;
+export const CostumeCategories_UpdateCostumeCategoryRequest = z
+  .object({ name: CostumeCategories_CategoryName, sortOrder: z.number().int() })
+  .partial()
+  .catchall(z.unknown());
+
 export type Costumes_AvailabilityPeriod = __TypedOpenapi.Schemas.Costumes_AvailabilityPeriod;
 export const Costumes_AvailabilityPeriod = z
   .object({
@@ -176,6 +227,15 @@ export const Costumes_AvailabilityPeriod = z
 export type Costumes_InventoryCode = __TypedOpenapi.Schemas.Costumes_InventoryCode;
 export const Costumes_InventoryCode = z.string().regex(new RegExp("^C-\\d{4}$"));
 
+export type Costumes_CostumeGender = __TypedOpenapi.Schemas.Costumes_CostumeGender;
+export const Costumes_CostumeGender = z.enum(["girl", "boy", "unisex"]);
+
+export type Costumes_HeightCm = __TypedOpenapi.Schemas.Costumes_HeightCm;
+export const Costumes_HeightCm = z.number().int().min(50).max(200);
+
+export type Costumes_SizeLabel = __TypedOpenapi.Schemas.Costumes_SizeLabel;
+export const Costumes_SizeLabel = z.string().max(20);
+
 export type Costumes_CostumeStatus = __TypedOpenapi.Schemas.Costumes_CostumeStatus;
 export const Costumes_CostumeStatus = z.enum(["available", "issued"]);
 
@@ -185,13 +245,27 @@ export const Costumes_AvailableCostume = z
     costumeId: z.number().int(),
     name: z.string(),
     inventoryCode: Costumes_InventoryCode,
+    category: CostumeCategories_CostumeCategoryRef.nullable().optional(),
+    gender: Costumes_CostumeGender.nullable().optional(),
+    heightFrom: Costumes_HeightCm.nullable().optional(),
+    heightTo: Costumes_HeightCm.nullable().optional(),
+    sizeLabel: Costumes_SizeLabel.nullable().optional(),
     status: Costumes_CostumeStatus,
   })
   .catchall(z.unknown());
 
 export type Costumes_Costume = __TypedOpenapi.Schemas.Costumes_Costume;
 export const Costumes_Costume = z
-  .object({ costumeId: z.number().int(), name: z.string(), inventoryCode: Costumes_InventoryCode })
+  .object({
+    costumeId: z.number().int(),
+    name: z.string(),
+    inventoryCode: Costumes_InventoryCode,
+    category: CostumeCategories_CostumeCategoryRef.nullable().optional(),
+    gender: Costumes_CostumeGender.nullable().optional(),
+    heightFrom: Costumes_HeightCm.nullable().optional(),
+    heightTo: Costumes_HeightCm.nullable().optional(),
+    sizeLabel: Costumes_SizeLabel.nullable().optional(),
+  })
   .catchall(z.unknown());
 
 export type Costumes_CostumeFullAvailability = __TypedOpenapi.Schemas.Costumes_CostumeFullAvailability;
@@ -200,6 +274,11 @@ export const Costumes_CostumeFullAvailability = z
     costumeId: z.number().int(),
     name: z.string(),
     inventoryCode: Costumes_InventoryCode,
+    category: CostumeCategories_CostumeCategoryRef.nullable().optional(),
+    gender: Costumes_CostumeGender.nullable().optional(),
+    heightFrom: Costumes_HeightCm.nullable().optional(),
+    heightTo: Costumes_HeightCm.nullable().optional(),
+    sizeLabel: Costumes_SizeLabel.nullable().optional(),
     periods: z.array(Costumes_AvailabilityPeriod),
     noPeriodsMessage: z.string().nullable(),
   })
@@ -207,11 +286,30 @@ export const Costumes_CostumeFullAvailability = z
 
 export type Costumes_CostumeSearchResult = __TypedOpenapi.Schemas.Costumes_CostumeSearchResult;
 export const Costumes_CostumeSearchResult = z
-  .object({ costumeId: z.number().int(), name: z.string(), inventoryCode: Costumes_InventoryCode, display: z.string() })
+  .object({
+    costumeId: z.number().int(),
+    name: z.string(),
+    inventoryCode: Costumes_InventoryCode,
+    category: CostumeCategories_CostumeCategoryRef.nullable().optional(),
+    gender: Costumes_CostumeGender.nullable().optional(),
+    heightFrom: Costumes_HeightCm.nullable().optional(),
+    heightTo: Costumes_HeightCm.nullable().optional(),
+    sizeLabel: Costumes_SizeLabel.nullable().optional(),
+    display: z.string(),
+  })
   .catchall(z.unknown());
 
 export type Costumes_CreateCostumeRequest = __TypedOpenapi.Schemas.Costumes_CreateCostumeRequest;
-export const Costumes_CreateCostumeRequest = z.object({ name: z.string().min(2) }).catchall(z.unknown());
+export const Costumes_CreateCostumeRequest = z
+  .object({
+    name: z.string().min(2),
+    categoryId: z.number().int().nullable().optional(),
+    gender: Costumes_CostumeGender.nullable().optional(),
+    heightFrom: Costumes_HeightCm.nullable().optional(),
+    heightTo: Costumes_HeightCm.nullable().optional(),
+    sizeLabel: Costumes_SizeLabel.nullable().optional(),
+  })
+  .catchall(z.unknown());
 
 export type Costumes_GetCostumesList = __TypedOpenapi.Schemas.Costumes_GetCostumesList;
 export const Costumes_GetCostumesList = z
@@ -226,7 +324,14 @@ export const Costumes_GetCostumesList = z
 
 export type Costumes_UpdateCostumeRequest = __TypedOpenapi.Schemas.Costumes_UpdateCostumeRequest;
 export const Costumes_UpdateCostumeRequest = z
-  .object({ name: z.string().min(2) })
+  .object({
+    name: z.string().min(2),
+    categoryId: z.number().int().nullable(),
+    gender: Costumes_CostumeGender.nullable(),
+    heightFrom: Costumes_HeightCm.nullable(),
+    heightTo: Costumes_HeightCm.nullable(),
+    sizeLabel: Costumes_SizeLabel.nullable(),
+  })
   .partial()
   .catchall(z.unknown());
 
@@ -1185,6 +1290,49 @@ export const get_ClientOperations_checkWhatsappAvailability = {
   responses: { 200: Clients_WhatsappAvailability, default: Common_Error },
 };
 
+export type get_CostumeCategoryOperations_list = __TypedOpenapi.Endpoints.get_CostumeCategoryOperations_list;
+export const get_CostumeCategoryOperations_list = {
+  method: z.literal("GET"),
+  path: z.literal("/costume-categories"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: z.never(),
+  responses: { 200: z.array(CostumeCategories_CostumeCategoryNode), default: Common_Error },
+};
+
+export type post_CostumeCategoryOperations_create = __TypedOpenapi.Endpoints.post_CostumeCategoryOperations_create;
+export const post_CostumeCategoryOperations_create = {
+  method: z.literal("POST"),
+  path: z.literal("/costume-categories"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { body: CostumeCategories_CreateCostumeCategoryRequest },
+  responses: { 201: CostumeCategories_CostumeCategory, default: Common_Error },
+};
+
+export type patch_CostumeCategoryOperations_update = __TypedOpenapi.Endpoints.patch_CostumeCategoryOperations_update;
+export const patch_CostumeCategoryOperations_update = {
+  method: z.literal("PATCH"),
+  path: z.literal("/costume-categories/{categoryId}"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: {
+    path: z.strictObject({ categoryId: z.coerce.number().int() }),
+    body: CostumeCategories_UpdateCostumeCategoryRequest,
+  },
+  responses: { 200: CostumeCategories_CostumeCategory, default: Common_Error },
+};
+
+export type delete_CostumeCategoryOperations_delete = __TypedOpenapi.Endpoints.delete_CostumeCategoryOperations_delete;
+export const delete_CostumeCategoryOperations_delete = {
+  method: z.literal("DELETE"),
+  path: z.literal("/costume-categories/{categoryId}"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { path: z.strictObject({ categoryId: z.coerce.number().int() }) },
+  responses: { 204: z.unknown(), default: Common_Error },
+};
+
 export type post_CostumeOperations_create = __TypedOpenapi.Endpoints.post_CostumeOperations_create;
 export const post_CostumeOperations_create = {
   method: z.literal("POST"),
@@ -1202,7 +1350,19 @@ export const get_CostumeOperations_getCostumesList = {
   requestFormat: z.literal("json"),
   responseFormat: z.literal("json"),
   parameters: {
-    query: z.strictObject({ page: z.coerce.number().int(), limit: z.coerce.number().int() }).partial().optional(),
+    query: z
+      .strictObject({
+        page: z.coerce.number().int(),
+        limit: z.coerce.number().int(),
+        categoryId: z.coerce.number().int(),
+        gender: Costumes_CostumeGender,
+        height: Costumes_HeightCm,
+        withoutCategory: z
+          .union([z.boolean(), z.string(), z.number()])
+          .transform((x) => x === true || x === "true" || x === 1 || x === "1"),
+      })
+      .partial()
+      .optional(),
   },
   responses: { 200: Costumes_GetCostumesList, default: Common_Error },
 };
@@ -1214,7 +1374,18 @@ export const get_CostumeOperations_searchAvailability = {
   path: z.literal("/costumes/search"),
   requestFormat: z.literal("json"),
   responseFormat: z.literal("json"),
-  parameters: { query: z.strictObject({ q: z.string() }) },
+  parameters: {
+    query: z.strictObject({
+      q: z.string(),
+      categoryId: z.coerce.number().int().optional(),
+      gender: Costumes_CostumeGender.optional(),
+      height: Costumes_HeightCm.optional(),
+      withoutCategory: z
+        .union([z.boolean(), z.string(), z.number()])
+        .transform((x) => x === true || x === "true" || x === 1 || x === "1")
+        .optional(),
+    }),
+  },
   responses: { 200: z.array(Costumes_CostumeSearchResult), default: Common_Error },
 };
 
@@ -1230,6 +1401,13 @@ export const get_CostumeOperations_searchAvailable = {
       startDate: z.string(),
       endDate: z.string(),
       excludeVisitId: z.coerce.number().int().optional(),
+      categoryId: z.coerce.number().int().optional(),
+      gender: Costumes_CostumeGender.optional(),
+      height: Costumes_HeightCm.optional(),
+      withoutCategory: z
+        .union([z.boolean(), z.string(), z.number()])
+        .transform((x) => x === true || x === "true" || x === 1 || x === "1")
+        .optional(),
     }),
   },
   responses: { 200: z.array(Costumes_AvailableCostume), default: Common_Error },
@@ -1614,6 +1792,7 @@ export const EndpointByMethod = {
     "/children": post_ChildOperations_create,
     "/clients": post_ClientOperations_create,
     "/clients/{clientId}/blacklist": post_ClientOperations_addClientInBlackList,
+    "/costume-categories": post_CostumeCategoryOperations_create,
     "/costumes": post_CostumeOperations_create,
     "/visits": post_VisitOperation_create,
     "/visits/preview-code": post_VisitOperation_previewCode,
@@ -1630,6 +1809,7 @@ export const EndpointByMethod = {
   patch: {
     "/children/{childId}": patch_ChildOperations_update,
     "/clients/{clientId}": patch_ClientOperations_update,
+    "/costume-categories/{categoryId}": patch_CostumeCategoryOperations_update,
     "/costumes/{costumeId}": patch_CostumeOperations_update,
     "/visits/{visitId}": patch_VisitOperation_updateReserved,
   },
@@ -1637,6 +1817,7 @@ export const EndpointByMethod = {
     "/children/{childId}": delete_ChildOperations_delete,
     "/clients/{clientId}": delete_ClientOperations_delete,
     "/clients/{clientId}/blacklist": delete_ClientOperations_removeClientFromBlackList,
+    "/costume-categories/{categoryId}": delete_CostumeCategoryOperations_delete,
     "/costumes/{costumeId}": delete_CostumeOperations_delete,
   },
   get: {
@@ -1644,6 +1825,7 @@ export const EndpointByMethod = {
     "/clients/list": get_ClientOperations_getClientList,
     "/clients/search": get_ClientOperations_search,
     "/clients/{clientId}/whatsapp-availability": get_ClientOperations_checkWhatsappAvailability,
+    "/costume-categories": get_CostumeCategoryOperations_list,
     "/costumes/list": get_CostumeOperations_getCostumesList,
     "/costumes/search": get_CostumeOperations_searchAvailability,
     "/costumes/search-available": get_CostumeOperations_searchAvailable,
@@ -1730,6 +1912,9 @@ export const endpointParameterStyles = {
   patch: {
     "/children/{childId}": { path: { childId: { style: "simple", explode: false, allowReserved: false } } },
     "/clients/{clientId}": { path: { clientId: { style: "simple", explode: false, allowReserved: false } } },
+    "/costume-categories/{categoryId}": {
+      path: { categoryId: { style: "simple", explode: false, allowReserved: false } },
+    },
     "/costumes/{costumeId}": { path: { costumeId: { style: "simple", explode: false, allowReserved: false } } },
     "/visits/{visitId}": { path: { visitId: { style: "simple", explode: false, allowReserved: false } } },
   },
@@ -1737,6 +1922,9 @@ export const endpointParameterStyles = {
     "/children/{childId}": { path: { childId: { style: "simple", explode: false, allowReserved: false } } },
     "/clients/{clientId}": { path: { clientId: { style: "simple", explode: false, allowReserved: false } } },
     "/clients/{clientId}/blacklist": { path: { clientId: { style: "simple", explode: false, allowReserved: false } } },
+    "/costume-categories/{categoryId}": {
+      path: { categoryId: { style: "simple", explode: false, allowReserved: false } },
+    },
     "/costumes/{costumeId}": { path: { costumeId: { style: "simple", explode: false, allowReserved: false } } },
   },
   get: {
@@ -1756,15 +1944,31 @@ export const endpointParameterStyles = {
       query: {
         page: { style: "form", explode: false, allowReserved: false },
         limit: { style: "form", explode: false, allowReserved: false },
+        categoryId: { style: "form", explode: false, allowReserved: false },
+        gender: { style: "form", explode: false, allowReserved: false },
+        height: { style: "form", explode: false, allowReserved: false },
+        withoutCategory: { style: "form", explode: false, allowReserved: false },
       },
     },
-    "/costumes/search": { query: { q: { style: "form", explode: false, allowReserved: false } } },
+    "/costumes/search": {
+      query: {
+        q: { style: "form", explode: false, allowReserved: false },
+        categoryId: { style: "form", explode: false, allowReserved: false },
+        gender: { style: "form", explode: false, allowReserved: false },
+        height: { style: "form", explode: false, allowReserved: false },
+        withoutCategory: { style: "form", explode: false, allowReserved: false },
+      },
+    },
     "/costumes/search-available": {
       query: {
         q: { style: "form", explode: false, allowReserved: false },
         startDate: { style: "form", explode: false, allowReserved: false },
         endDate: { style: "form", explode: false, allowReserved: false },
         excludeVisitId: { style: "form", explode: false, allowReserved: false },
+        categoryId: { style: "form", explode: false, allowReserved: false },
+        gender: { style: "form", explode: false, allowReserved: false },
+        height: { style: "form", explode: false, allowReserved: false },
+        withoutCategory: { style: "form", explode: false, allowReserved: false },
       },
     },
     "/costumes/{costumeId}/availability": {

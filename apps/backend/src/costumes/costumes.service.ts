@@ -26,6 +26,15 @@ import {
   scoreTextMatch,
   sortBySearchScore,
 } from '../common/utils/search.utils';
+import {
+  costumeCatalogInclude,
+  toCostumeCatalogFields,
+} from './costume.mapper';
+import {
+  assertHeightRange,
+  buildCostumeFilterWhere,
+  CostumeFilters,
+} from './costume-filters';
 
 @Injectable()
 export class CostumesService {
@@ -34,25 +43,62 @@ export class CostumesService {
   async createCostume(
     data: CreateCostumesRequestDto,
   ): Promise<CreateUpdateCostumesResponseDto> {
-    const costume = await this.prisma.costume.create({ data });
-    const response = {
-      costumeId: costume.id,
-      name: costume.name,
-      inventoryCode: costume.inventoryCode,
-    };
-    return response;
+    assertHeightRange(data.heightFrom, data.heightTo);
+    if (data.categoryId != null) {
+      await this.assertCategoryActive(data.categoryId);
+    }
+
+    const costume = await this.prisma.costume.create({
+      data: {
+        name: data.name,
+        categoryId: data.categoryId,
+        gender: data.gender,
+        heightFrom: data.heightFrom,
+        heightTo: data.heightTo,
+        sizeLabel: data.sizeLabel?.trim() || null,
+      },
+      include: costumeCatalogInclude,
+    });
+    return toCostumeCatalogFields(costume);
   }
 
   async updateCostume(
     data: UpdateCostumesRequestDto,
     costumeId: number,
   ): Promise<CreateUpdateCostumesResponseDto> {
+    if (data.heightFrom !== undefined || data.heightTo !== undefined) {
+      // Диапазон проверяем вместе с тем, что уже сохранено
+      const current = await this.prisma.costume.findFirst({
+        where: { id: costumeId, deletedAt: null },
+        select: { heightFrom: true, heightTo: true },
+      });
+      if (!current) {
+        throw new NotFoundException(`Костюм с ID ${costumeId} не найден`);
+      }
+      assertHeightRange(
+        data.heightFrom === undefined ? current.heightFrom : data.heightFrom,
+        data.heightTo === undefined ? current.heightTo : data.heightTo,
+      );
+    }
+    if (data.categoryId != null) {
+      await this.assertCategoryActive(data.categoryId);
+    }
+
     const costume = await this.prisma.costume
       .update({
         where: { id: costumeId, deletedAt: null },
         data: {
           name: data.name,
+          categoryId: data.categoryId,
+          gender: data.gender,
+          heightFrom: data.heightFrom,
+          heightTo: data.heightTo,
+          sizeLabel:
+            data.sizeLabel === undefined
+              ? undefined
+              : data.sizeLabel?.trim() || null,
         },
+        include: costumeCatalogInclude,
       })
       .catch((err) => {
         if (err.code === 'P2025') {
@@ -61,12 +107,7 @@ export class CostumesService {
         throw err;
       });
 
-    const { name, inventoryCode } = costume;
-    return {
-      costumeId,
-      name,
-      inventoryCode,
-    };
+    return toCostumeCatalogFields(costume);
   }
 
   async deleteCostume(costumeId: number): Promise<void> {
@@ -80,9 +121,13 @@ export class CostumesService {
       });
   }
 
-  async searchCostume(q: string): Promise<CostumesSearchResponseDto[]> {
+  async searchCostume(
+    q: string,
+    filters: CostumeFilters = {},
+  ): Promise<CostumesSearchResponseDto[]> {
     const search = normalizeSearchQuery(q);
     if (!isSearchQueryReady(search)) return [];
+    const catalogWhere = buildCostumeFilterWhere(filters);
 
     const nameFilters = buildWordStartFilters(search);
     const identifierFilters = buildIdentifierFilters(search);
@@ -109,6 +154,7 @@ export class CostumesService {
     ];
 
     const include = {
+      ...costumeCatalogInclude,
       orders: {
         where: { deletedAt: null },
         include: {
@@ -130,12 +176,18 @@ export class CostumesService {
     ];
     const [exactCostumes, broadCostumes] = await Promise.all([
       this.prisma.costume.findMany({
-        where: { OR: exactFilters, deletedAt: null },
+        where: {
+          AND: [...catalogWhere, { OR: exactFilters }],
+          deletedAt: null,
+        },
         include,
         take: 20,
       }),
       this.prisma.costume.findMany({
-        where: { OR: searchFilters, deletedAt: null },
+        where: {
+          AND: [...catalogWhere, { OR: searchFilters }],
+          deletedAt: null,
+        },
         include,
         take: 20,
       }),
@@ -156,9 +208,7 @@ export class CostumesService {
     )
       .slice(0, 20)
       .map((c) => ({
-        costumeId: c.id,
-        name: c.name,
-        inventoryCode: c.inventoryCode,
+        ...toCostumeCatalogFields(c),
         display: `${c.name} (${c.inventoryCode})`,
       }));
   }
@@ -168,8 +218,10 @@ export class CostumesService {
     startStr: string,
     endStr: string,
     excludeVisitIdRaw?: string,
+    filters: CostumeFilters = {},
   ): Promise<CostumesSearchAvailableResponseDto[]> {
     const search = normalizeSearchQuery(q);
+    const catalogWhere = buildCostumeFilterWhere(filters);
 
     const requestedStart = new Date(startStr);
     const requestedEnd = new Date(endStr);
@@ -216,6 +268,7 @@ export class CostumesService {
     ];
 
     const include = {
+      ...costumeCatalogInclude,
       orders: {
         where: {
           deletedAt: null,
@@ -241,14 +294,20 @@ export class CostumesService {
     const [exactCostumes, broadCostumes] = await Promise.all([
       this.prisma.costume.findMany({
         where: {
-          OR: [{ name: exactText }, { inventoryCode: exactText }],
+          AND: [
+            ...catalogWhere,
+            { OR: [{ name: exactText }, { inventoryCode: exactText }] },
+          ],
           deletedAt: null,
         },
         include,
         take: 30,
       }),
       this.prisma.costume.findMany({
-        where: { OR: searchFilters, deletedAt: null },
+        where: {
+          AND: [...catalogWhere, { OR: searchFilters }],
+          deletedAt: null,
+        },
         include,
         take: 30,
       }),
@@ -263,9 +322,7 @@ export class CostumesService {
     )
       .slice(0, 30)
       .map((c) => ({
-        costumeId: c.id,
-        name: c.name,
-        inventoryCode: c.inventoryCode,
+        ...toCostumeCatalogFields(c),
         status: c.orders.length > 0 ? 'issued' : 'available',
       }));
   }
@@ -279,6 +336,7 @@ export class CostumesService {
         deletedAt: null,
       },
       include: {
+        ...costumeCatalogInclude,
         orders: {
           where: {
             status: { in: ['reserved', 'issued'] },
@@ -324,9 +382,7 @@ export class CostumesService {
     });
 
     return {
-      costumeId: costume.id,
-      name: costume.name,
-      inventoryCode: costume.inventoryCode,
+      ...toCostumeCatalogFields(costume),
       periods: periods,
       noPeriodsMessage:
         periods.length === 0
@@ -338,11 +394,13 @@ export class CostumesService {
   async getCostumesList(
     page: number = 1,
     limit: number = 20,
+    filters: CostumeFilters = {},
   ): Promise<CostumesListResponseDto> {
     const skip = (page - 1) * limit;
 
-    const whereCondition = {
+    const whereCondition: Prisma.CostumeWhereInput = {
       deletedAt: null,
+      AND: buildCostumeFilterWhere(filters),
     };
 
     const [rawItems, total] = await this.prisma.$transaction([
@@ -354,6 +412,11 @@ export class CostumesService {
           id: true,
           name: true,
           inventoryCode: true,
+          gender: true,
+          heightFrom: true,
+          heightTo: true,
+          sizeLabel: true,
+          category: costumeCatalogInclude.category,
         },
         orderBy: {
           id: 'desc',
@@ -364,11 +427,7 @@ export class CostumesService {
       }),
     ]);
 
-    const items = rawItems.map((item) => ({
-      costumeId: item.id,
-      name: item.name,
-      inventoryCode: item.inventoryCode,
-    }));
+    const items = rawItems.map(toCostumeCatalogFields);
 
     return {
       items,
@@ -377,5 +436,15 @@ export class CostumesService {
       limit,
       hasMore: skip + items.length < total,
     };
+  }
+
+  private async assertCategoryActive(categoryId: number): Promise<void> {
+    const category = await this.prisma.costumeCategory.findFirst({
+      where: { id: categoryId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!category) {
+      throw new BadRequestException(`Категория с ID ${categoryId} не найдена`);
+    }
   }
 }
