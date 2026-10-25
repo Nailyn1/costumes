@@ -811,6 +811,7 @@ export const Visits_UpdateReservedVisitOrder = z
     childId: z.number().int().min(1),
     costumeId: z.number().int().min(1),
     rentPrice: z.number().int().min(0),
+    prepaymentAmount: z.number().int().min(0).optional(),
     notes: z.string().optional(),
   })
   .catchall(z.unknown());

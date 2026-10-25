@@ -71,6 +71,100 @@ describe('reserved visit editing (integration)', () => {
     };
   }
 
+  it('accepts prepayment only for new orders, includes it in totals and receipt, and rejects changing saved prepayments', async () => {
+    const ids = await seedBooking();
+    const visit = await t.prisma.visit.findUniqueOrThrow({
+      where: { id: ids.visitId },
+      include: { orders: true },
+    });
+    const old = visit.orders[0];
+    const command = {
+      commandId: randomUUID(),
+      expectedVersion: visit.version,
+      startDateTime: '2026-12-20',
+      endDateTime: '2026-12-21',
+      issueTimeFrom: '10:00',
+      issueTimeTo: '19:00',
+      returnTimeUntil: '19:00',
+      orders: [
+        {
+          orderId: old.id,
+          childId: ids.childId,
+          costumeId: ids.costumeId,
+          rentPrice: 5000,
+        },
+        {
+          childId: ids.secondChildId,
+          costumeId: ids.secondCostumeId,
+          rentPrice: 4000,
+          prepaymentAmount: 1500,
+        },
+      ],
+    };
+    for (const invalid of [-1, 1.5, 4001]) {
+      await api
+        .patch(`/visits/${ids.visitId}`)
+        .send({
+          ...command,
+          orders: [
+            command.orders[0],
+            { ...command.orders[1], prepaymentAmount: invalid },
+          ],
+        })
+        .expect(400);
+    }
+    await api
+      .patch(`/visits/${ids.visitId}`)
+      .send({
+        ...command,
+        orders: [{ ...command.orders[0], prepaymentAmount: 1200 }],
+      })
+      .expect(400);
+    expect(
+      await t.prisma.order.count({
+        where: { visitId: ids.visitId, deletedAt: null },
+      }),
+    ).toBe(1);
+    const result = await api
+      .patch(`/visits/${ids.visitId}`)
+      .send(command)
+      .expect(200);
+    expect(result.body).toMatchObject({
+      totals: { totalRent: 9000, totalPrepayment: 2500, totalRemaining: 6500 },
+    });
+    const added = await t.prisma.order.findFirstOrThrow({
+      where: { visitId: ids.visitId, costumeId: ids.secondCostumeId },
+    });
+    expect(added.prepaymentAmount).toBe(1500);
+    expect(
+      await t.prisma.visitMoneyOperation.count({
+        where: { visitId: ids.visitId },
+      }),
+    ).toBe(0);
+    const event = await t.prisma.auditEvent.findFirstOrThrow({
+      where: { commandId: command.commandId, action: 'visit.updated' },
+    });
+    expect(event.payload).toMatchObject({
+      orderChanges: [
+        {
+          change: 'added',
+          after: { prepaymentAmount: 1500 },
+        },
+      ],
+    });
+    await t.redis.flushdb();
+    const replay = await api
+      .patch(`/visits/${ids.visitId}`)
+      .send(command)
+      .expect(200);
+    expect(replay.body).toEqual(result.body);
+    expect(
+      await t.prisma.order.count({
+        where: { visitId: ids.visitId, deletedAt: null },
+      }),
+    ).toBe(2);
+  });
+
   it('updates reserved orders atomically, preserves notes and receipt response, and invalidates written tags', async () => {
     const ids = await seedBooking();
     let visit = await t.prisma.visit.findUniqueOrThrow({

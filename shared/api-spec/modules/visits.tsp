@@ -162,6 +162,8 @@ model UpdateReservedVisitOrder {
   @minValue(1) childId: int32;
   @minValue(1) costumeId: int32;
   @minValue(0) rentPrice: int32;
+  /** Initial prepayment for a new order; an existing order's prepayment cannot change. */
+  @minValue(0) prepaymentAmount?: int32;
   notes?: string;
 }
 

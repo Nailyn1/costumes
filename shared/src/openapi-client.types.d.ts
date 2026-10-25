@@ -522,6 +522,10 @@ export namespace Schemas {
     childId: number;
     costumeId: number;
     rentPrice: number;
+    /**
+     * Initial prepayment for a new order; an existing order's prepayment cannot change.
+     */
+    prepaymentAmount?: number;
     notes?: string;
   } & Record<string, unknown>;
   export type Visits_UpdateReservedVisitRequest = {

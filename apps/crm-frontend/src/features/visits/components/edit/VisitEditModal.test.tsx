@@ -1,7 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MantineProvider } from "@mantine/core";
-import type { UpdateReservedVisitRequestDto, VisitReadDetailDto } from "@costumes/shared";
+import type {
+  UpdateReservedVisitRequestDto,
+  VisitReadDetailDto,
+} from "@costumes/shared";
 import { describe, expect, it, vi } from "vitest";
 import { VisitEditModal } from "./VisitEditModal";
 import type { OrderSelectionValue } from "../OrderSelectionFields";
@@ -36,7 +39,9 @@ vi.mock("../OrderSelectionFields", () => ({
   }) => (
     <button
       type="button"
-      onClick={() => onChange({ ...value, notes: "Изменённое примечание позиции" })}
+      onClick={() =>
+        onChange({ ...value, notes: "Изменённое примечание позиции" })
+      }
     >
       Выбрать костюм {value.costumeId}
     </button>
@@ -77,6 +82,29 @@ const visit: VisitReadDetailDto = {
 };
 
 describe("VisitEditModal", () => {
+  it("allows entering initial prepayment only for a new order and removing the unsaved row", async () => {
+    const user = userEvent.setup();
+    render(
+      <MantineProvider>
+        <VisitEditModal
+          opened
+          onClose={vi.fn()}
+          visit={visit}
+          isMobile={false}
+          onSave={vi.fn()}
+        />
+      </MantineProvider>,
+    );
+    expect(screen.getByLabelText("Предоплата")).toHaveAttribute("readonly");
+    await user.click(screen.getByRole("button", { name: "Добавить костюм" }));
+    const field = screen.getAllByLabelText("Предоплата")[1];
+    expect(field).not.toHaveAttribute("readonly");
+    await user.clear(field);
+    await user.type(field, "1500");
+    expect(field).toHaveValue("₸ 1500");
+    await user.click(screen.getByRole("button", { name: "Удалить" }));
+    expect(screen.getAllByLabelText("Предоплата")).toHaveLength(1);
+  });
   it("keeps notes and order data when the rental dates change", async () => {
     const user = userEvent.setup();
     const onSave = vi.fn();
@@ -93,7 +121,10 @@ describe("VisitEditModal", () => {
     );
 
     await user.clear(screen.getByLabelText("Примечание к визиту"));
-    await user.type(screen.getByLabelText("Примечание к визиту"), "Обновлённое примечание");
+    await user.type(
+      screen.getByLabelText("Примечание к визиту"),
+      "Обновлённое примечание",
+    );
     await user.clear(screen.getByLabelText("Дата выдачи"));
     await user.type(screen.getByLabelText("Дата выдачи"), "2026-10-24");
     await user.clear(screen.getByLabelText("Дата возврата"));
@@ -109,9 +140,13 @@ describe("VisitEditModal", () => {
         />
       </MantineProvider>,
     );
-    expect(screen.getByLabelText("Примечание к визиту")).toHaveValue("Обновлённое примечание");
+    expect(screen.getByLabelText("Примечание к визиту")).toHaveValue(
+      "Обновлённое примечание",
+    );
     expect(screen.getByLabelText("Дата выдачи")).toHaveValue("2026-10-24");
-    await user.click(screen.getByRole("button", { name: "Сохранить изменения" }));
+    await user.click(
+      screen.getByRole("button", { name: "Сохранить изменения" }),
+    );
 
     expect(onSave).toHaveBeenCalled();
     expect(onSave.mock.calls[0]?.[0]).toEqual(
@@ -160,7 +195,10 @@ describe("VisitEditModal", () => {
     );
 
     await user.clear(screen.getByLabelText("Примечание к визиту"));
-    await user.type(screen.getByLabelText("Примечание к визиту"), "Мой черновик");
+    await user.type(
+      screen.getByLabelText("Примечание к визиту"),
+      "Мой черновик",
+    );
     view.rerender(
       <MantineProvider>
         <VisitEditModal
@@ -175,8 +213,12 @@ describe("VisitEditModal", () => {
       </MantineProvider>,
     );
 
-    expect(screen.getByText("Результат сохранения неизвестен")).toBeInTheDocument();
-    expect(screen.getByLabelText("Примечание к визиту")).toHaveValue("Мой черновик");
+    expect(
+      screen.getByText("Результат сохранения неизвестен"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Примечание к визиту")).toHaveValue(
+      "Мой черновик",
+    );
     expect(screen.getByLabelText("Примечание к визиту")).toBeDisabled();
     view.rerender(
       <MantineProvider>
@@ -191,7 +233,9 @@ describe("VisitEditModal", () => {
         />
       </MantineProvider>,
     );
-    expect(screen.getByLabelText("Примечание к визиту")).toHaveValue("Мой черновик");
+    expect(screen.getByLabelText("Примечание к визиту")).toHaveValue(
+      "Мой черновик",
+    );
     expect(screen.getByLabelText("Примечание к визиту")).toBeEnabled();
 
     view.rerender(
@@ -207,7 +251,9 @@ describe("VisitEditModal", () => {
         />
       </MantineProvider>,
     );
-    await user.click(screen.getByRole("button", { name: "Повторить сохранение" }));
+    await user.click(
+      screen.getByRole("button", { name: "Повторить сохранение" }),
+    );
     expect(onRetryPending).toHaveBeenCalledOnce();
   });
 });

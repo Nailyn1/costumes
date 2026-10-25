@@ -1072,9 +1072,24 @@ export class VisitOrderService {
         }
 
         for (const input of data.orders) {
-          if (input.orderId === undefined) continue;
+          if (input.orderId === undefined) {
+            if (input.rentPrice < (input.prepaymentAmount ?? 0)) {
+              throw new BadRequestException(
+                'Предоплата нового заказа не может превышать стоимость аренды',
+              );
+            }
+            continue;
+          }
           const current = currentOrders.get(input.orderId);
           if (!current) continue;
+          if (
+            input.prepaymentAmount !== undefined &&
+            input.prepaymentAmount !== current.prepaymentAmount
+          ) {
+            throw new BadRequestException(
+              'Предоплату сохранённого заказа нельзя изменить в редакторе',
+            );
+          }
           if (input.rentPrice < current.prepaymentAmount) {
             throw new BadRequestException(
               `Цена аренды не может быть ниже предоплаты ${current.prepaymentAmount} ₸`,
@@ -1187,7 +1202,7 @@ export class VisitOrderService {
                 childId: input.childId,
                 costumeId: input.costumeId,
                 rentPrice: input.rentPrice,
-                prepaymentAmount: 0,
+                prepaymentAmount: input.prepaymentAmount ?? 0,
                 startDateTime,
                 endDateTime,
                 notes: input.notes || null,
@@ -1210,7 +1225,7 @@ export class VisitOrderService {
                 costumeName: created.costume.name,
                 inventoryCode: created.costume.inventoryCode,
                 rentPrice: created.rentPrice,
-                prepaymentAmount: 0,
+                prepaymentAmount: created.prepaymentAmount,
                 tagStatus: created.tagStatus,
                 notes: created.notes,
               },

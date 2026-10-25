@@ -66,7 +66,9 @@ export function createVisitEditDraftFromRequest(
   visit: VisitEditSource,
   request: UpdateReservedVisitRequestDto,
 ): VisitEditDraft {
-  const existingOrders = new Map(visit.orders.map((order) => [order.orderId, order]));
+  const existingOrders = new Map(
+    visit.orders.map((order) => [order.orderId, order]),
+  );
   return {
     startDateTime: request.startDateTime,
     endDateTime: request.endDateTime,
@@ -75,15 +77,17 @@ export function createVisitEditDraftFromRequest(
     returnTimeUntil: request.returnTimeUntil,
     notes: request.notes ?? "",
     orders: request.orders.map((order) => {
-      const existing = order.orderId === undefined
-        ? undefined
-        : existingOrders.get(order.orderId);
+      const existing =
+        order.orderId === undefined
+          ? undefined
+          : existingOrders.get(order.orderId);
       return {
         orderId: order.orderId ?? null,
         childId: order.childId,
         costumeId: order.costumeId,
         rentPrice: order.rentPrice,
-        prepaymentAmount: existing?.prepaymentAmount ?? 0,
+        prepaymentAmount:
+          existing?.prepaymentAmount ?? order.prepaymentAmount ?? 0,
         finalPayment: existing?.finalPayment,
         notes: order.notes ?? "",
       };
@@ -104,17 +108,24 @@ export function createEmptyVisitEditOrder(): VisitEditOrderDraft {
 }
 
 export function canRemoveVisitEditOrder(
-  order: Pick<VisitEditOrderDraft, "prepaymentAmount">,
+  order: Pick<VisitEditOrderDraft, "prepaymentAmount"> &
+    Partial<Pick<VisitEditOrderDraft, "orderId">>,
   orderCount: number,
 ): boolean {
-  return orderCount > 1 && order.prepaymentAmount === 0;
+  return (
+    orderCount > 1 && (order.orderId === null || order.prepaymentAmount === 0)
+  );
 }
 
 export function isVisitEditPriceValid(
   order: Pick<VisitEditOrderDraft, "rentPrice" | "prepaymentAmount">,
 ): boolean {
   const rentPrice = Number(order.rentPrice);
-  return order.rentPrice !== "" && Number.isFinite(rentPrice) && rentPrice >= order.prepaymentAmount;
+  return (
+    order.rentPrice !== "" &&
+    Number.isFinite(rentPrice) &&
+    rentPrice >= order.prepaymentAmount
+  );
 }
 
 export function createUpdateReservedVisitRequest(
@@ -136,6 +147,9 @@ export function createUpdateReservedVisitRequest(
       childId: Number(order.childId),
       costumeId: Number(order.costumeId),
       rentPrice: Number(order.rentPrice),
+      ...(order.orderId === null
+        ? { prepaymentAmount: order.prepaymentAmount }
+        : {}),
       notes: order.notes,
     })),
   });

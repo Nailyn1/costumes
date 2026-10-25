@@ -116,6 +116,9 @@ function VisitEditForm({
           childId: Number(order.childId),
           costumeId: Number(order.costumeId),
           rentPrice: Number(order.rentPrice),
+          ...(order.orderId === null
+            ? { prepaymentAmount: order.prepaymentAmount }
+            : {}),
           notes: order.notes,
         })),
       });
@@ -127,7 +130,8 @@ function VisitEditForm({
           errors[`orders.${index}.costumeId`] = "Выберите костюм";
         }
         if (!isVisitEditPriceValid(order)) {
-          errors[`orders.${index}.rentPrice`] = "Введите стоимость не ниже предоплаты";
+          errors[`orders.${index}.rentPrice`] =
+            "Введите стоимость не ниже предоплаты";
         }
       });
       return errors;
@@ -149,97 +153,109 @@ function VisitEditForm({
   };
 
   return (
-      <form onSubmit={form.onSubmit(onSave)}>
-        <Stack gap="md">
-          {errorMessage && <Alert color="red">{errorMessage}</Alert>}
-          {pendingRequest && (
-            <Alert color="orange" title="Результат сохранения неизвестен">
-              Повторите ту же команду, чтобы проверить её результат. Пока проверка не завершена,
-              редактирование заблокировано.
-              <Button mt="sm" variant="light" onClick={onRetryPending} disabled={isSaving}>
-                Повторить сохранение
-              </Button>
-            </Alert>
-          )}
-          {versionConflict && (
-            <Alert color="orange" title="Визит изменил другой сотрудник">
-              Ваши поля сохранены. Прочитайте актуальную версию перед повторной отправкой.
-              <Button mt="sm" variant="light" onClick={onRebaseVersion} disabled={locked}>
-                Обновить версию
-              </Button>
-            </Alert>
-          )}
-          <SmartDateInput
-            label="Дата выдачи"
-            value={form.values.startDateTime}
-            onChange={(value) => form.setFieldValue("startDateTime", value ?? "")}
-            error={form.errors.startDateTime}
-            disabled={locked}
-          />
-          <TimeInput
-            label="Забрать с"
-            value={form.values.issueTimeFrom}
-            onChange={(event) =>
-              form.setFieldValue("issueTimeFrom", event.currentTarget.value)
-            }
-            error={form.errors.issueTimeFrom}
-            disabled={locked}
-          />
-          <TimeInput
-            label="Забрать до"
-            value={form.values.issueTimeTo}
-            onChange={(event) =>
-              form.setFieldValue("issueTimeTo", event.currentTarget.value)
-            }
-            error={form.errors.issueTimeTo}
-            disabled={locked}
-          />
-          <SmartDateInput
-            label="Дата возврата"
-            value={form.values.endDateTime}
-            onChange={(value) => form.setFieldValue("endDateTime", value ?? "")}
-            minDate={form.values.startDateTime}
-            error={form.errors.endDateTime}
-            disabled={locked}
-          />
-          <TimeInput
-            label="Вернуть до"
-            value={form.values.returnTimeUntil}
-            onChange={(event) =>
-              form.setFieldValue("returnTimeUntil", event.currentTarget.value)
-            }
-            error={form.errors.returnTimeUntil}
-            disabled={locked}
-          />
-          <TextInput
-            label="Примечание к визиту"
-            value={form.values.notes}
-            onChange={(event) =>
-              form.setFieldValue("notes", event.currentTarget.value)
-            }
-            disabled={locked}
-          />
-
-          <Divider />
-          <Group justify="space-between" align="center">
-            <Text fw={600}>Костюмы в визите</Text>
+    <form onSubmit={form.onSubmit(onSave)}>
+      <Stack gap="md">
+        {errorMessage && <Alert color="red">{errorMessage}</Alert>}
+        {pendingRequest && (
+          <Alert color="orange" title="Результат сохранения неизвестен">
+            Повторите ту же команду, чтобы проверить её результат. Пока проверка
+            не завершена, редактирование заблокировано.
             <Button
-              type="button"
+              mt="sm"
               variant="light"
-              leftSection={<IconPlus size={16} />}
-              onClick={() =>
-                form.insertListItem("orders", createEmptyVisitEditOrder())
-              }
+              onClick={onRetryPending}
+              disabled={isSaving}
+            >
+              Повторить сохранение
+            </Button>
+          </Alert>
+        )}
+        {versionConflict && (
+          <Alert color="orange" title="Визит изменил другой сотрудник">
+            Ваши поля сохранены. Прочитайте актуальную версию перед повторной
+            отправкой.
+            <Button
+              mt="sm"
+              variant="light"
+              onClick={onRebaseVersion}
               disabled={locked}
             >
-              Добавить костюм
+              Обновить версию
             </Button>
-          </Group>
-          {form.values.orders.map((order, index) => {
-            const originalOrder = order.orderId === null
+          </Alert>
+        )}
+        <SmartDateInput
+          label="Дата выдачи"
+          value={form.values.startDateTime}
+          onChange={(value) => form.setFieldValue("startDateTime", value ?? "")}
+          error={form.errors.startDateTime}
+          disabled={locked}
+        />
+        <TimeInput
+          label="Забрать с"
+          value={form.values.issueTimeFrom}
+          onChange={(event) =>
+            form.setFieldValue("issueTimeFrom", event.currentTarget.value)
+          }
+          error={form.errors.issueTimeFrom}
+          disabled={locked}
+        />
+        <TimeInput
+          label="Забрать до"
+          value={form.values.issueTimeTo}
+          onChange={(event) =>
+            form.setFieldValue("issueTimeTo", event.currentTarget.value)
+          }
+          error={form.errors.issueTimeTo}
+          disabled={locked}
+        />
+        <SmartDateInput
+          label="Дата возврата"
+          value={form.values.endDateTime}
+          onChange={(value) => form.setFieldValue("endDateTime", value ?? "")}
+          minDate={form.values.startDateTime}
+          error={form.errors.endDateTime}
+          disabled={locked}
+        />
+        <TimeInput
+          label="Вернуть до"
+          value={form.values.returnTimeUntil}
+          onChange={(event) =>
+            form.setFieldValue("returnTimeUntil", event.currentTarget.value)
+          }
+          error={form.errors.returnTimeUntil}
+          disabled={locked}
+        />
+        <TextInput
+          label="Примечание к визиту"
+          value={form.values.notes}
+          onChange={(event) =>
+            form.setFieldValue("notes", event.currentTarget.value)
+          }
+          disabled={locked}
+        />
+
+        <Divider />
+        <Group justify="space-between" align="center">
+          <Text fw={600}>Костюмы в визите</Text>
+          <Button
+            type="button"
+            variant="light"
+            leftSection={<IconPlus size={16} />}
+            onClick={() =>
+              form.insertListItem("orders", createEmptyVisitEditOrder())
+            }
+            disabled={locked}
+          >
+            Добавить костюм
+          </Button>
+        </Group>
+        {form.values.orders.map((order, index) => {
+          const originalOrder =
+            order.orderId === null
               ? undefined
               : visit.orders.find((item) => item.orderId === order.orderId);
-            return (
+          return (
             <Stack key={order.orderId ?? `new-${index}`} gap="xs">
               <Group justify="space-between" align="center">
                 <Text fw={500}>Позиция {index + 1}</Text>
@@ -276,15 +292,23 @@ function VisitEditForm({
                 issueTimeFrom={form.values.issueTimeFrom}
                 returnTimeUntil={form.values.returnTimeUntil}
                 excludeVisitId={visit.id}
-                selectedChild={originalOrder ? {
-                  childId: originalOrder.childId,
-                  name: originalOrder.childName,
-                } : null}
-                selectedCostume={originalOrder ? {
-                  costumeId: originalOrder.costumeId,
-                  name: originalOrder.costumeName,
-                  inventoryCode: originalOrder.inventoryCode,
-                } : null}
+                selectedChild={
+                  originalOrder
+                    ? {
+                        childId: originalOrder.childId,
+                        name: originalOrder.childName,
+                      }
+                    : null
+                }
+                selectedCostume={
+                  originalOrder
+                    ? {
+                        costumeId: originalOrder.costumeId,
+                        name: originalOrder.costumeName,
+                        inventoryCode: originalOrder.inventoryCode,
+                      }
+                    : null
+                }
                 disabled={locked}
                 errors={{
                   childId: form.errors[`orders.${index}.childId`],
@@ -296,34 +320,56 @@ function VisitEditForm({
                 <NumberInput
                   label="Предоплата"
                   value={order.prepaymentAmount}
-                  readOnly
+                  readOnly={order.orderId !== null}
+                  disabled={locked}
+                  onChange={(value) =>
+                    form.setFieldValue(
+                      `orders.${index}.prepaymentAmount`,
+                      typeof value === "number" ? value : 0,
+                    )
+                  }
+                  error={form.errors[`orders.${index}.prepaymentAmount`]}
+                  decimalScale={0}
+                  allowNegative={false}
                   min={0}
                   hideControls
                   prefix="₸ "
                   w={180}
                 />
                 <Text size="sm" c="dimmed" mt="xl">
-                  Сохранённая предоплата останется без изменений
+                  {order.orderId === null
+                    ? "Получено за новый костюм"
+                    : "Сохранённая предоплата останется без изменений"}
                 </Text>
               </Group>
               {index < form.values.orders.length - 1 && <Divider />}
             </Stack>
-          );})}
-          {form.values.orders.length === 1 && (
-            <Text size="xs" c="dimmed">
-              В визите должна остаться хотя бы одна позиция.
-            </Text>
-          )}
+          );
+        })}
+        {form.values.orders.length === 1 && (
+          <Text size="xs" c="dimmed">
+            В визите должна остаться хотя бы одна позиция.
+          </Text>
+        )}
 
-          <Group justify="flex-end" mt="sm">
-            <Button type="button" variant="default" onClick={onClose} disabled={locked}>
-              Закрыть
-            </Button>
-            <Button type="submit" loading={isSaving} disabled={locked || versionConflict}>
-              Сохранить изменения
-            </Button>
-          </Group>
-        </Stack>
-      </form>
+        <Group justify="flex-end" mt="sm">
+          <Button
+            type="button"
+            variant="default"
+            onClick={onClose}
+            disabled={locked}
+          >
+            Закрыть
+          </Button>
+          <Button
+            type="submit"
+            loading={isSaving}
+            disabled={locked || versionConflict}
+          >
+            Сохранить изменения
+          </Button>
+        </Group>
+      </Stack>
+    </form>
   );
 }
