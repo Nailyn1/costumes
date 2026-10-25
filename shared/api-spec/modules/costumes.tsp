@@ -31,6 +31,17 @@ scalar HeightCm extends int32;
 @maxLength(20)
 scalar SizeLabel extends string;
 
+/** Часть костюма, которую можно потерять или забыть положить (основу не указываем). */
+model CostumePart {
+  @minLength(1)
+  @maxLength(40)
+  name: string;
+
+  @minValue(1)
+  @maxValue(20)
+  qty: int32;
+}
+
 model Costume {
   costumeId: int32;
   name: string;
@@ -40,6 +51,7 @@ model Costume {
   heightFrom?: HeightCm | null;
   heightTo?: HeightCm | null;
   sizeLabel?: SizeLabel | null;
+  parts?: CostumePart[];
 }
 
 model AvailableCostume {
@@ -83,6 +95,8 @@ model CreateCostumeRequest {
   heightFrom?: HeightCm | null;
   heightTo?: HeightCm | null;
   sizeLabel?: SizeLabel | null;
+  @maxItems(20)
+  parts?: CostumePart[];
 }
 
 model UpdateCostumeRequest {
@@ -93,6 +107,8 @@ model UpdateCostumeRequest {
   heightFrom?: HeightCm | null;
   heightTo?: HeightCm | null;
   sizeLabel?: SizeLabel | null;
+  @maxItems(20)
+  parts?: CostumePart[];
 }
 
 @route("/costumes")

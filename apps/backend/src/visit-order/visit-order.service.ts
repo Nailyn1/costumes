@@ -69,6 +69,14 @@ import {
   sortBySearchScore,
 } from '../common/utils/search.utils';
 import {
+  orderCostumeParts,
+  parseCostumeParts,
+} from '../common/utils/costume-parts';
+import {
+  isSameCostumePartName,
+  type ReturnMissingPartsDto,
+} from '@costumes/shared';
+import {
   calculateVisitBalance,
   validateVisitSettlement,
   VisitBalanceError,
@@ -725,13 +733,19 @@ export class VisitOrderService {
               id: { in: data.orders.map((order) => order.costumeId) },
               deletedAt: null,
             },
-            select: { id: true },
+            select: { id: true, parts: true },
           }),
         ]);
         const childrenById = new Map(
           children.map((child) => [child.id, child]),
         );
         const costumeIds = new Set(costumes.map((costume) => costume.id));
+        const partsByCostume = new Map(
+          costumes.map((costume) => [
+            costume.id,
+            parseCostumeParts(costume.parts),
+          ]),
+        );
         const invalidOrders = data.orders.flatMap((order, index) => {
           const errors: string[] = [];
           const child = childrenById.get(order.childId);
@@ -794,6 +808,7 @@ export class VisitOrderService {
                   finalPayment,
                   tagStatus: 'not_required',
                   status: 'issued',
+                  issuedParts: partsByCostume.get(order.costumeId) ?? [],
                 };
               }),
             },
@@ -1474,7 +1489,12 @@ export class VisitOrderService {
           }),
           tx.costume.findMany({
             where: { id: { in: costumeIds }, deletedAt: null },
-            select: { id: true, name: true, inventoryCode: true },
+            select: {
+              id: true,
+              name: true,
+              inventoryCode: true,
+              parts: true,
+            },
           }),
         ]);
         const childrenById = new Map(
@@ -1528,6 +1548,9 @@ export class VisitOrderService {
               notes: input.notes || null,
               status: 'issued',
               tagStatus: 'not_required',
+              issuedParts: parseCostumeParts(
+                costumesById.get(input.costumeId)?.parts,
+              ),
             },
             include: {
               child: { select: { name: true } },
@@ -1767,7 +1790,9 @@ export class VisitOrderService {
             where: { deletedAt: null },
             include: {
               child: { select: { name: true } },
-              costume: { select: { name: true, inventoryCode: true } },
+              costume: {
+                select: { name: true, inventoryCode: true, parts: true },
+              },
             },
           },
         },
@@ -1789,12 +1814,18 @@ export class VisitOrderService {
         this.rethrowVisitRule(error);
       }
 
+      const ordersById = new Map(
+        visit.orders.map((order) => [order.id, order]),
+      );
       for (const orderPayment of decision.orderPayments) {
+        const order = ordersById.get(orderPayment.orderId);
         await tx.order.update({
           where: { id: orderPayment.orderId, deletedAt: null },
           data: {
             status: decision.orderStatus,
             finalPayment: orderPayment.finalPayment,
+            // Снимок состава: возврат сверяем с выданным, даже если состав костюма потом изменят
+            issuedParts: parseCostumeParts(order?.costume.parts),
           },
         });
       }
@@ -2214,6 +2245,7 @@ export class VisitOrderService {
         rentPrice: order.rentPrice,
         prepaymentAmount: order.prepaymentAmount,
         tagStatus: order.tagStatus,
+        parts: parseCostumeParts(order.costume.parts),
       })),
     };
   }
@@ -2407,6 +2439,7 @@ export class VisitOrderService {
         prepaymentAmount: order.prepaymentAmount,
         finalPayment: order.finalPayment ?? 0,
         returned: order.status === OrderStatus.returned,
+        parts: orderCostumeParts(order),
       })),
       deposit: {
         type: deposit?.type || 'none',
@@ -2498,7 +2531,9 @@ export class VisitOrderService {
             where: { deletedAt: null },
             include: {
               child: { select: { name: true } },
-              costume: { select: { name: true, inventoryCode: true } },
+              costume: {
+                select: { name: true, inventoryCode: true, parts: true },
+              },
             },
           },
           deposits: { where: { deletedAt: null }, take: 1 },
@@ -2524,6 +2559,11 @@ export class VisitOrderService {
         }
         this.rethrowVisitRule(error);
       }
+
+      const missingPartsEvents = this.buildMissingPartsEvents(
+        visit,
+        data.missingParts,
+      );
 
       await this.updateVisitWithVersion(tx, visitId, visit.version, {
         status: decision.visitStatus,
@@ -2588,6 +2628,8 @@ export class VisitOrderService {
           },
         },
       ];
+      // «Вернули без: …» — только запись в истории, на деньги и статусы не влияет
+      auditEvents.push(...missingPartsEvents);
       if (decision.settlement) {
         auditEvents.push(
           decision.settlement.kind === 'customer_refund'
@@ -2639,6 +2681,74 @@ export class VisitOrderService {
       message: 'Визит успешно завершен, все костюмы возвращены',
       balance: result.decision.balance,
     };
+  }
+
+  /** События истории о частях, которых не оказалось при возврате; проверяет, что они были выданы. */
+  private buildMissingPartsEvents(
+    visit: {
+      id: number;
+      visitCode: string;
+      orders: Array<{
+        id: number;
+        issuedParts: unknown;
+        child: { name: string };
+        costume: { name: string; inventoryCode: string; parts: unknown };
+      }>;
+    },
+    missingParts: ReturnMissingPartsDto[] | undefined,
+  ): VisitAuditEventInput[] {
+    if (!missingParts || missingParts.length === 0) return [];
+
+    const ordersById = new Map(visit.orders.map((order) => [order.id, order]));
+    const seenOrderIds = new Set<number>();
+    const events: VisitAuditEventInput[] = [];
+
+    for (const entry of missingParts) {
+      const order = ordersById.get(entry.orderId);
+      if (!order) {
+        throw new BadRequestException(
+          `Заказ ${entry.orderId} не относится к этому визиту`,
+        );
+      }
+      if (seenOrderIds.has(order.id)) {
+        throw new BadRequestException(
+          `Недостающие части заказа ${order.id} указаны дважды`,
+        );
+      }
+      seenOrderIds.add(order.id);
+
+      const issued = orderCostumeParts(order);
+      const names: string[] = [];
+      for (const requested of entry.parts) {
+        const match = issued.find((part) =>
+          isSameCostumePartName(part.name, requested),
+        );
+        if (!match) {
+          throw new BadRequestException(
+            `Части «${requested}» нет в составе костюма «${order.costume.name}»`,
+          );
+        }
+        if (!names.includes(match.name)) names.push(match.name);
+      }
+
+      events.push({
+        action: 'return.missing_parts',
+        entityType: 'order',
+        entityId: order.id,
+        visitId: visit.id,
+        orderId: order.id,
+        payload: {
+          kind: 'return.missing_parts',
+          visitCode: visit.visitCode,
+          orderId: order.id,
+          childName: order.child.name,
+          costumeName: order.costume.name,
+          inventoryCode: order.costume.inventoryCode,
+          parts: names,
+        },
+      });
+    }
+    return events;
   }
 
   async getVisitBalance(visitId: number): Promise<VisitBalanceDto> {

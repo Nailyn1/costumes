@@ -46,6 +46,8 @@ model VisitOrder {
   rentPrice: int32;
   prepaymentAmount: int32;
   tagStatus: TagStatus;
+  /** Текущий состав костюма — подсказка «Положить в пакет». */
+  parts?: CostumeApp.Costumes.CostumePart[];
 }
 model Visit {
   id: int32;
@@ -195,10 +197,20 @@ model AddAndIssueVisitRequest {
   @minValue(0) additionalPayment: int32;
 }
 
+model ReturnMissingParts {
+  orderId: int32;
+  @minItems(1)
+  @maxItems(20)
+  parts: string[];
+}
+
 model CompleteReturnRequest {
   depositReturned: boolean;
   notes?: string;
   settlement?: VisitSettlementRequest;
+  /** Части, которых не оказалось при возврате; возврат не блокируется и денег не начисляет. */
+  @maxItems(100)
+  missingParts?: ReturnMissingParts[];
 }
 
 model VisitBalance {
@@ -256,6 +268,8 @@ model VisitReadOrder {
   prepaymentAmount: int32;
   finalPayment?: int32;
   notes?: string;
+  /** Состав на момент выдачи (у невыданных — текущий состав костюма). */
+  parts?: CostumeApp.Costumes.CostumePart[];
 }
 
 model VisitReadDeposit {
@@ -329,6 +343,7 @@ enum VisitHistoryAction {
   moneyReceived: "money.received",
   moneyRefunded: "money.refunded",
   ordersAddedAndIssued: "orders.added_and_issued",
+  returnMissingParts: "return.missing_parts",
 }
 
 model VisitHistoryOrderSnapshot {
@@ -448,6 +463,16 @@ model OrdersAddedAndIssuedHistoryPayload {
   orders: VisitHistoryOrderSnapshot[];
 }
 
+model ReturnMissingPartsHistoryPayload {
+  kind: "return.missing_parts";
+  visitCode: VisitCode;
+  orderId: int32;
+  childName: string;
+  costumeName: string;
+  inventoryCode: CostumeApp.Costumes.InventoryCode;
+  parts: string[];
+}
+
 union VisitHistoryPayload {
   visitCreated: VisitCreatedHistoryPayload,
   visitUpdated: VisitUpdatedHistoryPayload,
@@ -461,6 +486,7 @@ union VisitHistoryPayload {
   moneyReceived: MoneyReceivedHistoryPayload,
   moneyRefunded: MoneyRefundedHistoryPayload,
   ordersAddedAndIssued: OrdersAddedAndIssuedHistoryPayload,
+  returnMissingParts: ReturnMissingPartsHistoryPayload,
 }
 
 model VisitHistoryEvent {
@@ -578,6 +604,8 @@ model VisitReturnOrder {
   prepaymentAmount: int32;
   finalPayment: int32;
   returned: boolean;
+  /** Состав, выданный клиенту (у старых заказов без снимка — текущий состав костюма). */
+  parts?: CostumeApp.Costumes.CostumePart[];
 }
 
 model VisitDepositInfo {

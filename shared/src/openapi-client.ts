@@ -236,6 +236,11 @@ export const Costumes_HeightCm = z.number().int().min(50).max(200);
 export type Costumes_SizeLabel = __TypedOpenapi.Schemas.Costumes_SizeLabel;
 export const Costumes_SizeLabel = z.string().max(20);
 
+export type Costumes_CostumePart = __TypedOpenapi.Schemas.Costumes_CostumePart;
+export const Costumes_CostumePart = z
+  .object({ name: z.string().min(1).max(40), qty: z.number().int().min(1).max(20) })
+  .catchall(z.unknown());
+
 export type Costumes_CostumeStatus = __TypedOpenapi.Schemas.Costumes_CostumeStatus;
 export const Costumes_CostumeStatus = z.enum(["available", "issued"]);
 
@@ -250,6 +255,7 @@ export const Costumes_AvailableCostume = z
     heightFrom: Costumes_HeightCm.nullable().optional(),
     heightTo: Costumes_HeightCm.nullable().optional(),
     sizeLabel: Costumes_SizeLabel.nullable().optional(),
+    parts: z.array(Costumes_CostumePart).optional(),
     status: Costumes_CostumeStatus,
   })
   .catchall(z.unknown());
@@ -265,6 +271,7 @@ export const Costumes_Costume = z
     heightFrom: Costumes_HeightCm.nullable().optional(),
     heightTo: Costumes_HeightCm.nullable().optional(),
     sizeLabel: Costumes_SizeLabel.nullable().optional(),
+    parts: z.array(Costumes_CostumePart).optional(),
   })
   .catchall(z.unknown());
 
@@ -279,6 +286,7 @@ export const Costumes_CostumeFullAvailability = z
     heightFrom: Costumes_HeightCm.nullable().optional(),
     heightTo: Costumes_HeightCm.nullable().optional(),
     sizeLabel: Costumes_SizeLabel.nullable().optional(),
+    parts: z.array(Costumes_CostumePart).optional(),
     periods: z.array(Costumes_AvailabilityPeriod),
     noPeriodsMessage: z.string().nullable(),
   })
@@ -295,6 +303,7 @@ export const Costumes_CostumeSearchResult = z
     heightFrom: Costumes_HeightCm.nullable().optional(),
     heightTo: Costumes_HeightCm.nullable().optional(),
     sizeLabel: Costumes_SizeLabel.nullable().optional(),
+    parts: z.array(Costumes_CostumePart).optional(),
     display: z.string(),
   })
   .catchall(z.unknown());
@@ -308,6 +317,7 @@ export const Costumes_CreateCostumeRequest = z
     heightFrom: Costumes_HeightCm.nullable().optional(),
     heightTo: Costumes_HeightCm.nullable().optional(),
     sizeLabel: Costumes_SizeLabel.nullable().optional(),
+    parts: z.array(Costumes_CostumePart).max(20).optional(),
   })
   .catchall(z.unknown());
 
@@ -331,6 +341,7 @@ export const Costumes_UpdateCostumeRequest = z
     heightFrom: Costumes_HeightCm.nullable(),
     heightTo: Costumes_HeightCm.nullable(),
     sizeLabel: Costumes_SizeLabel.nullable(),
+    parts: z.array(Costumes_CostumePart).max(20),
   })
   .partial()
   .catchall(z.unknown());
@@ -360,12 +371,18 @@ export const Visits_VisitSettlementRequest = z
   .object({ kind: z.enum(["debt_payment", "customer_refund"]), amount: z.number().int().min(1) })
   .catchall(z.unknown());
 
+export type Visits_ReturnMissingParts = __TypedOpenapi.Schemas.Visits_ReturnMissingParts;
+export const Visits_ReturnMissingParts = z
+  .object({ orderId: z.number().int(), parts: z.array(z.string()).min(1).max(20) })
+  .catchall(z.unknown());
+
 export type Visits_CompleteReturnRequest = __TypedOpenapi.Schemas.Visits_CompleteReturnRequest;
 export const Visits_CompleteReturnRequest = z
   .object({
     depositReturned: z.boolean(),
     notes: z.string().optional(),
     settlement: Visits_VisitSettlementRequest.optional(),
+    missingParts: z.array(Visits_ReturnMissingParts).max(100).optional(),
   })
   .catchall(z.unknown());
 
@@ -679,6 +696,7 @@ export const Visits_VisitHistoryAction = z.enum([
   "money.received",
   "money.refunded",
   "orders.added_and_issued",
+  "return.missing_parts",
 ]);
 
 export type Visits_VisitCreatedHistoryPayload = __TypedOpenapi.Schemas.Visits_VisitCreatedHistoryPayload;
@@ -788,6 +806,19 @@ export const Visits_VisitCompletedHistoryPayload = z
   })
   .catchall(z.unknown());
 
+export type Visits_ReturnMissingPartsHistoryPayload = __TypedOpenapi.Schemas.Visits_ReturnMissingPartsHistoryPayload;
+export const Visits_ReturnMissingPartsHistoryPayload = z
+  .object({
+    kind: z.literal("return.missing_parts"),
+    visitCode: Costumes_VisitCode,
+    orderId: z.number().int(),
+    childName: z.string(),
+    costumeName: z.string(),
+    inventoryCode: Costumes_InventoryCode,
+    parts: z.array(z.string()),
+  })
+  .catchall(z.unknown());
+
 export type Visits_VisitHistoryPayload = __TypedOpenapi.Schemas.Visits_VisitHistoryPayload;
 export const Visits_VisitHistoryPayload = z.union([
   Visits_VisitCreatedHistoryPayload,
@@ -802,6 +833,7 @@ export const Visits_VisitHistoryPayload = z.union([
   Visits_MoneyReceivedHistoryPayload,
   Visits_MoneyRefundedHistoryPayload,
   Visits_OrdersAddedAndIssuedHistoryPayload,
+  Visits_ReturnMissingPartsHistoryPayload,
 ]);
 
 export type Visits_VisitHistoryEvent = __TypedOpenapi.Schemas.Visits_VisitHistoryEvent;
@@ -946,6 +978,7 @@ export const Visits_VisitOrder = z
     rentPrice: z.number().int(),
     prepaymentAmount: z.number().int(),
     tagStatus: Visits_TagStatus,
+    parts: z.array(Costumes_CostumePart).optional(),
   })
   .catchall(z.unknown());
 
@@ -1005,6 +1038,7 @@ export const Visits_VisitReturnOrder = z
     prepaymentAmount: z.number().int(),
     finalPayment: z.number().int(),
     returned: z.boolean(),
+    parts: z.array(Costumes_CostumePart).optional(),
   })
   .catchall(z.unknown());
 
@@ -1049,6 +1083,7 @@ export const Visits_VisitReadOrder = z
     prepaymentAmount: z.number().int(),
     finalPayment: z.number().int().optional(),
     notes: z.string().optional(),
+    parts: z.array(Costumes_CostumePart).optional(),
   })
   .catchall(z.unknown());
 

@@ -200,6 +200,9 @@ export function presentVisitHistoryGroup(
   const refunded = payloads.filter(
     (payload) => payload.kind === "money.refunded",
   );
+  const missingParts = payloads.filter(
+    (payload) => payload.kind === "return.missing_parts",
+  );
   const details: string[] = [];
   let title: string;
 
@@ -255,6 +258,11 @@ export function presentVisitHistoryGroup(
         depositReturned.amount,
       );
       if (returnedDeposit) details.push(returnedDeposit);
+    }
+    for (const missing of missingParts) {
+      details.push(
+        `Вернули без: ${missing.parts.join(", ")} — ${missing.costumeName}`,
+      );
     }
   } else if (tagWritten) {
     title = "Бирка написана";

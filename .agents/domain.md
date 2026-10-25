@@ -13,10 +13,10 @@
 | **User** | Сотрудник. Создаётся только через seed. | `login`, `password` (argon2id), `name` |
 | **Client** | Взрослый, который берёт и оплачивает аренду. | `name`, `phone`, `notes`, `isBlacklisted`, `blacklistReason`, `deletedAt` |
 | **Child** | Ребёнок клиента, на которого берётся костюм. | `clientId`, `name`, `deletedAt` |
-| **Costume** | Физическая единица инвентаря (один пакет). | `inventoryCode` (`C-0001`, генерирует БД), `name`, `notes`, `categoryId?`, `gender?`, `heightFrom?`, `heightTo?`, `sizeLabel?`, `deletedAt` |
+| **Costume** | Физическая единица инвентаря (один пакет). | `inventoryCode` (`C-0001`, генерирует БД), `name`, `notes`, `categoryId?`, `gender?`, `heightFrom?`, `heightTo?`, `sizeLabel?`, `parts`, `deletedAt` |
 | **CostumeCategory** | Двухуровневый справочник категорий костюмов: основная → подкатегория. | `name`, `parentId?` (только основная категория может быть родителем), `sortOrder`, `deletedAt` |
 | **Visit** | Одна «поездка» клиента: одна дата выдачи, одна дата возврата. Группирует заказы. | `visitCode` (4 цифры), `clientId`, `startDateTime`, `endDateTime`, `issueTimeFrom`, `issueTimeTo`, `returnTimeUntil`, `status`, `notes` |
-| **Order** | Один заказ = **один ребёнок + один костюм + один период аренды**. Деньги живут здесь. | `visitId`, `clientId`, `childId`, `costumeId`, `startDateTime`, `endDateTime`, `rentPrice`, `prepaymentAmount`, `finalPayment`, `tagStatus`, `status`, `notes` |
+| **Order** | Один заказ = **один ребёнок + один костюм + один период аренды**. Деньги живут здесь. | `visitId`, `clientId`, `childId`, `costumeId`, `startDateTime`, `endDateTime`, `rentPrice`, `prepaymentAmount`, `finalPayment`, `issuedParts?`, `tagStatus`, `status`, `notes` |
 | **Deposit** | Залог выдачи: у визита один активный, прошлые записи сохраняются после отмены выдачи. | `type: document \| cash \| none`, `amount` (только для cash), `returned`, `deletedAt` |
 | **VisitMoneyOperation** | Фактическое движение денег за аренду визита, отдельно от залога. | `kind: issue_payment \| debt_payment \| customer_refund`, положительная `amount`, `voidedAt`, `legacyImported` |
 | **Notification** | WhatsApp-сообщение клиенту о брони. | `visitId`, `type` (`booking_confirmation`), `status`, `externalId` (id в Green-API), `traceId`, `errorText` |
@@ -37,7 +37,13 @@
 - **Пол** `gender`: `girl | boy | unisex` — отдельное поле, не категория.
 - **Рост** `heightFrom`/`heightTo` (см, 50–200, `from ≤ to`) и **размер с бирки** `sizeLabel` (≤ 20 символов, «Р32»). Задана только одна граница роста — костюм считается подходящим ровно под этот рост. `null` в PATCH очищает поле.
 - **Фильтры** `categoryId` (основная категория включает подкатегории), `gender`, `height` (рост ребёнка попадает в диапазон), `withoutCategory=true` (нельзя вместе с `categoryId`) — в `GET /costumes/list`, `/costumes/search`, `/costumes/search-available`; применяются через `AND` к обоим запросам поиска (точные и широкие совпадения), ранжирование не меняется.
-- Ответы по костюму (создание, изменение, список, поиск, доступность) содержат `category { id, name, parentId, parentName }`, `gender`, `heightFrom`, `heightTo`, `sizeLabel`.
+- Ответы по костюму (создание, изменение, список, поиск, доступность) содержат `category { id, name, parentId, parentName }`, `gender`, `heightFrom`, `heightTo`, `sizeLabel`, `parts`.
+
+### Состав костюма (T-032, T-110)
+- `Costume.parts` — JSON `[{ name, qty }]` (схема `CostumePartsSchema` из shared): только то, что можно потерять или забыть положить (головной убор, накидка, повязка, фартук, саукеле, пояс…), основу не пишем. До 20 частей, `name` 1–40 символов, `qty` 1–20, названия без дублей без учёта регистра (400). Изменение состава в PATCH заменяет его целиком, без `parts` состав не трогается. Новый костюм без `parts` создаётся с пустым составом — быстрый путь «название → Enter» не меняется; «Головной убор» по умолчанию (`DEFAULT_COSTUME_PARTS`) подставляет только форма. Битый JSON в БД читается как пустой состав с предупреждением в логе, ответ не падает.
+- **Снимок выдачи.** `Order.issuedParts` пишется атомарно в том же шаге, что переводит заказы в `issued`: обычная выдача, быстрая выдача (T-036) и «Добавить и выдать» (T-096). Отмена выдачи снимок не стирает, повторная выдача перезаписывает его текущим составом костюма. У заказов до выдачи и выданных до T-110 снимка нет (`null`) — тогда везде используется текущий состав костюма.
+- **Что видно в API.** `for-issue` — текущий состав костюма (подсказка «Положить в пакет», без чекбоксов); `for-return` и карточка визита у не-`reserved` заказов — снимок выдачи (или текущий состав, если снимка нет); у `reserved` в карточке — текущий.
+- **Возврат.** Все части по умолчанию отмечены (это UI). `POST /visits/:id/complete-return` принимает необязательное `missingParts: [{ orderId, parts: string[] }]` — части, которых не оказалось. Возврат не блокируется и денег не начисляет; в той же транзакции для каждого заказа пишется событие истории `return.missing_parts` (сущность — заказ, payload: визит, заказ, ребёнок, костюм, части) в той же группе команды, что и `visit.completed`; в истории показывается «Вернули без: …». Проверки (400): заказ принадлежит визиту, части есть в составе заказа (снимок или текущий состав), заказ не повторяется. Клиент обычно довозит часть позже — отдельного учёта долга по частям нет.
 
 ### Коды
 - `visitCode` — 4 цифры (`0000–9999`), уникален навсегда. Клиент называет его при получении. Генерируется на шаге «Проверить» и резервируется в Redis на 15 минут (`visit_code_lock:{code}`).

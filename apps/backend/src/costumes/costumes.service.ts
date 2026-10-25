@@ -31,6 +31,10 @@ import {
   toCostumeCatalogFields,
 } from './costume.mapper';
 import {
+  findDuplicateCostumePart,
+  normalizeCostumeParts,
+} from '@costumes/shared';
+import {
   assertHeightRange,
   buildCostumeFilterWhere,
   CostumeFilters,
@@ -44,6 +48,7 @@ export class CostumesService {
     data: CreateCostumesRequestDto,
   ): Promise<CreateUpdateCostumesResponseDto> {
     assertHeightRange(data.heightFrom, data.heightTo);
+    const parts = this.prepareParts(data.parts);
     if (data.categoryId != null) {
       await this.assertCategoryActive(data.categoryId);
     }
@@ -56,6 +61,7 @@ export class CostumesService {
         heightFrom: data.heightFrom,
         heightTo: data.heightTo,
         sizeLabel: data.sizeLabel?.trim() || null,
+        parts,
       },
       include: costumeCatalogInclude,
     });
@@ -80,6 +86,7 @@ export class CostumesService {
         data.heightTo === undefined ? current.heightTo : data.heightTo,
       );
     }
+    const parts = this.prepareParts(data.parts);
     if (data.categoryId != null) {
       await this.assertCategoryActive(data.categoryId);
     }
@@ -97,6 +104,7 @@ export class CostumesService {
             data.sizeLabel === undefined
               ? undefined
               : data.sizeLabel?.trim() || null,
+          parts,
         },
         include: costumeCatalogInclude,
       })
@@ -416,6 +424,7 @@ export class CostumesService {
           heightFrom: true,
           heightTo: true,
           sizeLabel: true,
+          parts: true,
           category: costumeCatalogInclude.category,
         },
         orderBy: {
@@ -436,6 +445,26 @@ export class CostumesService {
       limit,
       hasMore: skip + items.length < total,
     };
+  }
+
+  /** Нормализует состав из запроса; `undefined` — состав не меняем. */
+  private prepareParts(
+    parts: CreateCostumesRequestDto['parts'],
+  ): { name: string; qty: number }[] | undefined {
+    if (parts === undefined) return undefined;
+    const normalized = normalizeCostumeParts(parts);
+    if (normalized.length !== parts.length) {
+      throw new BadRequestException(
+        'Название части состава не может быть пустым',
+      );
+    }
+    const duplicate = findDuplicateCostumePart(normalized);
+    if (duplicate !== null) {
+      throw new BadRequestException(
+        `Часть «${duplicate}» указана в составе дважды`,
+      );
+    }
+    return normalized;
   }
 
   private async assertCategoryActive(categoryId: number): Promise<void> {

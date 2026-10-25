@@ -78,6 +78,8 @@ model Costume {
   heightFrom    Int?          @map("height_from")
   heightTo      Int?          @map("height_to")
   sizeLabel     String?       @map("size_label")
+  // Теряемые части: [{ name, qty }], схема CostumePartsSchema из shared
+  parts         Json          @default("[]")
 
   orders        Order[]
 
@@ -217,6 +219,8 @@ model Order {
   rentPrice        Int         @map("rent_price")
   prepaymentAmount Int         @default(0) @map("prepayment_amount")
   finalPayment     Int?        @map("final_payment")
+  // Снимок состава костюма на момент выдачи (T-110); null у заказов до выдачи и старых
+  issuedParts      Json?       @map("issued_parts")
 
   tagStatus        TagStatus   @default(not_written) @map("tag_status")
   status           OrderStatus @default(reserved)

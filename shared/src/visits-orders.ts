@@ -41,6 +41,9 @@ export type VisitHistoryEventDto = z.infer<
   typeof schemas.Visits_VisitHistoryEvent
 >;
 export const VisitHistoryEventSchema = schemas.Visits_VisitHistoryEvent;
+export type ReturnMissingPartsDto = z.infer<
+  typeof schemas.Visits_ReturnMissingParts
+>;
 export type VisitHistoryPayloadDto = z.infer<
   typeof schemas.Visits_VisitHistoryPayload
 >;

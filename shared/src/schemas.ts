@@ -39,6 +39,8 @@ export const schemas = {
   Costumes_UpdateCostumeRequest: generated.Costumes_UpdateCostumeRequest,
   Costumes_CostumeGender: generated.Costumes_CostumeGender,
   Costumes_HeightCm: generated.Costumes_HeightCm,
+  Costumes_CostumePart: generated.Costumes_CostumePart,
+  Visits_ReturnMissingParts: generated.Visits_ReturnMissingParts,
   CostumeCategories_CostumeCategory: generated.CostumeCategories_CostumeCategory,
   CostumeCategories_CostumeCategoryNode: generated.CostumeCategories_CostumeCategoryNode,
   CostumeCategories_CostumeCategoryRef: generated.CostumeCategories_CostumeCategoryRef,

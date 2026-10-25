@@ -3,6 +3,7 @@
 - **Приоритет:** high
 - **Область:** Фичи
 - **Создана:** 2026-10-25
+- **Выполнена:** 2026-10-25
 - **Эпик:** [T-032](./T-032-kategorii-i-foto-kostyumov.md)
 - **После:** [T-109](./T-109-katalog-kostyumov-kategorii-pol-razmer.md) (те же файлы — делать тем же исполнителем следом)
 
@@ -26,16 +27,27 @@
 
 ## Критерии готовности
 
-- [ ] Миграция не деструктивна, старые заказы без снимка корректно отдают текущий состав.
-- [ ] Снимок пишется во всех трёх командах выдачи (unit + integration).
-- [ ] Возврат с недостающими частями пишет событие истории, без них — как раньше; ошибочные `orderId`/части → 400.
-- [ ] `pnpm test`, `pnpm test:int`, typecheck и lint зелёные.
-- [ ] `.agents/domain.md` обновлён.
+- [x] Миграция не деструктивна, старые заказы без снимка корректно отдают текущий состав.
+- [x] Снимок пишется во всех трёх командах выдачи (unit + integration).
+- [x] Возврат с недостающими частями пишет событие истории, без них — как раньше; ошибочные `orderId`/части → 400.
+- [x] `pnpm test`, `pnpm test:int`, typecheck и lint зелёные.
+- [x] `.agents/domain.md` обновлён.
 
 ## План
 
-<!-- заполняется при взятии в работу -->
+1. Prisma: `Costume.parts Json @default("[]")`, `Order.issuedParts Json?` (миграция не деструктивная).
+2. TypeSpec/shared: `CostumePart`, `parts` в костюме и запросах, `parts` у заказов выдачи/возврата/карточки, `missingParts` в `complete-return`, событие истории `return.missing_parts`; ручной `shared/src/costume-parts.ts` (константы, нормализация, дубли).
+3. Backend: безопасное чтение состава, снимок в трёх командах выдачи, `missingParts` в возврате.
+4. Тесты: unit + integration; docs.
 
 ## Результат
 
-<!-- заполняется при завершении -->
+Сделано:
+- Миграция `20261025041520_costume_parts`: `costumes.parts JSONB NOT NULL DEFAULT '[]'`, `orders.issued_parts JSONB NULL`.
+- Shared: `CostumePart`, `COSTUME_PART_SUGGESTIONS`, `DEFAULT_COSTUME_PARTS`, `normalizeCostumeParts`, `findDuplicateCostumePart`, `isSameCostumePartName` (экспорт из `@costumes/shared`); `parts?` в `Costume`, `VisitOrder` (выдача), `VisitReturnOrder`, `VisitReadOrder`; `missingParts?` в `CompleteReturnRequest`; действие истории `return.missing_parts`.
+- Снимок `issuedParts` пишется в обычной выдаче, быстрой выдаче и add-and-issue; `unissue` его не стирает, повторная выдача перезаписывает.
+- `complete-return` с `missingParts`: проверки заказа/частей/дублей (400) до записи, событие истории на заказ в той же транзакции и группе команды; без `missingParts` — как раньше.
+- Фронтенд: только отображение «Вернули без: …» в истории визита (`visitHistory.ts` + тест), чтобы новое действие истории не падало и было видно; остальной UI — T-113/T-114.
+- Решения по деталям (проверить при ревью): событие `return.missing_parts` — по одному на заказ (entity = order); названия частей сверяются без учёта регистра и пишутся в историю в написании состава; `parts` в ответах опциональные (старые клиенты/моки не ломаются); новый костюм без `parts` получает пустой состав, «Головной убор» подставляет только форма.
+- Проверки: shared build, typecheck backend/frontend, lint frontend и изменённых файлов backend, unit backend 394 / frontend 236, integration 92 — зелёные. Ручной проверки UI нет (UI в T-113/T-114).
+- Коммит: `feat(back): add costume parts and issued snapshot`.

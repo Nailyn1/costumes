@@ -143,6 +143,10 @@ export namespace Schemas {
   export type Costumes_CostumeGender = "girl" | "boy" | "unisex";
   export type Costumes_HeightCm = number;
   export type Costumes_SizeLabel = string;
+  /**
+   * Часть костюма, которую можно потерять или забыть положить (основу не указываем).
+   */
+  export type Costumes_CostumePart = { name: string; qty: number } & Record<string, unknown>;
   export type Costumes_CostumeStatus = "available" | "issued";
   export type Costumes_AvailableCostume = {
     costumeId: number;
@@ -153,6 +157,7 @@ export namespace Schemas {
     heightFrom?: Costumes_HeightCm | null;
     heightTo?: Costumes_HeightCm | null;
     sizeLabel?: Costumes_SizeLabel | null;
+    parts?: Array<Costumes_CostumePart>;
     status: Costumes_CostumeStatus;
   } & Record<string, unknown>;
   export type Costumes_Costume = {
@@ -164,6 +169,7 @@ export namespace Schemas {
     heightFrom?: Costumes_HeightCm | null;
     heightTo?: Costumes_HeightCm | null;
     sizeLabel?: Costumes_SizeLabel | null;
+    parts?: Array<Costumes_CostumePart>;
   } & Record<string, unknown>;
   export type Costumes_CostumeFullAvailability = {
     costumeId: number;
@@ -174,6 +180,7 @@ export namespace Schemas {
     heightFrom?: Costumes_HeightCm | null;
     heightTo?: Costumes_HeightCm | null;
     sizeLabel?: Costumes_SizeLabel | null;
+    parts?: Array<Costumes_CostumePart>;
     periods: Array<Costumes_AvailabilityPeriod>;
     noPeriodsMessage: string | null;
   } & Record<string, unknown>;
@@ -186,6 +193,7 @@ export namespace Schemas {
     heightFrom?: Costumes_HeightCm | null;
     heightTo?: Costumes_HeightCm | null;
     sizeLabel?: Costumes_SizeLabel | null;
+    parts?: Array<Costumes_CostumePart>;
     display: string;
   } & Record<string, unknown>;
   export type Costumes_CreateCostumeRequest = {
@@ -195,6 +203,7 @@ export namespace Schemas {
     heightFrom?: Costumes_HeightCm | null;
     heightTo?: Costumes_HeightCm | null;
     sizeLabel?: Costumes_SizeLabel | null;
+    parts?: Array<Costumes_CostumePart>;
   } & Record<string, unknown>;
   export type Costumes_GetCostumesList = {
     items: Array<Costumes_Costume>;
@@ -210,6 +219,7 @@ export namespace Schemas {
     heightFrom: Costumes_HeightCm | null;
     heightTo: Costumes_HeightCm | null;
     sizeLabel: Costumes_SizeLabel | null;
+    parts: Array<Costumes_CostumePart>;
   }> &
     Record<string, unknown>;
   export type Visits_AddAndIssueVisitRequestOrder = {
@@ -228,10 +238,15 @@ export namespace Schemas {
     string,
     unknown
   >;
+  export type Visits_ReturnMissingParts = { orderId: number; parts: Array<string> } & Record<string, unknown>;
   export type Visits_CompleteReturnRequest = {
     depositReturned: boolean;
     notes?: string;
     settlement?: Visits_VisitSettlementRequest;
+    /**
+     * Части, которых не оказалось при возврате; возврат не блокируется и денег не начисляет.
+     */
+    missingParts?: Array<Visits_ReturnMissingParts>;
   } & Record<string, unknown>;
   export type Visits_VisitBalance = {
     totalRent: number;
@@ -442,7 +457,8 @@ export namespace Schemas {
     | "deposit.returned"
     | "money.received"
     | "money.refunded"
-    | "orders.added_and_issued";
+    | "orders.added_and_issued"
+    | "return.missing_parts";
   export type Visits_VisitCreatedHistoryPayload = {
     kind: "visit.created";
     visitCode: Costumes_VisitCode;
@@ -516,6 +532,15 @@ export namespace Schemas {
     settlementKind?: "debt_payment" | "customer_refund";
     settlementAmount?: number;
   } & Record<string, unknown>;
+  export type Visits_ReturnMissingPartsHistoryPayload = {
+    kind: "return.missing_parts";
+    visitCode: Costumes_VisitCode;
+    orderId: number;
+    childName: string;
+    costumeName: string;
+    inventoryCode: Costumes_InventoryCode;
+    parts: Array<string>;
+  } & Record<string, unknown>;
   export type Visits_VisitHistoryPayload =
     | Visits_VisitCreatedHistoryPayload
     | Visits_VisitUpdatedHistoryPayload
@@ -528,7 +553,8 @@ export namespace Schemas {
     | Visits_DepositReturnedHistoryPayload
     | Visits_MoneyReceivedHistoryPayload
     | Visits_MoneyRefundedHistoryPayload
-    | Visits_OrdersAddedAndIssuedHistoryPayload;
+    | Visits_OrdersAddedAndIssuedHistoryPayload
+    | Visits_ReturnMissingPartsHistoryPayload;
   export type Visits_VisitHistoryEvent = {
     id: number;
     occurredAt: string;
@@ -627,6 +653,10 @@ export namespace Schemas {
     rentPrice: number;
     prepaymentAmount: number;
     tagStatus: Visits_TagStatus;
+    /**
+     * Текущий состав костюма — подсказка «Положить в пакет».
+     */
+    parts?: Array<Costumes_CostumePart>;
   } & Record<string, unknown>;
   export type Visits_Visit = {
     id: number;
@@ -677,6 +707,10 @@ export namespace Schemas {
     prepaymentAmount: number;
     finalPayment: number;
     returned: boolean;
+    /**
+     * Состав, выданный клиенту (у старых заказов без снимка — текущий состав костюма).
+     */
+    parts?: Array<Costumes_CostumePart>;
   } & Record<string, unknown>;
   export type Visits_VisitForReturnResponse = {
     visitId: number;
@@ -709,6 +743,10 @@ export namespace Schemas {
     prepaymentAmount: number;
     finalPayment?: number;
     notes?: string;
+    /**
+     * Состав на момент выдачи (у невыданных — текущий состав костюма).
+     */
+    parts?: Array<Costumes_CostumePart>;
   } & Record<string, unknown>;
   export type Visits_VisitReadMoneyOperation = {
     id: number;

@@ -2,6 +2,10 @@ import { NotFoundException } from '@nestjs/common';
 import { VisitReadDetailDto, VisitReadDetailSchema } from '@costumes/shared';
 import { Prisma } from '../prisma/generated/client';
 import { calculateVisitBalance } from './domain/visit-balance';
+import {
+  orderCostumeParts,
+  parseCostumeParts,
+} from '../common/utils/costume-parts';
 
 type VisitReadDatabase = Pick<Prisma.TransactionClient, 'visit'>;
 
@@ -18,7 +22,9 @@ export async function readVisitDetail(
         where: { deletedAt: null },
         include: {
           child: { select: { name: true } },
-          costume: { select: { name: true, inventoryCode: true } },
+          costume: {
+            select: { name: true, inventoryCode: true, parts: true },
+          },
         },
       },
       moneyOperations: {
@@ -72,6 +78,11 @@ export async function readVisitDetail(
       tagStatus: order.tagStatus,
       rentPrice: order.rentPrice,
       prepaymentAmount: order.prepaymentAmount,
+      // До выдачи показываем текущий состав, после — снимок выдачи
+      parts:
+        order.status === 'reserved'
+          ? parseCostumeParts(order.costume.parts)
+          : orderCostumeParts(order),
       ...(order.finalPayment === null
         ? {}
         : { finalPayment: order.finalPayment }),

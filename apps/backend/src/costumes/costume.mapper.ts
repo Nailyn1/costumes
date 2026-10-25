@@ -1,5 +1,6 @@
 import { Prisma } from '../prisma/generated/client';
 import type { CostumeCategoryRefDto } from '@costumes/shared';
+import { parseCostumeParts } from '../common/utils/costume-parts';
 
 /** Категория вместе с названием родителя — для ответов по костюму. */
 export const costumeCategorySelect = {
@@ -29,6 +30,7 @@ interface CostumeCatalogRow {
   heightFrom?: number | null;
   heightTo?: number | null;
   sizeLabel?: string | null;
+  parts?: unknown;
 }
 
 /** Удалённая категория для костюма — всё равно что её нет. */
@@ -44,7 +46,7 @@ function toCategoryRef(
   };
 }
 
-/** Поля каталога (категория, пол, рост, размер), общие для всех ответов по костюму. */
+/** Поля каталога (категория, пол, рост, размер, состав), общие для всех ответов по костюму. */
 export function toCostumeCatalogFields(costume: CostumeCatalogRow) {
   return {
     costumeId: costume.id,
@@ -55,5 +57,6 @@ export function toCostumeCatalogFields(costume: CostumeCatalogRow) {
     heightFrom: costume.heightFrom ?? null,
     heightTo: costume.heightTo ?? null,
     sizeLabel: costume.sizeLabel ?? null,
+    parts: parseCostumeParts(costume.parts),
   };
 }

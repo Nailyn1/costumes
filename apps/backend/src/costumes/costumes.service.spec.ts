@@ -26,6 +26,7 @@ describe('CostumesService', () => {
       heightFrom: null,
       heightTo: null,
       sizeLabel: null,
+      parts: [],
     });
     expect(prisma.costume.create).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -198,6 +199,53 @@ describe('CostumesService', () => {
     expect(prisma.costume.count).toHaveBeenCalledWith({
       where: { deletedAt: null, AND: expect.any(Array) as never },
     });
+  });
+
+  it('stores the parts with trimmed names and leaves them untouched when omitted', async () => {
+    prisma.costume.create.mockResolvedValue(makeCostume());
+    await service().createCostume({
+      name: 'Эльза',
+      parts: [{ name: ' Накидка ', qty: 1 }],
+    });
+    expect(prisma.costume.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          parts: [{ name: 'Накидка', qty: 1 }],
+        }) as never,
+      }) as never,
+    );
+
+    prisma.costume.update.mockResolvedValue(makeCostume());
+    await service().updateCostume({ name: 'Анна' }, 1);
+    expect(prisma.costume.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ parts: undefined }) as never,
+      }) as never,
+    );
+  });
+
+  it('rejects blank and duplicate part names without saving', async () => {
+    await expect(
+      service().createCostume({
+        name: 'Эльза',
+        parts: [{ name: '  ', qty: 1 }],
+      }),
+    ).rejects.toThrow(BadRequestException);
+    await expect(
+      service().updateCostume(
+        {
+          parts: [
+            { name: 'Пояс', qty: 1 },
+            { name: 'пояс', qty: 2 },
+          ],
+        },
+        1,
+      ),
+    ).rejects.toThrow(
+      new BadRequestException('Часть «пояс» указана в составе дважды'),
+    );
+    expect(prisma.costume.create).not.toHaveBeenCalled();
+    expect(prisma.costume.update).not.toHaveBeenCalled();
   });
 
   it('updates a costume name', async () => {

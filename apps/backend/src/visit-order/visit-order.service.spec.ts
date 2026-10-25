@@ -140,7 +140,9 @@ describe('VisitOrderService', () => {
             where: { deletedAt: null },
             include: {
               child: { select: { name: true } },
-              costume: { select: { name: true, inventoryCode: true } },
+              costume: {
+                select: { name: true, inventoryCode: true, parts: true },
+              },
             },
           },
         },
@@ -148,7 +150,7 @@ describe('VisitOrderService', () => {
       expect(txMock.order.update).toHaveBeenCalledTimes(1);
       expect(txMock.order.update).toHaveBeenCalledWith({
         where: { id: 2, deletedAt: null },
-        data: { status: 'issued', finalPayment: 0 },
+        data: { status: 'issued', finalPayment: 0, issuedParts: [] },
       });
     });
 
@@ -165,7 +167,9 @@ describe('VisitOrderService', () => {
             where: { deletedAt: null },
             include: {
               child: { select: { name: true } },
-              costume: { select: { name: true, inventoryCode: true } },
+              costume: {
+                select: { name: true, inventoryCode: true, parts: true },
+              },
             },
           },
         },
@@ -1242,7 +1246,7 @@ describe('VisitOrderService remaining business rules', () => {
       );
       expect(txMock.order.update).toHaveBeenCalledWith({
         where: { id: 1, deletedAt: null },
-        data: { status: 'issued', finalPayment: 4000 },
+        data: { status: 'issued', finalPayment: 4000, issuedParts: [] },
       });
       expect(txMock.visitMoneyOperation.create).toHaveBeenCalledWith({
         data: { visitId: 1, kind: 'issue_payment', amount: 5000 },
@@ -1275,11 +1279,11 @@ describe('VisitOrderService remaining business rules', () => {
       );
       expect(txMock.order.update).toHaveBeenNthCalledWith(1, {
         where: { id: 1, deletedAt: null },
-        data: { status: 'issued', finalPayment: 4000 },
+        data: { status: 'issued', finalPayment: 4000, issuedParts: [] },
       });
       expect(txMock.order.update).toHaveBeenNthCalledWith(2, {
         where: { id: 2, deletedAt: null },
-        data: { status: 'issued', finalPayment: 2000 },
+        data: { status: 'issued', finalPayment: 2000, issuedParts: [] },
       });
       expect(txMock.visit.updateMany).toHaveBeenCalledWith({
         where: { id: 1, version: 1, deletedAt: null },

@@ -243,6 +243,43 @@ describe("visit history grouping", () => {
     ).toHaveLength(1);
   });
 
+  it("shows parts that were not returned in a completed command group", () => {
+    const completed = makeEvent({
+      id: 21,
+      action: "visit.completed",
+      commandId: "complete-2",
+      occurredAt: "2026-10-22T07:00:00.000Z",
+      payload: { kind: "visit.completed", visitCode: "0066", orders: [] },
+    });
+    const missing = makeEvent({
+      id: 22,
+      action: "return.missing_parts",
+      entityType: "order",
+      entityId: 5,
+      orderId: 5,
+      commandId: "complete-2",
+      occurredAt: "2026-10-22T07:00:00.000Z",
+      payload: {
+        kind: "return.missing_parts",
+        visitCode: "0066",
+        orderId: 5,
+        childName: "Алия",
+        costumeName: "Эльза",
+        inventoryCode: "C-0005",
+        parts: ["Накидка", "Повязка"],
+      },
+    });
+
+    const presentation = presentVisitHistoryGroup(
+      groupVisitHistoryEvents([completed, missing])[0]!,
+    );
+
+    expect(presentation.title).toBe("Возврат оформлен");
+    expect(presentation.details).toContain(
+      "Вернули без: Накидка, Повязка — Эльза",
+    );
+  });
+
   it("does not claim that an absent deposit was returned", () => {
     const event = makeEvent({
       id: 14,
