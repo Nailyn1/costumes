@@ -8,7 +8,11 @@ import {
 } from "./visitHistory";
 
 function makeEvent(
-  overrides: Partial<VisitHistoryEventDto> & Pick<VisitHistoryEventDto, "id" | "action" | "payload" | "commandId" | "occurredAt">,
+  overrides: Partial<VisitHistoryEventDto> &
+    Pick<
+      VisitHistoryEventDto,
+      "id" | "action" | "payload" | "commandId" | "occurredAt"
+    >,
 ): VisitHistoryEventDto {
   return {
     actorNameSnapshot: "Алия",
@@ -23,8 +27,12 @@ function makeEvent(
 
 describe("visit history formatters", () => {
   it("formats event instants in the shop timezone", () => {
-    expect(formatVisitHistoryInstant("2026-10-22T06:15:00.000Z")).toContain("11:15");
-    expect(formatVisitHistoryInstant("2026-10-22T06:15:00.000Z")).toContain("22.10.2026");
+    expect(formatVisitHistoryInstant("2026-10-22T06:15:00.000Z")).toContain(
+      "11:15",
+    );
+    expect(formatVisitHistoryInstant("2026-10-22T06:15:00.000Z")).toContain(
+      "22.10.2026",
+    );
   });
 
   it("formats rental dates as date-only values without timezone conversion", () => {
@@ -41,7 +49,11 @@ describe("visit history grouping", () => {
       action: "money.received",
       commandId: "issue-1",
       occurredAt: "2026-10-22T07:00:00.000Z",
-      payload: { kind: "money.received", moneyKind: "issue_payment", amount: 2000 },
+      payload: {
+        kind: "money.received",
+        moneyKind: "issue_payment",
+        amount: 2000,
+      },
     });
     const earlier = makeEvent({
       id: 2,
@@ -75,7 +87,10 @@ describe("visit history grouping", () => {
 
     const groups = groupVisitHistoryEvents([later, earlier, other]);
 
-    expect(groups.map((group) => group.commandId)).toEqual(["create-1", "issue-1"]);
+    expect(groups.map((group) => group.commandId)).toEqual([
+      "create-1",
+      "issue-1",
+    ]);
     expect(groups[1]?.events.map((event) => event.id)).toEqual([2, 4]);
   });
 
@@ -99,15 +114,21 @@ describe("visit history grouping", () => {
       action: "money.received",
       commandId: "issue-2",
       occurredAt: "2026-10-22T07:00:00.000Z",
-      payload: { kind: "money.received", moneyKind: "issue_payment", amount: 2500 },
+      payload: {
+        kind: "money.received",
+        moneyKind: "issue_payment",
+        amount: 2500,
+      },
     });
 
     const presentation = presentVisitHistoryGroup(
       groupVisitHistoryEvents([issued, payment])[0]!,
     );
 
-    expect(presentation.title).toContain("#0065");
-    expect(presentation.details.filter((detail) => detail.includes("2 500"))).toHaveLength(1);
+    expect(presentation.title).toBe("Костюмы выданы");
+    expect(
+      presentation.details.filter((detail) => detail.includes("2 500")),
+    ).toHaveLength(1);
     expect(presentation.details).toContain("Залог: документ");
   });
 
@@ -120,14 +141,16 @@ describe("visit history grouping", () => {
       payload: {
         kind: "orders.added_and_issued",
         visitCode: "0065",
-        orders: [{
-          orderId: 71,
-          childName: "Амина",
-          costumeName: "Фея",
-          inventoryCode: "C-0071",
-          rentPrice: 8000,
-          prepaymentAmount: 0,
-        }],
+        orders: [
+          {
+            orderId: 71,
+            childName: "Амина",
+            costumeName: "Фея",
+            inventoryCode: "C-0071",
+            rentPrice: 8000,
+            prepaymentAmount: 0,
+          },
+        ],
       },
     });
     const payment = makeEvent({
@@ -135,14 +158,22 @@ describe("visit history grouping", () => {
       action: "money.received",
       commandId: "add-issued-1",
       occurredAt: "2026-10-22T07:00:00.000Z",
-      payload: { kind: "money.received", moneyKind: "issue_payment", amount: 3000 },
+      payload: {
+        kind: "money.received",
+        moneyKind: "issue_payment",
+        amount: 3000,
+      },
     });
 
-    const presentation = presentVisitHistoryGroup(groupVisitHistoryEvents([payment, added])[0]!);
+    const presentation = presentVisitHistoryGroup(
+      groupVisitHistoryEvents([payment, added])[0]!,
+    );
 
-    expect(presentation.title).toBe("Добавлены и выданы костюмы по визиту #0065");
-    expect(presentation.details).toContain("Амина — Фея (C-0071)");
-    expect(presentation.details.filter((detail) => detail.includes("3 000"))).toHaveLength(1);
+    expect(presentation.title).toBe("Добавлены и выданы костюмы");
+    expect(presentation.details.join(" ")).not.toContain("Амина — Фея");
+    expect(
+      presentation.details.filter((detail) => detail.includes("3 000")),
+    ).toHaveLength(1);
     expect(presentation.details).not.toContain("Без залога");
   });
 
@@ -152,10 +183,16 @@ describe("visit history grouping", () => {
       action: "visit.cancelled",
       commandId: "cancel-1",
       occurredAt: "2026-10-22T07:00:00.000Z",
-      payload: { kind: "visit.cancelled", visitCode: "0065", reason: "Планы изменились" },
+      payload: {
+        kind: "visit.cancelled",
+        visitCode: "0065",
+        reason: "Планы изменились",
+      },
     });
 
-    const presentation = presentVisitHistoryGroup(groupVisitHistoryEvents([event])[0]!);
+    const presentation = presentVisitHistoryGroup(
+      groupVisitHistoryEvents([event])[0]!,
+    );
 
     expect(presentation.actor).toBe("Алия");
     expect(presentation.title).toContain("отменён");
@@ -181,7 +218,11 @@ describe("visit history grouping", () => {
       action: "money.received",
       commandId: "complete-1",
       occurredAt: "2026-10-22T07:00:00.000Z",
-      payload: { kind: "money.received", moneyKind: "debt_payment", amount: 1500 },
+      payload: {
+        kind: "money.received",
+        moneyKind: "debt_payment",
+        amount: 1500,
+      },
     });
     const deposit = makeEvent({
       id: 13,
@@ -197,7 +238,9 @@ describe("visit history grouping", () => {
 
     expect(presentation.details).toContain("Принята оплата долга: 1 500 ₸");
     expect(presentation.details).toContain("Залог возвращён: 5 000 ₸");
-    expect(presentation.details.filter((detail) => detail.includes("1 500"))).toHaveLength(1);
+    expect(
+      presentation.details.filter((detail) => detail.includes("1 500")),
+    ).toHaveLength(1);
   });
 
   it("does not claim that an absent deposit was returned", () => {
@@ -209,7 +252,9 @@ describe("visit history grouping", () => {
       payload: { kind: "deposit.returned", depositType: "none", amount: 0 },
     });
 
-    const presentation = presentVisitHistoryGroup(groupVisitHistoryEvents([event])[0]!);
+    const presentation = presentVisitHistoryGroup(
+      groupVisitHistoryEvents([event])[0]!,
+    );
 
     expect(presentation.title).toBe("Изменение визита");
     expect(presentation.details.join(" ")).not.toContain("Залог возвращён");
@@ -265,41 +310,53 @@ describe("visit history grouping", () => {
 
     expect(group.events).toHaveLength(2);
     expect(presentation.title).toBe("Визит изменён");
-    expect(presentation.details).toContain("Срок аренды: 10.12.2026 – 11.12.2026 → 12.12.2026 – 13.12.2026");
+    expect(presentation.details).toContain(
+      "Срок аренды: 10.12.2026 – 11.12.2026 → 12.12.2026 – 13.12.2026",
+    );
     expect(presentation.details).toContain("Выдача с: 10:00 → 11:00");
-    expect(presentation.details).toEqual(expect.arrayContaining([
-      expect.stringContaining("аренда:"),
-    ]));
-    expect(presentation.details.filter((detail) => detail.includes("Бирка сброшена"))).toHaveLength(1);
+    expect(presentation.details).toEqual(
+      expect.arrayContaining([expect.stringContaining("аренда:")]),
+    );
+    expect(
+      presentation.details.filter((detail) =>
+        detail.includes("Бирка сброшена"),
+      ),
+    ).toHaveLength(1);
     expect(presentation.details.join(" ")).not.toContain("Получено");
   });
 
   it.each([
     ["startDateTime", "Дата выдачи", "endDateTime"],
     ["endDateTime", "Дата возврата", "startDateTime"],
-  ] as const)("does not invent an unchanged %s bound in a partial date edit", (field, label, absentField) => {
-    const event = makeEvent({
-      id: 22,
-      action: "visit.updated",
-      commandId: `edit-${field}`,
-      occurredAt: "2026-10-22T07:00:00.000Z",
-      payload: {
-        kind: "visit.updated",
-        changedFields: {
-          [field]: field === "startDateTime"
-            ? { before: "2026-12-10", after: "2026-12-12" }
-            : { before: "2026-12-11", after: "2026-12-13" },
+  ] as const)(
+    "does not invent an unchanged %s bound in a partial date edit",
+    (field, label, absentField) => {
+      const event = makeEvent({
+        id: 22,
+        action: "visit.updated",
+        commandId: `edit-${field}`,
+        occurredAt: "2026-10-22T07:00:00.000Z",
+        payload: {
+          kind: "visit.updated",
+          changedFields: {
+            [field]:
+              field === "startDateTime"
+                ? { before: "2026-12-10", after: "2026-12-12" }
+                : { before: "2026-12-11", after: "2026-12-13" },
+          },
+          orderChanges: [],
         },
-        orderChanges: [],
-      },
-    });
+      });
 
-    const presentation = presentVisitHistoryGroup(groupVisitHistoryEvents([event])[0]!);
+      const presentation = presentVisitHistoryGroup(
+        groupVisitHistoryEvents([event])[0]!,
+      );
 
-    expect(presentation.details).toContain(
-      `${label}: ${field === "startDateTime" ? "10.12.2026" : "11.12.2026"} → ${field === "startDateTime" ? "12.12.2026" : "13.12.2026"}`,
-    );
-    expect(presentation.details.join(" ")).not.toContain(absentField);
-    expect(presentation.details.join(" ")).not.toContain("Срок аренды:");
-  });
+      expect(presentation.details).toContain(
+        `${label}: ${field === "startDateTime" ? "10.12.2026" : "11.12.2026"} → ${field === "startDateTime" ? "12.12.2026" : "13.12.2026"}`,
+      );
+      expect(presentation.details.join(" ")).not.toContain(absentField);
+      expect(presentation.details.join(" ")).not.toContain("Срок аренды:");
+    },
+  );
 });

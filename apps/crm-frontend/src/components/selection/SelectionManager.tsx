@@ -1,5 +1,5 @@
 import { useState, memo, type ReactNode } from "react";
-import { Paper, Stack, Group, Text, ActionIcon, Collapse } from "@mantine/core";
+import { Paper, Stack, Group, Text, ActionIcon, Box } from "@mantine/core";
 import { IconPlus, IconX } from "@tabler/icons-react";
 
 interface SelectionManagerProps {
@@ -62,11 +62,7 @@ export const SelectionManager = memo(function SelectionManager({
           renderSelected
         ) : (
           <>
-            {!isCreating && renderSearch}
-
-            <Collapse expanded={isCreating}>
-              <div key={isCreating ? "active" : "reset"}>{renderCreate}</div>
-            </Collapse>
+            {isCreating ? <Box key="create">{renderCreate}</Box> : renderSearch}
           </>
         )}
       </Stack>

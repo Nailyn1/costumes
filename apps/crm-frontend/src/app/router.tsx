@@ -51,10 +51,7 @@ export const router = createBrowserRouter([
               {
                 path: "visits",
                 element: <VisitsPage />,
-              },
-              {
-                path: "visits/:visitId",
-                element: <VisitDetailPage />,
+                children: [{ path: ":visitId", element: <VisitDetailPage /> }],
               },
               {
                 path: "notifications",

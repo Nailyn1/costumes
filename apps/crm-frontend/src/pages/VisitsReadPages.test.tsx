@@ -1,13 +1,22 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { Button, MantineProvider } from "@mantine/core";
 import { Notifications } from "@mantine/notifications";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useQueryClient } from "@tanstack/react-query";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse, http } from "msw";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Navigate, Route, Routes } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
-import type { PaginatedVisitsResponseDto, VisitReadDetailDto } from "@costumes/shared";
+import type {
+  PaginatedVisitsResponseDto,
+  VisitReadDetailDto,
+} from "@costumes/shared";
 import { API_URL, server } from "../../test/server";
 import { createTestQueryClient, renderWithProviders } from "../../test/render";
 import { VisitsPage } from "./VisitsPage";
@@ -15,19 +24,39 @@ import { VisitDetailPage } from "./VisitDetailPage";
 import { useMarkCostumeAsWritten } from "src/features/visits/hooks/useVisits";
 import { useAuthStore } from "src/stores/auth.store";
 
-const emptyHistory = { items: [], total: 0, page: 1, limit: 20, hasMore: false };
+const emptyHistory = {
+  items: [],
+  total: 0,
+  page: 1,
+  limit: 20,
+  hasMore: false,
+};
 
 function MarkTagTrigger() {
   const mutation = useMarkCostumeAsWritten();
-  return <Button onClick={() => mutation.mutate(51)}>Тест: записать бирку</Button>;
+  return (
+    <Button onClick={() => mutation.mutate(51)}>Тест: записать бирку</Button>
+  );
 }
 
 function RefetchDetailTrigger() {
   const queryClient = useQueryClient();
-  return <Button onClick={() => void queryClient.invalidateQueries({ queryKey: ["visit", "detail", 41] })}>Тест: обновить визит</Button>;
+  return (
+    <Button
+      onClick={() =>
+        void queryClient.invalidateQueries({
+          queryKey: ["visit", "detail", 41],
+        })
+      }
+    >
+      Тест: обновить визит
+    </Button>
+  );
 }
 
-function visitDetail(overrides: Partial<VisitReadDetailDto> = {}): VisitReadDetailDto {
+function visitDetail(
+  overrides: Partial<VisitReadDetailDto> = {},
+): VisitReadDetailDto {
   return {
     id: 41,
     visitCode: "0041",
@@ -62,7 +91,10 @@ function visitDetail(overrides: Partial<VisitReadDetailDto> = {}): VisitReadDeta
   };
 }
 
-function listResponse(page: number, items: PaginatedVisitsResponseDto["items"]): PaginatedVisitsResponseDto {
+function listResponse(
+  page: number,
+  items: PaginatedVisitsResponseDto["items"],
+): PaginatedVisitsResponseDto {
   return { items, total: 21, page, limit: 20, hasMore: page === 1 };
 }
 
@@ -95,10 +127,15 @@ function renderDetail() {
   const queryClient = createTestQueryClient();
   return render(
     <QueryClientProvider client={queryClient}>
-      <MantineProvider>
+      <MantineProvider env="test">
         <Notifications />
         <MemoryRouter initialEntries={["/bookings/visits/41"]}>
-          <Routes><Route path="/bookings/visits/:visitId" element={<VisitDetailPage />} /></Routes>
+          <Routes>
+            <Route
+              path="/bookings/visits/:visitId"
+              element={<VisitDetailPage />}
+            />
+          </Routes>
         </MemoryRouter>
       </MantineProvider>
     </QueryClientProvider>,
@@ -106,13 +143,84 @@ function renderDetail() {
 }
 
 describe("visit read pages", () => {
-  it("sends debounced search, all date filters, status and server pagination; links to detail", async () => {
+  it("opens a modal from the entire row and preserves the list search after closing", async () => {
+    server.use(
+      http.get(`${API_URL}/visits`, () =>
+        HttpResponse.json(listResponse(1, [listItem(41)])),
+      ),
+      http.get(`${API_URL}/visits/41`, () => HttpResponse.json(visitDetail())),
+      http.get(`${API_URL}/visits/41/history`, () =>
+        HttpResponse.json(emptyHistory),
+      ),
+    );
+    const user = userEvent.setup();
+    renderWithProviders(
+      <Routes>
+        <Route path="/" element={<Navigate to="/bookings/visits" replace />} />
+        <Route path="/bookings/visits" element={<VisitsPage />}>
+          <Route path=":visitId" element={<VisitDetailPage />} />
+        </Route>
+      </Routes>,
+    );
+    await screen.findByRole("row", { name: "Открыть визит 0041" });
+    await user.type(screen.getByLabelText("Поиск визитов"), "София");
+    await user.click(screen.getByRole("row", { name: "Открыть визит 0041" }));
+    const dialog = await screen.findByRole("dialog", { name: /Алия · #0041/ });
+    await user.click(
+      within(dialog).getByRole("button", { name: "Закрыть визит" }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    expect(screen.getByLabelText("Поиск визитов")).toHaveValue("София");
+  });
+
+  it("includes prepayment in total receipts and hides zero refund and debt amounts", async () => {
+    const detail = visitDetail({
+      status: "completed",
+      totals: { totalRent: 3800, totalPrepayment: 2000, totalRemaining: 1800 },
+      moneyOperations: [
+        {
+          id: 1,
+          kind: "issue_payment",
+          amount: 1800,
+          createdAt: "2026-10-25T07:00:00.000Z",
+          legacyImported: true,
+        },
+      ],
+      balance: {
+        totalRent: 3800,
+        totalPrepayment: 2000,
+        totalReceived: 1800,
+        totalRefunded: 0,
+        signedBalance: 0,
+        debt: 0,
+        refundDue: 0,
+      },
+    });
+    server.use(
+      http.get(`${API_URL}/visits/41`, () => HttpResponse.json(detail)),
+      http.get(`${API_URL}/visits/41/history`, () =>
+        HttpResponse.json(emptyHistory),
+      ),
+    );
+    renderDetail();
+    expect(
+      await screen.findByText(/Всего получено: 3.800 ₸/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/^Долг:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^К возврату:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Возвращено клиенту:/)).not.toBeInTheDocument();
+  });
+  it("sends debounced search, issue-date period, status and server pagination with clickable rows", async () => {
     const requestedUrls: URL[] = [];
     server.use(
       http.get(`${API_URL}/visits`, ({ request }) => {
         requestedUrls.push(new URL(request.url));
         const page = Number(new URL(request.url).searchParams.get("page") ?? 1);
-        return HttpResponse.json(listResponse(page, page === 1 ? [listItem(41)] : []));
+        return HttpResponse.json(
+          listResponse(page, page === 1 ? [listItem(41)] : []),
+        );
       }),
     );
     const user = userEvent.setup();
@@ -120,74 +228,128 @@ describe("visit read pages", () => {
 
     expect(await screen.findByText("#0041")).toBeInTheDocument();
     expect(screen.getByText("София")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Карточка" })).toHaveAttribute("href", "/bookings/visits/41");
-    await user.type(screen.getByLabelText("Поиск"), "Алия");
-    fireEvent.change(screen.getByLabelText("Выдача с"), { target: { value: "2026-12-01" } });
-    fireEvent.change(screen.getByLabelText("Выдача по"), { target: { value: "2026-12-31" } });
-    fireEvent.change(screen.getByLabelText("Возврат с"), { target: { value: "2026-12-02" } });
-    fireEvent.change(screen.getByLabelText("Возврат по"), { target: { value: "2026-12-31" } });
-    await user.click(screen.getByRole("combobox", { name: "Статус" }));
-    await user.keyboard("{ArrowDown}{Enter}");
+    expect(
+      screen.queryByRole("link", { name: "Карточка" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("row", { name: "Открыть визит 0041" }),
+    ).toHaveAttribute("tabindex", "0");
+    expect(screen.getByText("За всё время")).toBeInTheDocument();
+    expect(requestedUrls[0].searchParams.has("startDateFrom")).toBe(false);
+    await user.type(screen.getByLabelText("Поиск визитов"), "Алия");
+    await user.click(screen.getByRole("button", { name: "Фильтр периода" }));
+    await user.click(
+      await screen.findByRole("radio", { name: "Выбрать период" }),
+    );
+    fireEvent.change(screen.getByLabelText("Выдача с"), {
+      target: { value: "2026-12-01" },
+    });
+    fireEvent.change(screen.getByLabelText("Выдача по"), {
+      target: { value: "2026-12-31" },
+    });
+    await user.click(screen.getByRole("button", { name: "Применить" }));
+    await user.click(screen.getByRole("radio", { name: "Забронирован" }));
 
     await waitFor(() => {
-      const request = requestedUrls.find((url) => url.searchParams.get("q") === "Алия" && url.searchParams.get("status") === "reserved");
+      const request = requestedUrls.find(
+        (url) =>
+          url.searchParams.get("q") === "Алия" &&
+          url.searchParams.get("status") === "reserved" &&
+          url.searchParams.get("startDateFrom") === "2026-12-01",
+      );
       expect(request).toBeDefined();
       expect(request?.searchParams.get("status")).toBe("reserved");
       expect(request?.searchParams.get("startDateFrom")).toBe("2026-12-01");
       expect(request?.searchParams.get("startDateTo")).toBe("2026-12-31");
-      expect(request?.searchParams.get("endDateFrom")).toBe("2026-12-02");
-      expect(request?.searchParams.get("endDateTo")).toBe("2026-12-31");
+      expect(request?.searchParams.has("endDateFrom")).toBe(false);
+      expect(request?.searchParams.has("endDateTo")).toBe(false);
       expect(request?.searchParams.get("page")).toBe("1");
     });
 
     await user.click(screen.getByRole("button", { name: "2" }));
-    await waitFor(() => expect(requestedUrls.at(-1)?.searchParams.get("page")).toBe("2"));
+    await waitFor(() =>
+      expect(requestedUrls.at(-1)?.searchParams.get("page")).toBe("2"),
+    );
   });
 
   it("shows only planned due for reserved visits and omits balance actions without a balance", async () => {
     server.use(
       http.get(`${API_URL}/visits/41`, () => HttpResponse.json(visitDetail())),
-      http.get(`${API_URL}/visits/41/history`, () => HttpResponse.json(emptyHistory)),
+      http.get(`${API_URL}/visits/41/history`, () =>
+        HttpResponse.json(emptyHistory),
+      ),
     );
     renderDetail();
 
-    expect(await screen.findByRole("heading", { name: /Визит #0041/ })).toBeInTheDocument();
-    expect(screen.getByText("К доплате при выдаче")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Выдать костюмы" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Отменить визит" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Записать расчёт" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Отметить возврат залога" })).not.toBeInTheDocument();
-    expect(screen.getByText("C-0123")).toBeInTheDocument();
-    expect(screen.queryByText(/Внутренний ID|версия 1|распределённая итоговая оплата/i)).not.toBeInTheDocument();
+    expect(
+      await screen.findByRole("dialog", { name: /Алия · #0041/ }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Доплата: 6.000 ₸/)).toBeInTheDocument();
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: "Действия визита" }));
+    expect(
+      await screen.findByRole("menuitem", { name: "Выдать костюмы" }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole("menuitem", { name: "Отменить визит" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: "Записать расчёт" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: "Отметить возврат залога" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText(/C-0123/)).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        /Внутренний ID|версия 1|распределённая итоговая оплата/i,
+      ),
+    ).not.toBeInTheDocument();
   });
 
   it("does not present the migration timestamp as the receipt date of imported money", async () => {
     const imported = visitDetail({
       status: "completed",
       totals: { totalRent: 8000, totalPrepayment: 2000, totalRemaining: 0 },
-      moneyOperations: [{
-        id: 4,
-        kind: "issue_payment",
-        amount: 6000,
-        createdAt: "2099-12-31T23:59:00.000Z",
-        legacyImported: true,
-      }],
+      moneyOperations: [
+        {
+          id: 4,
+          kind: "issue_payment",
+          amount: 6000,
+          createdAt: "2099-12-31T23:59:00.000Z",
+          legacyImported: true,
+        },
+      ],
     });
     server.use(
       http.get(`${API_URL}/visits/41`, () => HttpResponse.json(imported)),
-      http.get(`${API_URL}/visits/41/history`, () => HttpResponse.json(emptyHistory)),
+      http.get(`${API_URL}/visits/41/history`, () =>
+        HttpResponse.json(emptyHistory),
+      ),
     );
     renderDetail();
 
-    expect(await screen.findByText("Импортировано из прошлых данных; дата операции неизвестна")).toBeInTheDocument();
+    expect(
+      (await screen.findAllByText(/Дата получения неизвестна/)).length,
+    ).toBeGreaterThan(0);
     expect(screen.queryByText(/2100/)).not.toBeInTheDocument();
   });
 
   it("refreshes detail and history after an action while preserving the server-updated state", async () => {
     let tagWritten = false;
-    const detailRequests = vi.fn(() => HttpResponse.json(visitDetail({
-      orders: [{ ...visitDetail().orders[0], tagStatus: tagWritten ? "written" : "not_written" }],
-    })));
+    const detailRequests = vi.fn(() =>
+      HttpResponse.json(
+        visitDetail({
+          orders: [
+            {
+              ...visitDetail().orders[0],
+              tagStatus: tagWritten ? "written" : "not_written",
+            },
+          ],
+        }),
+      ),
+    );
     const historyRequests = vi.fn(() => HttpResponse.json(emptyHistory));
     server.use(
       http.get(`${API_URL}/visits/41`, detailRequests),
@@ -200,11 +362,16 @@ describe("visit read pages", () => {
     const queryClient = createTestQueryClient();
     render(
       <QueryClientProvider client={queryClient}>
-        <MantineProvider>
+        <MantineProvider env="test">
           <Notifications />
           <MemoryRouter initialEntries={["/bookings/visits/41"]}>
             <>
-              <Routes><Route path="/bookings/visits/:visitId" element={<VisitDetailPage />} /></Routes>
+              <Routes>
+                <Route
+                  path="/bookings/visits/:visitId"
+                  element={<VisitDetailPage />}
+                />
+              </Routes>
               <MarkTagTrigger />
             </>
           </MemoryRouter>
@@ -212,11 +379,29 @@ describe("visit read pages", () => {
       </QueryClientProvider>,
     );
 
-    expect((await screen.findAllByText("Забронирован")).length).toBeGreaterThanOrEqual(2);
-    expect(await screen.findByText("Нет бирки")).toBeInTheDocument();
-    expect(await screen.findByText("История для старого визита может быть неполной.")).toBeInTheDocument();
-    await userEvent.setup().click(screen.getByRole("button", { name: "Тест: записать бирку" }));
-    expect(await screen.findByText("Бирка есть")).toBeInTheDocument();
+    expect(
+      (await screen.findAllByText("Забронирован")).length,
+    ).toBeGreaterThanOrEqual(2);
+    await waitFor(() =>
+      expect(
+        queryClient.getQueryData<VisitReadDetailDto>(["visit", "detail", 41])
+          ?.orders[0].tagStatus,
+      ).toBe("not_written"),
+    );
+    expect(
+      await screen.findByText(
+        "История для старого визита может быть неполной.",
+      ),
+    ).toBeInTheDocument();
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: "Тест: записать бирку" }));
+    await waitFor(() =>
+      expect(
+        queryClient.getQueryData<VisitReadDetailDto>(["visit", "detail", 41])
+          ?.orders[0].tagStatus,
+      ).toBe("written"),
+    );
     await waitFor(() => {
       expect(detailRequests).toHaveBeenCalledTimes(2);
       expect(historyRequests).toHaveBeenCalledTimes(2);
@@ -224,28 +409,45 @@ describe("visit read pages", () => {
   });
 
   it("keeps the opening version when detail refetches while the edit draft is open", async () => {
-    useAuthStore.getState().setAuth({ accessToken: "test-token", user: { login: "worker1", name: "Алия" } });
+    useAuthStore
+      .getState()
+      .setAuth({
+        accessToken: "test-token",
+        user: { login: "worker1", name: "Алия" },
+      });
     let reads = 0;
     let submittedBody: Record<string, unknown> | undefined;
     server.use(
       http.get(`${API_URL}/visits/41`, () => {
         reads += 1;
-        return HttpResponse.json(visitDetail({ version: reads > 1 ? 2 : 1, notes: reads > 1 ? "Другая версия" : "Позвонить перед выдачей" }));
+        return HttpResponse.json(
+          visitDetail({
+            version: reads > 1 ? 2 : 1,
+            notes: reads > 1 ? "Другая версия" : "Позвонить перед выдачей",
+          }),
+        );
       }),
-      http.get(`${API_URL}/visits/41/history`, () => HttpResponse.json(emptyHistory)),
+      http.get(`${API_URL}/visits/41/history`, () =>
+        HttpResponse.json(emptyHistory),
+      ),
       http.patch(`${API_URL}/visits/41`, async ({ request }) => {
-        submittedBody = await request.json() as Record<string, unknown>;
+        submittedBody = (await request.json()) as Record<string, unknown>;
         return HttpResponse.json(visitDetail({ version: 2 }));
       }),
     );
     const queryClient = createTestQueryClient();
     render(
       <QueryClientProvider client={queryClient}>
-        <MantineProvider>
+        <MantineProvider env="test">
           <Notifications />
           <MemoryRouter initialEntries={["/bookings/visits/41"]}>
             <>
-              <Routes><Route path="/bookings/visits/:visitId" element={<VisitDetailPage />} /></Routes>
+              <Routes>
+                <Route
+                  path="/bookings/visits/:visitId"
+                  element={<VisitDetailPage />}
+                />
+              </Routes>
               <RefetchDetailTrigger />
             </>
           </MemoryRouter>
@@ -253,20 +455,29 @@ describe("visit read pages", () => {
       </QueryClientProvider>,
     );
 
-    await screen.findByRole("heading", { name: /Визит #0041/ });
+    await screen.findByRole("dialog", { name: /Алия · #0041/ });
     const user = userEvent.setup();
-    await user.click(screen.getByRole("button", { name: "Редактировать бронь" }));
+    await user.click(screen.getByRole("button", { name: "Действия визита" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Редактировать бронь" }),
+    );
     const visitNotes = await screen.findByLabelText("Примечание к визиту");
     await user.clear(visitNotes);
     await user.type(visitNotes, "Моё изменение");
-    await user.click(screen.getByRole("button", { name: "Тест: обновить визит" }));
+    await user.click(
+      screen.getByRole("button", { name: "Тест: обновить визит" }),
+    );
     await waitFor(() => expect(reads).toBeGreaterThanOrEqual(2));
-    await user.click(screen.getByRole("button", { name: "Сохранить изменения" }));
+    await user.click(
+      screen.getByRole("button", { name: "Сохранить изменения" }),
+    );
 
     await waitFor(() => expect(submittedBody).toBeDefined());
-    expect(submittedBody).toEqual(expect.objectContaining({
-      expectedVersion: 1,
-      notes: "Моё изменение",
-    }));
+    expect(submittedBody).toEqual(
+      expect.objectContaining({
+        expectedVersion: 1,
+        notes: "Моё изменение",
+      }),
+    );
   });
 });

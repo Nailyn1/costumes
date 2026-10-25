@@ -11,7 +11,11 @@ import { renderWithProviders } from "../../../../../test/render";
 import { VisitHistory } from "./VisitHistory";
 
 function makeEvent(
-  overrides: Partial<VisitHistoryEventDto> & Pick<VisitHistoryEventDto, "id" | "action" | "payload" | "commandId" | "occurredAt">,
+  overrides: Partial<VisitHistoryEventDto> &
+    Pick<
+      VisitHistoryEventDto,
+      "id" | "action" | "payload" | "commandId" | "occurredAt"
+    >,
 ): VisitHistoryEventDto {
   return {
     actorNameSnapshot: "Алия",
@@ -28,19 +32,30 @@ function page(
   items: VisitHistoryEventDto[],
   overrides: Partial<PaginatedVisitHistoryResponseDto> = {},
 ): PaginatedVisitHistoryResponseDto {
-  return { items, total: items.length, page: 1, limit: 20, hasMore: false, ...overrides };
+  return {
+    items,
+    total: items.length,
+    page: 1,
+    limit: 20,
+    hasMore: false,
+    ...overrides,
+  };
 }
 
 describe("VisitHistory", () => {
   it("shows a legacy-history notice when the event list is empty", async () => {
     server.use(
-      http.get(`${API_URL}/visits/12/history`, () => HttpResponse.json(page([]))),
+      http.get(`${API_URL}/visits/12/history`, () =>
+        HttpResponse.json(page([])),
+      ),
     );
 
     renderWithProviders(<VisitHistory visitId={12} />);
 
     expect(
-      await screen.findByText("История для старого визита может быть неполной."),
+      await screen.findByText(
+        "История для старого визита может быть неполной.",
+      ),
     ).toBeInTheDocument();
   });
 
@@ -73,7 +88,11 @@ describe("VisitHistory", () => {
       action: "money.received",
       commandId: "issue-1",
       occurredAt: "2026-10-22T07:00:00.000Z",
-      payload: { kind: "money.received", moneyKind: "issue_payment", amount: 2000 },
+      payload: {
+        kind: "money.received",
+        moneyKind: "issue_payment",
+        amount: 2000,
+      },
     });
     server.use(
       http.get(`${API_URL}/visits/12/history`, () =>
@@ -83,11 +102,15 @@ describe("VisitHistory", () => {
 
     renderWithProviders(<VisitHistory visitId={12} />);
 
-    expect(await screen.findByText("Выданы костюмы по визиту #0012")).toBeInTheDocument();
-    expect(screen.getByText(/Айша — Принцесса \(C-0010\)/)).toBeInTheDocument();
+    expect(await screen.findByText("Костюмы выданы")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Айша — Принцесса \(C-0010\)/),
+    ).not.toBeInTheDocument();
     expect(screen.getByText(/Наличный залог: 5\s?000 ₸/)).toBeInTheDocument();
     expect(screen.getByText(/Алия/)).toBeInTheDocument();
-    expect(screen.getAllByText(/Получено при выдаче: 2\s?000 ₸/)).toHaveLength(1);
+    expect(screen.getAllByText(/Получено при выдаче: 2\s?000 ₸/)).toHaveLength(
+      1,
+    );
   });
 
   it("loads later pages and merges events sharing a command across pages", async () => {
@@ -110,7 +133,11 @@ describe("VisitHistory", () => {
       action: "money.received",
       commandId: "issue-2",
       occurredAt: "2026-10-22T07:00:00.000Z",
-      payload: { kind: "money.received", moneyKind: "issue_payment", amount: 1000 },
+      payload: {
+        kind: "money.received",
+        moneyKind: "issue_payment",
+        amount: 1000,
+      },
     });
     const requestedPages: string[] = [];
     server.use(
@@ -128,8 +155,10 @@ describe("VisitHistory", () => {
     const user = userEvent.setup();
     renderWithProviders(<VisitHistory visitId={12} />);
 
-    expect(await screen.findByText("Выданы костюмы по визиту #0099")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Показать более поздние события" }));
+    expect(await screen.findByText("Костюмы выданы")).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Показать более поздние события" }),
+    );
 
     await waitFor(() => expect(requestedPages).toContain("2"));
     await waitFor(() =>
@@ -140,13 +169,19 @@ describe("VisitHistory", () => {
   });
 
   it("shows a retry action when the history request fails", async () => {
-    const handler = vi.fn(() => HttpResponse.json({ message: "Ошибка" }, { status: 500 }));
+    const handler = vi.fn(() =>
+      HttpResponse.json({ message: "Ошибка" }, { status: 500 }),
+    );
     server.use(http.get(`${API_URL}/visits/12/history`, handler));
 
     renderWithProviders(<VisitHistory visitId={12} />);
 
-    expect(await screen.findByText("Не удалось загрузить историю визита.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Повторить" })).toBeInTheDocument();
+    expect(
+      await screen.findByText("Не удалось загрузить историю визита."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Повторить" }),
+    ).toBeInTheDocument();
     expect(handler).toHaveBeenCalled();
   });
 });

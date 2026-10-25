@@ -151,6 +151,18 @@ describe('visit flow (integration)', () => {
       include: { orders: true, deposits: true },
     });
     expect(issued.status).toBe('issued');
+    // Операция и аудит фиксируют одну оплату, их timestamps могут различаться.
+    const receipt = await t.prisma.visitMoneyOperation.findFirstOrThrow({
+      where: { visitId: visit.id, kind: 'issue_payment' },
+    });
+    const moneyEvent = await t.prisma.auditEvent.findFirstOrThrow({
+      where: { visitId: visit.id, action: 'money.received' },
+    });
+    expect(moneyEvent.payload).toMatchObject({
+      kind: 'money.received',
+      moneyKind: receipt.kind,
+      amount: receipt.amount,
+    });
     expect(issued.orders[0]).toMatchObject({
       status: 'issued',
       finalPayment: 4000,

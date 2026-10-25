@@ -81,51 +81,13 @@ function formatDeposit(type: string, amount: number): string {
   return "Без залога";
 }
 
-function formatReturnedDeposit(type: string, amount: number): string | undefined {
+function formatReturnedDeposit(
+  type: string,
+  amount: number,
+): string | undefined {
   if (type === "cash") return `Залог возвращён: ${formatMoney(amount)}`;
   if (type === "document") return "Залог возвращён: документ";
   return undefined;
-}
-
-function formatOrderSnapshots(
-  events: readonly VisitHistoryEventDto[],
-): string[] {
-  const orders = new Map<number, string>();
-  for (const event of events) {
-    const payload = event.payload;
-    if (
-      payload.kind === "visit.created" ||
-      payload.kind === "visit.issued" ||
-      payload.kind === "visit.unissued" ||
-      payload.kind === "visit.completed" ||
-      payload.kind === "orders.added_and_issued"
-    ) {
-      for (const order of payload.orders) {
-        orders.set(
-          order.orderId,
-          `${order.childName} — ${order.costumeName} (${order.inventoryCode})`,
-        );
-      }
-    }
-    if (payload.kind === "tag.written") {
-      orders.set(
-        payload.orderId,
-        `${payload.childName} — ${payload.costumeName} (${payload.inventoryCode})`,
-      );
-    }
-    if (payload.kind === "visit.updated") {
-      for (const change of payload.orderChanges) {
-        const snapshot = change.after ?? change.before;
-        if (snapshot) {
-          orders.set(
-            snapshot.orderId,
-            `${snapshot.childName} — ${snapshot.costumeName} (${snapshot.inventoryCode})`,
-          );
-        }
-      }
-    }
-  }
-  return [...orders.values()];
 }
 
 function formatVisitEditDetails(
@@ -137,11 +99,17 @@ function formatVisitEditDetails(
     if (fields.startDateTime && fields.endDateTime) {
       const { before: beforeStart, after: afterStart } = fields.startDateTime;
       const { before: beforeEnd, after: afterEnd } = fields.endDateTime;
-      details.push(`Срок аренды: ${formatVisitHistoryRentalPeriod(beforeStart, beforeEnd)} → ${formatVisitHistoryRentalPeriod(afterStart, afterEnd)}`);
+      details.push(
+        `Срок аренды: ${formatVisitHistoryRentalPeriod(beforeStart, beforeEnd)} → ${formatVisitHistoryRentalPeriod(afterStart, afterEnd)}`,
+      );
     } else if (fields.startDateTime) {
-      details.push(`Дата выдачи: ${formatHistoryDate(fields.startDateTime.before)} → ${formatHistoryDate(fields.startDateTime.after)}`);
+      details.push(
+        `Дата выдачи: ${formatHistoryDate(fields.startDateTime.before)} → ${formatHistoryDate(fields.startDateTime.after)}`,
+      );
     } else if (fields.endDateTime) {
-      details.push(`Дата возврата: ${formatHistoryDate(fields.endDateTime.before)} → ${formatHistoryDate(fields.endDateTime.after)}`);
+      details.push(
+        `Дата возврата: ${formatHistoryDate(fields.endDateTime.before)} → ${formatHistoryDate(fields.endDateTime.after)}`,
+      );
     }
   }
   for (const [key, label] of [
@@ -163,22 +131,29 @@ function formatVisitEditDetails(
     const after = change.after;
     const snapshot = after ?? before;
     if (!snapshot) continue;
-    const orderLabel = `${snapshot.childName} — ${snapshot.costumeName} (${snapshot.inventoryCode})`;
     if (change.change === "added") {
-      details.push(`Добавлен заказ: ${orderLabel}`);
+      details.push("Добавлен заказ");
+      if (snapshot.prepaymentAmount > 0)
+        details.push(
+          `Получена предоплата: ${formatMoney(snapshot.prepaymentAmount)}`,
+        );
     } else if (change.change === "removed") {
-      details.push(`Удалён заказ: ${orderLabel}`);
+      details.push("Удалён заказ");
     } else if (before && after) {
       const edits: string[] = [];
-      if (before.childId !== after.childId) edits.push(`ребёнок: ${before.childName} → ${after.childName}`);
-      if (before.costumeId !== after.costumeId) edits.push(`костюм: ${before.costumeName} → ${after.costumeName}`);
+      if (before.childId !== after.childId) edits.push("изменён ребёнок");
+      if (before.costumeId !== after.costumeId) edits.push("изменён костюм");
       if (before.rentPrice !== after.rentPrice) {
-        edits.push(`аренда: ${formatMoney(before.rentPrice)} → ${formatMoney(after.rentPrice)}`);
+        edits.push(
+          `аренда: ${formatMoney(before.rentPrice)} → ${formatMoney(after.rentPrice)}`,
+        );
       }
       if ((before.notes ?? "") !== (after.notes ?? "")) {
-        edits.push(`заметка: ${before.notes?.trim() || "—"} → ${after.notes?.trim() || "—"}`);
+        edits.push(
+          `заметка: ${before.notes?.trim() || "—"} → ${after.notes?.trim() || "—"}`,
+        );
       }
-      if (edits.length > 0) details.push(`${orderLabel}: ${edits.join("; ")}`);
+      if (edits.length > 0) details.push(edits.join("; "));
     }
   }
   return details;
@@ -197,58 +172,82 @@ export function presentVisitHistoryGroup(
   const payloads = events.map((event) => event.payload);
   const created = payloads.find((payload) => payload.kind === "visit.created");
   const issued = payloads.find((payload) => payload.kind === "visit.issued");
-  const unissued = payloads.find((payload) => payload.kind === "visit.unissued");
-  const cancelled = payloads.find((payload) => payload.kind === "visit.cancelled");
-  const completed = payloads.find((payload) => payload.kind === "visit.completed");
+  const unissued = payloads.find(
+    (payload) => payload.kind === "visit.unissued",
+  );
+  const cancelled = payloads.find(
+    (payload) => payload.kind === "visit.cancelled",
+  );
+  const completed = payloads.find(
+    (payload) => payload.kind === "visit.completed",
+  );
   const tagWritten = payloads.find((payload) => payload.kind === "tag.written");
-  const visitUpdated = payloads.find((payload) => payload.kind === "visit.updated");
-  const ordersAddedAndIssued = payloads.find((payload) => payload.kind === "orders.added_and_issued");
-  const tagInvalidations = payloads.filter((payload) => payload.kind === "tag.invalidated");
-  const depositReturned = payloads.find((payload) => payload.kind === "deposit.returned");
-  const received = payloads.filter((payload) => payload.kind === "money.received");
-  const refunded = payloads.filter((payload) => payload.kind === "money.refunded");
-  const snapshots = formatOrderSnapshots(events);
+  const visitUpdated = payloads.find(
+    (payload) => payload.kind === "visit.updated",
+  );
+  const ordersAddedAndIssued = payloads.find(
+    (payload) => payload.kind === "orders.added_and_issued",
+  );
+  const tagInvalidations = payloads.filter(
+    (payload) => payload.kind === "tag.invalidated",
+  );
+  const depositReturned = payloads.find(
+    (payload) => payload.kind === "deposit.returned",
+  );
+  const received = payloads.filter(
+    (payload) => payload.kind === "money.received",
+  );
+  const refunded = payloads.filter(
+    (payload) => payload.kind === "money.refunded",
+  );
   const details: string[] = [];
   let title: string;
 
   if (created && issued) {
-    title = `Создан и выдан визит #${issued.visitCode}`;
+    title = "Визит создан, костюмы выданы";
   } else if (created) {
-    title = `Создан визит #${created.visitCode}`;
-    details.push(`Клиент: ${created.clientName}`);
-    details.push(
-      `Аренда: ${formatVisitHistoryRentalPeriod(created.startDateTime, created.endDateTime)}`,
-    );
+    title = "Визит создан";
   } else if (issued) {
-    title = `Выданы костюмы по визиту #${issued.visitCode}`;
-    const issuePayment = received.find((payload) => payload.moneyKind === "issue_payment");
+    title = "Костюмы выданы";
+    const issuePayment = received.find(
+      (payload) => payload.moneyKind === "issue_payment",
+    );
     const amount = issuePayment?.amount ?? issued.additionalPayment;
     if (amount > 0) details.push(`Получено при выдаче: ${formatMoney(amount)}`);
     details.push(formatDeposit(issued.depositType, issued.depositAmount));
   } else if (ordersAddedAndIssued) {
-    title = `Добавлены и выданы костюмы по визиту #${ordersAddedAndIssued.visitCode}`;
-    const issuePayment = received.find((payload) => payload.moneyKind === "issue_payment");
+    title = "Добавлены и выданы костюмы";
+    const issuePayment = received.find(
+      (payload) => payload.moneyKind === "issue_payment",
+    );
     if (issuePayment && issuePayment.amount > 0) {
       details.push(`Получено при выдаче: ${formatMoney(issuePayment.amount)}`);
     }
   } else if (unissued) {
-    title = `Выдача отменена по визиту #${unissued.visitCode}`;
+    title = "Выдача отменена";
     if (unissued.voidedPaymentAmount > 0) {
-      details.push(`Аннулирован платёж: ${formatMoney(unissued.voidedPaymentAmount)}`);
+      details.push(
+        `Аннулирован платёж: ${formatMoney(unissued.voidedPaymentAmount)}`,
+      );
     }
     if (unissued.depositType) {
-      details.push(formatDeposit(unissued.depositType, unissued.depositAmount ?? 0));
+      details.push(
+        formatDeposit(unissued.depositType, unissued.depositAmount ?? 0),
+      );
     }
   } else if (cancelled) {
-    title = `Визит #${cancelled.visitCode} отменён`;
+    title = "Визит отменён";
     if (cancelled.reason) details.push(`Причина: ${cancelled.reason}`);
   } else if (completed) {
-    title = `Возврат оформлен по визиту #${completed.visitCode}`;
+    title = "Возврат оформлен";
     if (completed.settlementAmount && completed.settlementKind) {
-      const settlementLabel = completed.settlementKind === "debt_payment"
-        ? "Принята оплата долга"
-        : "Возвращена переплата";
-      details.push(`${settlementLabel}: ${formatMoney(completed.settlementAmount)}`);
+      const settlementLabel =
+        completed.settlementKind === "debt_payment"
+          ? "Принята оплата долга"
+          : "Возвращена переплата";
+      details.push(
+        `${settlementLabel}: ${formatMoney(completed.settlementAmount)}`,
+      );
     }
     if (depositReturned) {
       const returnedDeposit = formatReturnedDeposit(
@@ -258,8 +257,10 @@ export function presentVisitHistoryGroup(
       if (returnedDeposit) details.push(returnedDeposit);
     }
   } else if (tagWritten) {
-    title = `Бирка написана: ${tagWritten.costumeName}`;
-    details.push(`${tagWritten.childName} · ${tagWritten.inventoryCode}`);
+    title = "Бирка написана";
+    details.push(
+      `${tagWritten.childName} — ${tagWritten.costumeName} (${tagWritten.inventoryCode})`,
+    );
   } else if (visitUpdated) {
     title = "Визит изменён";
     details.push(...formatVisitEditDetails(visitUpdated));
@@ -283,16 +284,20 @@ export function presentVisitHistoryGroup(
   }
 
   for (const invalidation of tagInvalidations) {
-    const reason = invalidation.reason === "date_changed" || invalidation.reason === "window_changed"
-      ? "изменился период аренды/время"
-      : invalidation.reason === "child_changed"
-        ? "изменился ребёнок"
-        : "изменился костюм";
-    details.push(`Бирка сброшена: ${invalidation.childName} — ${invalidation.costumeName} (${invalidation.inventoryCode}); ${reason}`);
+    const reason =
+      invalidation.reason === "date_changed" ||
+      invalidation.reason === "window_changed"
+        ? "изменился период аренды/время"
+        : invalidation.reason === "child_changed"
+          ? "изменился ребёнок"
+          : "изменился костюм";
+    details.push(`Бирка сброшена: ${reason}`);
   }
 
   if (issued && created) {
-    const issuePayment = received.find((payload) => payload.moneyKind === "issue_payment");
+    const issuePayment = received.find(
+      (payload) => payload.moneyKind === "issue_payment",
+    );
     const amount = issuePayment?.amount ?? issued.additionalPayment;
     if (amount > 0) details.push(`Получено при выдаче: ${formatMoney(amount)}`);
     details.push(formatDeposit(issued.depositType, issued.depositAmount));
@@ -311,7 +316,14 @@ export function presentVisitHistoryGroup(
     details.push(`Возврат клиенту: ${formatMoney(refund.amount)}`);
   }
 
-  if (snapshots.length > 0 && !visitUpdated) details.push(...snapshots);
+  if (created) {
+    const prepayment = created.orders.reduce(
+      (sum, order) => sum + order.prepaymentAmount,
+      0,
+    );
+    if (prepayment > 0)
+      details.unshift(`Получена предоплата: ${formatMoney(prepayment)}`);
+  }
 
   const firstEvent = events[0];
   return {
