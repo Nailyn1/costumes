@@ -15,6 +15,7 @@ import {
   makeDeposit,
   makeOrder,
   makeVisit,
+  noPhotos,
 } from '../test-utils';
 
 jest.mock('../prisma/generated/client', () => ({
@@ -39,6 +40,7 @@ const createService = () =>
     queueMock as never,
     prismaMock as never,
     loggerMock as never,
+    noPhotos as never,
   );
 
 describe('VisitOrderService', () => {

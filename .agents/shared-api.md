@@ -75,3 +75,5 @@ shared/
 - Если новый метод не появился в `apiClient` — проверь, что модуль импортирован в `main.tsp`, и что операция внутри `interface` с `@route`.
 - `shared/api-spec/package.json` — исторический дубль зависимостей; рабочие скрипты — в `shared/package.json`.
 - Изменение формата существующего поля = breaking change для обоих приложений: правь фронт и бэк в одной задаче.
+- Загрузка файлов (фото костюмов) — `multipart/form-data`: в TypeSpec `@multipartBody` с `HttpPart<bytes>`; typed-openapi даёт `requestFormat: "form-data"`. Zod-схема файловых полей — `z.unknown()`, поэтому файлы (`image`, `thumb`) проверяет бэкенд (размер, сигнатура), а текстовые поля формы (`width`, `height`) — `UploadCostumePhotoFieldsSchema` из `shared/src/costumes.ts`.
+- `photoCount` объявлен как `int32 = 0` (в Zod `.default(0)`): ответ с отсутствующим полем всё равно проходит валидацию на клиенте, бэкенд же всегда присылает реальное число.

@@ -4,6 +4,7 @@ import {
   ConflictException,
   HttpStatus,
   NotFoundException,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { AbstractHttpAdapter } from '@nestjs/core';
@@ -121,6 +122,27 @@ describe('ApiExceptionFilter', () => {
         fieldErrors: { phone: ['Это значение уже используется'] },
       },
       HttpStatus.CONFLICT,
+    );
+  });
+
+  it('keeps the Russian message of an intentional 503 but hides English text', () => {
+    filter.catch(
+      new ServiceUnavailableException('Хранилище фото не настроено'),
+      host,
+    );
+    expect(reply).toHaveBeenLastCalledWith(
+      response,
+      { statusCode: 503, message: 'Хранилище фото не настроено' },
+      503,
+    );
+    filter.catch(new ServiceUnavailableException('connect ECONNREFUSED'), host);
+    expect(reply).toHaveBeenLastCalledWith(
+      response,
+      {
+        statusCode: 503,
+        message: 'Сервис временно недоступен. Повторите попытку позже',
+      },
+      503,
     );
   });
 

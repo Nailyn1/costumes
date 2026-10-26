@@ -25,6 +25,7 @@ model User {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   auditEvents AuditEvent[]
+  costumePhotos CostumePhoto[]
   commandReceipts CommandReceipt[]
 
   @@map("users")
@@ -82,6 +83,7 @@ model Costume {
   parts         Json          @default("[]")
 
   orders        Order[]
+  photos        CostumePhoto[]
 
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
@@ -305,4 +307,27 @@ enum TagStatus {
   written
   not_written
   not_required
+}
+
+// Фото костюма (T-111). key/thumbKey — ключи объектов в S3 (costumes/{costumeId}/{uuid}.jpg).
+model CostumePhoto {
+  id              Int       @id @default(autoincrement())
+  costumeId       Int       @map("costume_id")
+  costume         Costume   @relation(fields: [costumeId], references: [id])
+
+  key             String
+  thumbKey        String    @map("thumb_key")
+  width           Int
+  height          Int
+  sizeBytes       Int       @map("size_bytes")
+  sortOrder       Int       @default(0) @map("sort_order")
+
+  createdByUserId Int?      @map("created_by_user_id")
+  createdByUser   User?     @relation(fields: [createdByUserId], references: [id])
+
+  createdAt       DateTime  @default(now()) @map("created_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  @@index([costumeId, deletedAt, sortOrder])
+  @@map("costume_photos")
 }

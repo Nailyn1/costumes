@@ -7,6 +7,7 @@ import { CostumesService } from './costumes.service';
 import { CostumesRepository } from './costumes.repository';
 import {
   createPrismaMock,
+  noPhotos,
   makeCostume,
   makeOrder,
   makeVisit,
@@ -14,7 +15,10 @@ import {
 
 const { prisma, tx, reset } = createPrismaMock();
 const service = () =>
-  new CostumesService(new CostumesRepository(prisma as never));
+  new CostumesService(
+    new CostumesRepository(prisma as never),
+    noPhotos as never,
+  );
 const start = '2026-12-20T10:00:00Z';
 const end = '2026-12-21T10:00:00Z';
 
@@ -26,6 +30,7 @@ describe('CostumesService', () => {
     await expect(service().createCostume({ name: 'Эльза' })).resolves.toEqual({
       costumeId: 1,
       name: 'Эльза',
+      photoCount: 0,
       inventoryCode: 'C-0001',
       category: null,
       gender: null,

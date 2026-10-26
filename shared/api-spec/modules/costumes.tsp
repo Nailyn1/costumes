@@ -125,6 +125,7 @@ model Costume {
   heightTo?: HeightCm | null;
   sizeLabel?: SizeLabel | null;
   parts?: CostumePart[];
+  ...CostumePhotoSummary;
 }
 
 model AvailableCostume {
@@ -247,4 +248,74 @@ interface CostumeOperations {
   ): {
     @statusCode statusCode: 200;
     @body body: GetCostumesList} | Common.Error;
+}
+
+
+// ---- Фото костюмов (T-111) ----
+
+/** Краткие сведения о фото: в списках и заказах без полного списка. */
+model CostumePhotoSummary {
+  /** URL превью обложки (первое фото по порядку); нет фото — поле отсутствует. */
+  coverThumbUrl?: string;
+  photoCount: int32 = 0;
+}
+
+model CostumePhoto {
+  id: int32;
+  /** Публичный URL основного фото (~1600 px). */
+  url: string;
+  /** Публичный URL превью (~320 px). */
+  thumbUrl: string;
+  width: int32;
+  height: int32;
+}
+
+@minValue(1)
+@maxValue(10000)
+scalar PhotoDimension extends int32;
+
+model UploadCostumePhotoForm {
+  /** Основное фото: image/jpeg или image/webp, до 2 МБ. */
+  image: HttpPart<bytes>;
+  /** Превью: image/jpeg или image/webp, до 200 КБ. */
+  thumb: HttpPart<bytes>;
+  /** Размеры основного фото в пикселях (текстовые поля формы). */
+  width: HttpPart<PhotoDimension>;
+  height: HttpPart<PhotoDimension>;
+}
+
+model ReorderCostumePhotosRequest {
+  /** Все id активных фото костюма в новом порядке; первое — обложка. */
+  @minItems(1) @maxItems(15) photoIds: int32[];
+}
+
+@route("/costumes/{costumeId}/photos")
+interface CostumePhotoOperations {
+  /** Загрузка через бэкенд, multipart/form-data. Лимит — 15 фото на костюм (409). */
+  @post
+  upload(
+    @path costumeId: int32,
+    @header contentType: "multipart/form-data",
+    @multipartBody body: UploadCostumePhotoForm
+  ): {
+    @statusCode statusCode: 201;
+    @body body: CostumePhoto;
+  } | Common.Error;
+
+  @get
+  list(@path costumeId: int32): CostumePhoto[] | Common.Error;
+
+  /** Объявлен до `{photoId}`: статический путь. */
+  @patch
+  @route("order")
+  reorder(
+    @path costumeId: int32,
+    @body body: ReorderCostumePhotosRequest
+  ): CostumePhoto[] | Common.Error;
+
+  @delete
+  @route("{photoId}")
+  delete(@path costumeId: int32, @path photoId: int32): {
+    @statusCode statusCode: 204;
+  } | Common.Error;
 }

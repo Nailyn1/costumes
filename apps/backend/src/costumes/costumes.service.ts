@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { CostumePhotosService } from '../costume-photos/costume-photos.service';
 import {
   CostumeCategoryDto,
   CostumeCategoryNodeDto,
@@ -42,7 +43,10 @@ import { CostumesRepository } from './costumes.repository';
 
 @Injectable()
 export class CostumesService {
-  constructor(private readonly repo: CostumesRepository) {}
+  constructor(
+    private readonly repo: CostumesRepository,
+    private readonly photos: CostumePhotosService,
+  ) {}
 
   // --- костюмы ---
 
@@ -64,7 +68,10 @@ export class CostumesService {
       sizeLabel: data.sizeLabel?.trim() || null,
       parts,
     });
-    return toCostumeCatalogFields(costume);
+    return {
+      ...toCostumeCatalogFields(costume),
+      photoCount: 0,
+    };
   }
 
   async updateCostume(
@@ -102,7 +109,12 @@ export class CostumesService {
     if (!costume) {
       throw new NotFoundException(`Костюм с ID ${costumeId} не найден`);
     }
-    return toCostumeCatalogFields(costume);
+    const summary = (await this.photos.summaries([costumeId])).get(costumeId);
+    return {
+      ...toCostumeCatalogFields(costume),
+      photoCount: 0,
+      ...summary,
+    };
   }
 
   async deleteCostume(costumeId: number): Promise<void> {
@@ -166,7 +178,7 @@ export class CostumesService {
     ]);
     const costumes = mergeUniqueById(exactCostumes, broadCostumes);
 
-    return sortBySearchScore(costumes, (costume) =>
+    const ranked = sortBySearchScore(costumes, (costume) =>
       maxScore([
         scoreTextMatch(costume.name, search),
         scoreIdentifierMatch(costume.inventoryCode, search),
@@ -177,12 +189,15 @@ export class CostumesService {
           ]),
         ),
       ]),
-    )
-      .slice(0, 20)
-      .map((c) => ({
-        ...toCostumeCatalogFields(c),
-        display: `${c.name} (${c.inventoryCode})`,
-      }));
+    ).slice(0, 20);
+    const summaries = await this.photos.summaries(ranked.map((c) => c.id));
+
+    return ranked.map((c) => ({
+      ...toCostumeCatalogFields(c),
+      photoCount: 0,
+      ...summaries.get(c.id),
+      display: `${c.name} (${c.inventoryCode})`,
+    }));
   }
 
   async searchCostumeAvailable(
@@ -277,17 +292,20 @@ export class CostumesService {
     ]);
     const costumes = mergeUniqueById(exactCostumes, broadCostumes);
 
-    return sortBySearchScore(costumes, (costume) =>
+    const ranked = sortBySearchScore(costumes, (costume) =>
       maxScore([
         scoreTextMatch(costume.name, search),
         scoreIdentifierMatch(costume.inventoryCode, search),
       ]),
-    )
-      .slice(0, 30)
-      .map((c) => ({
-        ...toCostumeCatalogFields(c),
-        status: c.orders.length > 0 ? 'issued' : 'available',
-      }));
+    ).slice(0, 30);
+    const summaries = await this.photos.summaries(ranked.map((c) => c.id));
+
+    return ranked.map((c) => ({
+      ...toCostumeCatalogFields(c),
+      photoCount: 0,
+      ...summaries.get(c.id),
+      status: c.orders.length > 0 ? 'issued' : 'available',
+    }));
   }
 
   async costumesAvailability(
@@ -318,8 +336,12 @@ export class CostumesService {
       };
     });
 
+    const summary = (await this.photos.summaries([costume.id])).get(costume.id);
+
     return {
       ...toCostumeCatalogFields(costume),
+      photoCount: 0,
+      ...summary,
       periods: periods,
       noPeriodsMessage:
         periods.length === 0
@@ -341,7 +363,12 @@ export class CostumesService {
       limit,
     );
 
-    const items = rawItems.map(toCostumeCatalogFields);
+    const summaries = await this.photos.summaries(rawItems.map((i) => i.id));
+    const items = rawItems.map((item) => ({
+      ...toCostumeCatalogFields(item),
+      photoCount: 0,
+      ...summaries.get(item.id),
+    }));
 
     return {
       items,

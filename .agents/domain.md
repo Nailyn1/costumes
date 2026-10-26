@@ -15,11 +15,14 @@
 | **Child** | Ребёнок клиента, на которого берётся костюм. | `clientId`, `name`, `deletedAt` |
 | **Costume** | Физическая единица инвентаря (один пакет). | `inventoryCode` (`C-0001`, генерирует БД), `name`, `notes`, `categoryId?`, `gender?`, `heightFrom?`, `heightTo?`, `sizeLabel?`, `parts`, `deletedAt` |
 | **CostumeCategory** | Двухуровневый справочник категорий костюмов: основная → подкатегория. | `name`, `parentId?` (только основная категория может быть родителем), `sortOrder`, `deletedAt` |
+| **CostumePhoto** | Фото костюма (T-111): несколько на костюм, первое по `sortOrder` — обложка. Файлы лежат в S3, в БД только ключи. | `costumeId`, `key`, `thumbKey`, `width`, `height`, `sizeBytes`, `sortOrder`, `createdByUserId`, `deletedAt` |
 | **Visit** | Одна «поездка» клиента: одна дата выдачи, одна дата возврата. Группирует заказы. | `visitCode` (4 цифры), `clientId`, `startDateTime`, `endDateTime`, `issueTimeFrom`, `issueTimeTo`, `returnTimeUntil`, `status`, `notes` |
 | **Order** | Один заказ = **один ребёнок + один костюм + один период аренды**. Деньги живут здесь. | `visitId`, `clientId`, `childId`, `costumeId`, `startDateTime`, `endDateTime`, `rentPrice`, `prepaymentAmount`, `finalPayment`, `issuedParts?`, `tagStatus`, `status`, `notes` |
 | **Deposit** | Залог выдачи: у визита один активный, прошлые записи сохраняются после отмены выдачи. | `type: document \| cash \| none`, `amount` (только для cash), `returned`, `deletedAt` |
 | **VisitMoneyOperation** | Фактическое движение денег за аренду визита, отдельно от залога. | `kind: issue_payment \| debt_payment \| customer_refund`, положительная `amount`, `voidedAt`, `legacyImported` |
 | **Notification** | WhatsApp-сообщение клиенту о брони. | `visitId`, `type` (`booking_confirmation`), `status`, `externalId` (id в Green-API), `traceId`, `errorText` |
+
+**Фото костюма.** До 15 активных фото на костюм (16-е → 409). Загрузка — `POST /costumes/:id/photos` (multipart: `image` ≤ 2 МБ, `thumb` ≤ 200 КБ, только JPEG/WebP, тип проверяется по сигнатуре файла, плюс текстовые поля `width`/`height`), список — `GET`, порядок — `PATCH /costumes/:id/photos/order` (все id активных фото; первое — обложка), удаление — `DELETE …/:photoId` (soft delete, объекты из S3 удаляются после него; ошибка S3 только логируется). В ответах костюмов (поиск, список, занятость) и заказов (бирки, выдача, возврат, карточка визита) приходят `coverThumbUrl?` и `photoCount` без полного списка. Подробности хранения — [architecture.md](./architecture.md#s3-фото-костюмов).
 
 Статус костюма в ответе API вычисляется по активным заказам; отдельной хранимой колонки `Costume.status` нет. Занятость на период определяется пересечением дат заказов.
 

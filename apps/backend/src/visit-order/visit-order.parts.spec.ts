@@ -7,6 +7,7 @@ import {
   makeDeposit,
   makeOrder,
   makeVisit,
+  noPhotos,
 } from '../test-utils';
 
 jest.mock('../prisma/generated/client', () => ({
@@ -45,6 +46,7 @@ describe('VisitOrderService costume parts (T-110)', () => {
       { add: jest.fn() } as never,
       prismaMock as never,
       { logger: { id: 'trace-1', error: jest.fn() } } as never,
+      noPhotos as never,
     );
   });
 

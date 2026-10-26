@@ -89,6 +89,7 @@ ts-jest работает с `isolatedModules` (`tsconfig.jest.json`) — тип�
 | Redis | тот же dev-Redis, логическая БД `REDIS_DB` (по умолчанию **15**), `FLUSHDB` при старте и в конце; dev-данные в db 0 не затрагиваются |
 | Очередь BullMQ `notifications` | заглушка `t.notificationQueue.add` (jest.fn); процессор подменён пустым — иначе Worker читал бы настоящую очередь из db 0 |
 | Green-API (`WhatsappProvider`) | мок `t.whatsapp` (`sendMessage`, `getStateInstance`) |
+| S3 (`S3StorageService`) | заглушка в памяти `t.s3` (`objects`, `putObject`, `deleteObject`, `assertConfigured`); публичный URL — `https://s3.test/<ключ>` |
 | Логи | pino молчит |
 
 `createTestApp()` создаёт тестового сотрудника и возвращает `{ app, prisma, redis, notificationQueue, whatsapp, user, close }`. Хелперы `test/support/http.ts`: `login(app, user)` → accessToken, `authed(app, token)` → `get/post/patch/delete` с Bearer. Проверяй результат **в БД через `t.prisma`**, а не только по ответу API.

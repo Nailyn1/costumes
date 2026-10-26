@@ -3,6 +3,7 @@ import type {
   get_CostumeOperations_getCostumesList,
   get_CostumeOperations_searchAvailability,
   get_CostumeOperations_searchAvailable,
+  post_CostumePhotoOperations_upload,
 } from "./openapi-client.js";
 import { z } from "zod";
 
@@ -75,3 +76,26 @@ export const CreateCostumeCategoryRequestSchema =
   schemas.Costumes_CreateCostumeCategoryRequest;
 export const UpdateCostumeCategoryRequestSchema =
   schemas.Costumes_UpdateCostumeCategoryRequest;
+
+// Фото костюмов (T-111)
+export type CostumePhotoDto = z.infer<typeof schemas.Costumes_CostumePhoto>;
+export const CostumePhotoSchema = schemas.Costumes_CostumePhoto;
+export type ReorderCostumePhotosRequestDto = z.infer<
+  typeof schemas.Costumes_ReorderCostumePhotosRequest
+>;
+export const ReorderCostumePhotosRequestSchema =
+  schemas.Costumes_ReorderCostumePhotosRequest;
+/** Текстовые поля multipart-формы загрузки (файлы `image` и `thumb` приходят отдельно). */
+export type UploadCostumePhotoFormDto = z.infer<
+  typeof schemas.Costumes_UploadCostumePhotoForm
+>;
+export const UploadCostumePhotoFieldsSchema = z.object({
+  width: z.coerce.number().int().min(1).max(10000),
+  height: z.coerce.number().int().min(1).max(10000),
+});
+export type UploadCostumePhotoFieldsDto = z.infer<
+  typeof UploadCostumePhotoFieldsSchema
+>;
+export type UploadCostumePhotoPathDto = NonNullable<
+  post_CostumePhotoOperations_upload["parameters"]["path"]
+>;

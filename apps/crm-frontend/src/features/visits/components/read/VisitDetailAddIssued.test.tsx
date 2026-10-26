@@ -29,6 +29,7 @@ const visit: VisitReadDetailDto = {
     costumeId: 20,
     costumeName: "Эльза",
     inventoryCode: "C-0020",
+    photoCount: 0,
     status: "issued",
     tagStatus: "written",
     rentPrice: 10000,

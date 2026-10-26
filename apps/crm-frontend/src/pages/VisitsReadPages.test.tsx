@@ -78,6 +78,7 @@ function visitDetail(
         costumeId: 9,
         costumeName: "Эльза",
         inventoryCode: "C-0123",
+        photoCount: 0,
         status: "reserved",
         tagStatus: "written",
         rentPrice: 8000,

@@ -215,6 +215,8 @@ export const Costumes_AvailableCostume = z
     heightTo: Costumes_HeightCm.nullable().optional(),
     sizeLabel: Costumes_SizeLabel.nullable().optional(),
     parts: z.array(Costumes_CostumePart).optional(),
+    coverThumbUrl: z.string().optional(),
+    photoCount: z.number().int().default(0),
     status: Costumes_CostumeStatus,
   })
   .catchall(z.unknown());
@@ -234,6 +236,8 @@ export const Costumes_Costume = z
     heightTo: Costumes_HeightCm.nullable().optional(),
     sizeLabel: Costumes_SizeLabel.nullable().optional(),
     parts: z.array(Costumes_CostumePart).optional(),
+    coverThumbUrl: z.string().optional(),
+    photoCount: z.number().int().default(0),
   })
   .catchall(z.unknown());
 
@@ -274,8 +278,21 @@ export const Costumes_CostumeFullAvailability = z
     heightTo: Costumes_HeightCm.nullable().optional(),
     sizeLabel: Costumes_SizeLabel.nullable().optional(),
     parts: z.array(Costumes_CostumePart).optional(),
+    coverThumbUrl: z.string().optional(),
+    photoCount: z.number().int().default(0),
     periods: z.array(Costumes_AvailabilityPeriod),
     noPeriodsMessage: z.string().nullable(),
+  })
+  .catchall(z.unknown());
+
+export type Costumes_CostumePhoto = __TypedOpenapi.Schemas.Costumes_CostumePhoto;
+export const Costumes_CostumePhoto = z
+  .object({
+    id: z.number().int(),
+    url: z.string(),
+    thumbUrl: z.string(),
+    width: z.number().int(),
+    height: z.number().int(),
   })
   .catchall(z.unknown());
 
@@ -291,6 +308,8 @@ export const Costumes_CostumeSearchResult = z
     heightTo: Costumes_HeightCm.nullable().optional(),
     sizeLabel: Costumes_SizeLabel.nullable().optional(),
     parts: z.array(Costumes_CostumePart).optional(),
+    coverThumbUrl: z.string().optional(),
+    photoCount: z.number().int().default(0),
     display: z.string(),
   })
   .catchall(z.unknown());
@@ -324,6 +343,14 @@ export const Costumes_GetCostumesList = z
   })
   .catchall(z.unknown());
 
+export type Costumes_PhotoDimension = __TypedOpenapi.Schemas.Costumes_PhotoDimension;
+export const Costumes_PhotoDimension = z.number().int().min(1).max(10000);
+
+export type Costumes_ReorderCostumePhotosRequest = __TypedOpenapi.Schemas.Costumes_ReorderCostumePhotosRequest;
+export const Costumes_ReorderCostumePhotosRequest = z
+  .object({ photoIds: z.array(z.number().int()).min(1).max(15) })
+  .catchall(z.unknown());
+
 export type Costumes_UpdateCostumeCategoryRequest = __TypedOpenapi.Schemas.Costumes_UpdateCostumeCategoryRequest;
 export const Costumes_UpdateCostumeCategoryRequest = z
   .object({ name: Costumes_CategoryName, sortOrder: z.number().int() })
@@ -342,6 +369,11 @@ export const Costumes_UpdateCostumeRequest = z
     parts: z.array(Costumes_CostumePart).max(20),
   })
   .partial()
+  .catchall(z.unknown());
+
+export type Costumes_UploadCostumePhotoForm = __TypedOpenapi.Schemas.Costumes_UploadCostumePhotoForm;
+export const Costumes_UploadCostumePhotoForm = z
+  .object({ image: z.unknown(), thumb: z.unknown(), width: Costumes_PhotoDimension, height: Costumes_PhotoDimension })
   .catchall(z.unknown());
 
 export type Visits_AddAndIssueVisitRequestOrder = __TypedOpenapi.Schemas.Visits_AddAndIssueVisitRequestOrder;
@@ -596,6 +628,8 @@ export const Visits_Order = z
     rentPrice: z.number().int(),
     prepaymentAmount: z.number().int(),
     notes: z.string(),
+    coverThumbUrl: z.string().optional(),
+    photoCount: z.number().int().default(0),
   })
   .catchall(z.unknown());
 
@@ -1006,6 +1040,22 @@ export const Visits_Visit = z
 export type Visits_VisitCancelRequest = __TypedOpenapi.Schemas.Visits_VisitCancelRequest;
 export const Visits_VisitCancelRequest = z.object({ reason: z.string() }).partial().catchall(z.unknown());
 
+export type Visits_VisitIssueOrder = __TypedOpenapi.Schemas.Visits_VisitIssueOrder;
+export const Visits_VisitIssueOrder = z
+  .object({
+    orderId: z.number().int(),
+    childName: Children_ChildName,
+    costumeName: z.string(),
+    inventoryCode: Costumes_InventoryCode,
+    rentPrice: z.number().int(),
+    prepaymentAmount: z.number().int(),
+    tagStatus: Visits_TagStatus,
+    parts: z.array(Costumes_CostumePart).optional(),
+    coverThumbUrl: z.string().optional(),
+    photoCount: z.number().int().default(0),
+  })
+  .catchall(z.unknown());
+
 export type Visits_VisitForIssueResponse = __TypedOpenapi.Schemas.Visits_VisitForIssueResponse;
 export const Visits_VisitForIssueResponse = z
   .object({
@@ -1021,7 +1071,7 @@ export const Visits_VisitForIssueResponse = z
     totalPrepayment: z.number().int(),
     remainingToPay: z.number().int(),
     notes: z.string(),
-    orders: z.array(Visits_VisitOrder),
+    orders: z.array(Visits_VisitIssueOrder),
   })
   .catchall(z.unknown());
 
@@ -1037,6 +1087,8 @@ export const Visits_VisitReturnOrder = z
     finalPayment: z.number().int(),
     returned: z.boolean(),
     parts: z.array(Costumes_CostumePart).optional(),
+    coverThumbUrl: z.string().optional(),
+    photoCount: z.number().int().default(0),
   })
   .catchall(z.unknown());
 
@@ -1082,6 +1134,8 @@ export const Visits_VisitReadOrder = z
     finalPayment: z.number().int().optional(),
     notes: z.string().optional(),
     parts: z.array(Costumes_CostumePart).optional(),
+    coverThumbUrl: z.string().optional(),
+    photoCount: z.number().int().default(0),
   })
   .catchall(z.unknown());
 
@@ -1477,6 +1531,49 @@ export const get_CostumeOperations_getDetailedAvailability = {
   responses: { 200: Costumes_CostumeFullAvailability, default: Common_Error },
 };
 
+export type post_CostumePhotoOperations_upload = __TypedOpenapi.Endpoints.post_CostumePhotoOperations_upload;
+export const post_CostumePhotoOperations_upload = {
+  method: z.literal("POST"),
+  path: z.literal("/costumes/{costumeId}/photos"),
+  requestFormat: z.literal("form-data"),
+  responseFormat: z.literal("json"),
+  parameters: { path: z.strictObject({ costumeId: z.coerce.number().int() }), body: Costumes_UploadCostumePhotoForm },
+  responses: { 201: Costumes_CostumePhoto, default: Common_Error },
+};
+
+export type get_CostumePhotoOperations_list = __TypedOpenapi.Endpoints.get_CostumePhotoOperations_list;
+export const get_CostumePhotoOperations_list = {
+  method: z.literal("GET"),
+  path: z.literal("/costumes/{costumeId}/photos"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { path: z.strictObject({ costumeId: z.coerce.number().int() }) },
+  responses: { 200: z.array(Costumes_CostumePhoto), default: Common_Error },
+};
+
+export type patch_CostumePhotoOperations_reorder = __TypedOpenapi.Endpoints.patch_CostumePhotoOperations_reorder;
+export const patch_CostumePhotoOperations_reorder = {
+  method: z.literal("PATCH"),
+  path: z.literal("/costumes/{costumeId}/photos/order"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: {
+    path: z.strictObject({ costumeId: z.coerce.number().int() }),
+    body: Costumes_ReorderCostumePhotosRequest,
+  },
+  responses: { 200: z.array(Costumes_CostumePhoto), default: Common_Error },
+};
+
+export type delete_CostumePhotoOperations_delete = __TypedOpenapi.Endpoints.delete_CostumePhotoOperations_delete;
+export const delete_CostumePhotoOperations_delete = {
+  method: z.literal("DELETE"),
+  path: z.literal("/costumes/{costumeId}/photos/{photoId}"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { path: z.strictObject({ costumeId: z.coerce.number().int(), photoId: z.coerce.number().int() }) },
+  responses: { 204: z.unknown(), default: Common_Error },
+};
+
 export type post_VisitOperation_create = __TypedOpenapi.Endpoints.post_VisitOperation_create;
 export const post_VisitOperation_create = {
   method: z.literal("POST"),
@@ -1827,6 +1924,7 @@ export const EndpointByMethod = {
     "/clients/{clientId}/blacklist": post_ClientOperations_addClientInBlackList,
     "/costume-categories": post_CostumeCategoryOperations_create,
     "/costumes": post_CostumeOperations_create,
+    "/costumes/{costumeId}/photos": post_CostumePhotoOperations_upload,
     "/visits": post_VisitOperation_create,
     "/visits/preview-code": post_VisitOperation_previewCode,
     "/visits/quick-issue": post_VisitOperation_quickIssue,
@@ -1844,6 +1942,7 @@ export const EndpointByMethod = {
     "/clients/{clientId}": patch_ClientOperations_update,
     "/costume-categories/{categoryId}": patch_CostumeCategoryOperations_update,
     "/costumes/{costumeId}": patch_CostumeOperations_update,
+    "/costumes/{costumeId}/photos/order": patch_CostumePhotoOperations_reorder,
     "/visits/{visitId}": patch_VisitOperation_updateReserved,
   },
   delete: {
@@ -1852,6 +1951,7 @@ export const EndpointByMethod = {
     "/clients/{clientId}/blacklist": delete_ClientOperations_removeClientFromBlackList,
     "/costume-categories/{categoryId}": delete_CostumeCategoryOperations_delete,
     "/costumes/{costumeId}": delete_CostumeOperations_delete,
+    "/costumes/{costumeId}/photos/{photoId}": delete_CostumePhotoOperations_delete,
   },
   get: {
     "/clients/detail/{clientId}": get_ClientOperations_getClientDetail,
@@ -1863,6 +1963,7 @@ export const EndpointByMethod = {
     "/costumes/search": get_CostumeOperations_searchAvailability,
     "/costumes/search-available": get_CostumeOperations_searchAvailable,
     "/costumes/{costumeId}/availability": get_CostumeOperations_getDetailedAvailability,
+    "/costumes/{costumeId}/photos": get_CostumePhotoOperations_list,
     "/visits": get_VisitOperation_list,
     "/visits/issued": get_VisitOperation_getIssuedVisits,
     "/visits/issued-for-return": get_VisitOperation_getIssuedForReturn,
@@ -1911,9 +2012,11 @@ export type SecurityRequirements = readonly (readonly string[])[];
 
 // <EndpointRequestFormats>
 /** Non-json request body encodings; missing entries default to `"json"`. */
-export const endpointRequestFormats = {} as Partial<{
-  [M in keyof EndpointByMethod]: Partial<{ [P in keyof EndpointByMethod[M]]: RequestFormat }>;
-}>;
+export const endpointRequestFormats = {
+  post: {
+    "/costumes/{costumeId}/photos": "form-data",
+  },
+} as Partial<{ [M in keyof EndpointByMethod]: Partial<{ [P in keyof EndpointByMethod[M]]: RequestFormat }> }>;
 // </EndpointRequestFormats>
 
 // <EndpointParameterStyles>
@@ -1926,6 +2029,7 @@ export const endpointParameterStyles = {
   post: {
     "/auth/refresh": { header: { Cookie: { style: "simple", explode: false, allowReserved: false } } },
     "/clients/{clientId}/blacklist": { path: { clientId: { style: "simple", explode: false, allowReserved: false } } },
+    "/costumes/{costumeId}/photos": { path: { costumeId: { style: "simple", explode: false, allowReserved: false } } },
     "/visits": { query: { sendNotification: { style: "form", explode: false, allowReserved: false } } },
     "/visits/{orderId}/mark-tag-written": {
       path: { orderId: { style: "simple", explode: false, allowReserved: false } },
@@ -1949,6 +2053,9 @@ export const endpointParameterStyles = {
       path: { categoryId: { style: "simple", explode: false, allowReserved: false } },
     },
     "/costumes/{costumeId}": { path: { costumeId: { style: "simple", explode: false, allowReserved: false } } },
+    "/costumes/{costumeId}/photos/order": {
+      path: { costumeId: { style: "simple", explode: false, allowReserved: false } },
+    },
     "/visits/{visitId}": { path: { visitId: { style: "simple", explode: false, allowReserved: false } } },
   },
   delete: {
@@ -1959,6 +2066,12 @@ export const endpointParameterStyles = {
       path: { categoryId: { style: "simple", explode: false, allowReserved: false } },
     },
     "/costumes/{costumeId}": { path: { costumeId: { style: "simple", explode: false, allowReserved: false } } },
+    "/costumes/{costumeId}/photos/{photoId}": {
+      path: {
+        costumeId: { style: "simple", explode: false, allowReserved: false },
+        photoId: { style: "simple", explode: false, allowReserved: false },
+      },
+    },
   },
   get: {
     "/clients/detail/{clientId}": { path: { clientId: { style: "simple", explode: false, allowReserved: false } } },
@@ -2007,6 +2120,7 @@ export const endpointParameterStyles = {
     "/costumes/{costumeId}/availability": {
       path: { costumeId: { style: "simple", explode: false, allowReserved: false } },
     },
+    "/costumes/{costumeId}/photos": { path: { costumeId: { style: "simple", explode: false, allowReserved: false } } },
     "/visits": {
       query: {
         q: { style: "form", explode: false, allowReserved: false },

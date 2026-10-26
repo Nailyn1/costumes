@@ -69,6 +69,7 @@ const visit: VisitReadDetailDto = {
       costumeId: 51,
       costumeName: "Принцесса",
       inventoryCode: "C-0051",
+      photoCount: 0,
       status: "reserved",
       tagStatus: "not_written",
       rentPrice: 10000,

@@ -25,6 +25,11 @@
 | `JWT_SECRET` | любая длинная строка | подпись JWT |
 | `GREEN_API_URL`, `GREEN_API_ID_INSTANCE`, `GREEN_API_TOKEN` | | Тестовый инстанс Green-API для локальной разработки; `GREEN_API_URL` — адрес API из кабинета инстанса, а не адрес ngrok. `checkWhatsapp` вызывается исходящим HTTP-запросом и не требует ngrok. ID инстанса — только `GREEN_API_ID_INSTANCE` (по нему же ключ статуса в Redis) |
 | `GREEN_API_WEBHOOK_TOKEN` | длинная случайная строка | токен вебхука `POST /webhooks/whatsapp` (`Authorization: Bearer`). Не задан: в `production` вебхук отвечает 401, в остальных окружениях пропускается с warning в логе. Настройка в Green-API — [domain.md §5](./domain.md#5-whatsapp-уведомления-green-api) |
+| `S3_ENDPOINT` / `S3_REGION` | `https://object.pscloud.io` / `us-east-1` | S3 PS Cloud для фото костюмов (T-111) |
+| `S3_ACCESS_KEY` / `S3_SECRET_KEY` | | ключи доступа к бакету. Пусто — приложение стартует, загрузка фото отвечает 503. Значения не коммитить и не присылать в чат |
+| `S3_BUCKET_PUBLIC` | | публичный бакет под костюмы; для разработки — свой dev-бакет |
+| `S3_PUBLIC_BASE_URL` | `https://<бакет>.object.pscloud.io` | по этому адресу браузер открывает фото |
+| `S3_FORCE_PATH_STYLE` | `false` | `true` — адресация `endpoint/bucket/key` вместо `bucket.endpoint` |
 | `SENTRY_DSN` | пусто | Sentry backend |
 | `NODE_ENV` | `development` | `production` включает secure-cookie и файловые логи без pretty |
 | `USER{1..5}_LOGIN/NAME/PASSWORD` | | пользователи для seed (login ≥ 6 символов, пароль ≥ 12) |

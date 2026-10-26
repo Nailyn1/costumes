@@ -32,6 +32,8 @@ graph TD
     BE -->|ioredis| R[(Redis 7)]
     BE -->|BullMQ queue 'notifications'| R
     BE -->|HTTP| GA[Green-API / WhatsApp]
+    BE -->|S3 API: фото костюмов| S3[(S3 PS Cloud, публичный бакет)]
+    FE -.->|GET фото по публичному URL| S3
     GA -->|POST /webhooks/whatsapp| BE
     BE -->|ошибки| S[Sentry]
     FE -->|ошибки| S
@@ -49,7 +51,7 @@ TypeSpec (`shared/api-spec`) → `openapi.yaml` → `typed-openapi` → `shared/
 - **Frontend** — напрямую из `shared/src` через path alias в `tsconfig.app.json` + `vite-tsconfig-paths`. Сборка shared фронту не нужна.
 
 ### backend (NestJS 12)
-Модули: `auth`, `client-child`, `costumes`, `visit-order`, `notification`, `prisma`, `redis` (+ `queue.module`). Обычно слои Controller → Service → Prisma; в `notification` Prisma-выборки вынесены в узкий `NotificationRepository`. Глобально: `ZodValidationPipe`, `PrismaClientExceptionFilter`, `SentryInterceptor`, `IdempotencyInterceptor`, логгер Pino. Подробно: [backend.md](./backend.md).
+Модули: `auth`, `client-child`, `costumes`, `costume-photos`, `storage` (S3), `visit-order`, `notification`, `prisma`, `redis` (+ `queue.module`). Обычно слои Controller → Service → Prisma; в `notification` Prisma-выборки вынесены в узкий `NotificationRepository`. Глобально: `ZodValidationPipe`, `PrismaClientExceptionFilter`, `SentryInterceptor`, `IdempotencyInterceptor`, логгер Pino. Подробно: [backend.md](./backend.md).
 
 ### frontend (React 19 + Vite 8)
 Feature-based структура (`features/{auth,clients-children,costumes,visits}`), Mantine 9, TanStack Query 5, Zustand 5, React Router 7, Socket.IO-клиент. Подробно: [frontend.md](./frontend.md).
@@ -63,6 +65,15 @@ Feature-based структура (`features/{auth,clients-children,costumes,visi
 | `whatsapp:instance:{id}:status` / `:last_ts` | состояние WhatsApp-инстанса | без TTL |
 | `whatsapp:availability:{sha256(phone)}` | результат `checkWhatsapp` (`exists`/`absent`), без номера в ключе | 1 час |
 | `bull:notifications:*` | очередь BullMQ | управляет BullMQ |
+
+### S3: фото костюмов
+Хранилище — S3 PS Cloud (как в проекте secmarket), **публичный бакет** под костюмы. Бэкенд принимает фото `multipart` и сам кладёт их в S3 (`S3StorageService`, `@aws-sdk/client-s3`): прямая загрузка из браузера не проходила защиту провайдера. Браузер заранее сжимает фото (основное ~1600 px ≤ 2 МБ и превью ~320 px ≤ 200 КБ), поэтому запрос небольшой; nginx на `/api/` пропускает тело до `client_max_body_size 6m`.
+
+- **Ключи:** `costumes/{costumeId}/{uuid}.{jpg|webp}` и `costumes/{costumeId}/{uuid}_thumb.{jpg|webp}`; uuid генерирует сервер, расширение — по реальной сигнатуре файла. Ключи хранятся в `CostumePhoto.key`/`thumbKey`, URL строится как `S3_PUBLIC_BASE_URL/<ключ>` и в БД не хранится.
+- **Кэш:** объекты неизменяемы (новый uuid на каждое фото), поэтому `Cache-Control: public, max-age=31536000, immutable`.
+- **Порядок записи:** сначала оба объекта в S3, затем запись в БД под блокировкой строки костюма (`SELECT … FOR UPDATE`: лимит 15 и `sortOrder` не ломаются при параллельной съёмке). Сбой БД или лимита — загруженные объекты удаляются. Удаление фото: `deletedAt`, затем удаление объектов из S3 (ошибка только логируется — в бакете остаётся лишний файл).
+- **Env:** `S3_ENDPOINT`, `S3_REGION`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET_PUBLIC`, `S3_PUBLIC_BASE_URL`, `S3_FORCE_PATH_STYLE` — таблица в [setup.md](./setup.md#2-переменные-окружения). Без настроенного S3 приложение стартует; фото-эндпоинты отвечают 503 «Хранилище фото не настроено», сбой S3 при загрузке — 502.
+- **Тесты** реальный S3 не используют: `S3StorageService` подменён заглушкой в памяти (`t.s3` в `test/support/test-app.ts`).
 
 ### Аутентификация
 - `POST /auth/login` → access token (JWT, 15 мин) в теле + refresh token (JWT, 7 дней) в httpOnly cookie `refreshToken`; refresh хранится в Redis и ротируется.

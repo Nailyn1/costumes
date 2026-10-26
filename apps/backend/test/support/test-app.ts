@@ -12,6 +12,7 @@ import { NotificationProcessor } from '../../src/notification/notification.proce
 import { WhatsappProvider } from '../../src/notification/whatsapp.provider';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { REDIS_CLIENT } from '../../src/redis/redis.constants';
+import { S3StorageService } from '../../src/storage/s3-storage.service';
 
 export interface TestApp {
   app: INestApplication;
@@ -24,6 +25,14 @@ export interface TestApp {
     getStateInstance: jest.Mock;
     checkWhatsapp: jest.Mock;
   };
+  /** Заглушка S3: объекты лежат в памяти (`objects`), публичный URL — `https://s3.test/<key>`. */
+  s3: {
+    objects: Map<string, { body: Buffer; contentType: string }>;
+    assertConfigured: jest.Mock;
+    putObject: jest.Mock;
+    deleteObject: jest.Mock;
+    getPublicUrl: (key: string) => string;
+  };
   user: { login: string; password: string };
   close: () => Promise<void>;
 }
@@ -34,7 +43,8 @@ export interface TestApp {
  *  - Redis — отдельная логическая БД (`REDIS_DB`), очищается при старте;
  *  - очередь BullMQ и её процессор — заглушки (иначе Worker читал бы реальную
  *    очередь из db 0 dev-Redis);
- *  - Green-API провайдер — мок.
+ *  - Green-API провайдер — мок;
+ *  - S3 (`S3StorageService`) — заглушка в памяти, реальный бакет не используется.
  */
 export async function createTestApp(): Promise<TestApp> {
   const redis = new Redis({
@@ -52,6 +62,31 @@ export async function createTestApp(): Promise<TestApp> {
     getStateInstance: jest.fn().mockResolvedValue('authorized'),
   };
 
+  const objects = new Map<string, { body: Buffer; contentType: string }>();
+  const s3 = {
+    objects,
+    assertConfigured: jest.fn(),
+    putObject: jest.fn(
+      ({
+        key,
+        body,
+        contentType,
+      }: {
+        key: string;
+        body: Buffer;
+        contentType: string;
+      }) => {
+        objects.set(key, { body, contentType });
+        return Promise.resolve();
+      },
+    ),
+    deleteObject: jest.fn((key: string) => {
+      objects.delete(key);
+      return Promise.resolve();
+    }),
+    getPublicUrl: (key: string) => `https://s3.test/${key}`,
+  };
+
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     // тихий логгер: иначе pino-pretty печатает каждый HTTP-запрос
     .overrideProvider('pino-params')
@@ -64,6 +99,8 @@ export async function createTestApp(): Promise<TestApp> {
     .useValue({})
     .overrideProvider(WhatsappProvider)
     .useValue(whatsapp)
+    .overrideProvider(S3StorageService)
+    .useValue(s3)
     .compile();
 
   const app = moduleRef.createNestApplication();
@@ -96,6 +133,7 @@ export async function createTestApp(): Promise<TestApp> {
     redis,
     notificationQueue,
     whatsapp,
+    s3,
     user,
     close: async () => {
       await redis.flushdb();

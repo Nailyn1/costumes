@@ -12,6 +12,8 @@ src/
 ├── auth/                   # login / refresh / logout, JWT-стратегии, guards (HTTP + WS)
 ├── client-child/           # клиенты, дети, чёрный список (2 контроллера, 1 сервис)
 ├── costumes/               # костюмы, поиск, занятость, справочник категорий (в тех же controller/service), `costumes.repository.ts` — весь доступ к Prisma, фильтры каталога (costume-filters.ts), маппер ответа (costume.mapper.ts); чтение состава — `common/utils/costume-parts.ts`
+├── costume-photos/         # фото костюмов: multipart-загрузка, порядок, удаление, обложки для списков (`CostumePhotosService.summaries`)
+├── storage/                # S3Module (глобальный) и S3StorageService: putObject / deleteObject / getPublicUrl
 ├── visit-order/            # визиты и заказы; domain/visit.ts — решения по переходам, domain/visit-balance.ts — расчёт аренды
 ├── notification/           # WhatsApp: сервис, BullMQ-процессор, Green-API провайдер, вебхук, WS-gateway
 ├── prisma/                 # PrismaService, seed.ts, generated/ (НЕ редактировать, НЕ коммитить)

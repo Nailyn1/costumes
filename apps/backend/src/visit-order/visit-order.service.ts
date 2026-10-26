@@ -94,6 +94,7 @@ import {
   hashCommandRequest,
 } from './transactions/command-receipt';
 import { readVisitDetail } from './visit-read.mapper';
+import { CostumePhotosService } from '../costume-photos/costume-photos.service';
 
 const VISIT_ISSUE_REJECT_MESSAGES: Record<
   Exclude<VisitStatus, 'reserved'>,
@@ -152,6 +153,7 @@ export class VisitOrderService {
     private readonly prisma: PrismaService,
     @InjectPinoLogger(VisitOrderService.name)
     private readonly logger: PinoLogger,
+    private readonly photos: CostumePhotosService,
   ) {}
 
   private async withSerializableTransaction<TResult>(
@@ -1383,7 +1385,7 @@ export class VisitOrderService {
             ...tagInvalidations,
           ]);
         }
-        return readVisitDetail(tx, visitId);
+        return readVisitDetail(tx, visitId, this.photos);
       },
       (value) => UpdateReservedVisitResponseSchema.parse(value),
     );
@@ -1623,7 +1625,7 @@ export class VisitOrderService {
         }
         await this.recordAuditEvents(tx, actor, data.commandId, events);
 
-        return readVisitDetail(tx, visitId);
+        return readVisitDetail(tx, visitId, this.photos);
       },
       (value) => AddAndIssueVisitResponseSchema.parse(value),
     );
@@ -1697,10 +1699,15 @@ export class VisitOrderService {
       },
     });
 
+    const summaries = await this.photos.summaries(
+      orders.map((order) => order.costumeId),
+    );
     const items = orders.map((order) => ({
       orderId: order.id,
       inventoryCode: order.costume.inventoryCode,
       costumeName: order.costume.name,
+      photoCount: 0,
+      ...summaries.get(order.costumeId),
       visitCode: order.visit.visitCode,
       childName: order.child.name,
       clientPhone: order.visit.client.phone,
@@ -2220,6 +2227,9 @@ export class VisitOrderService {
       0,
     );
     const remainingToPay = totalRentPrice - totalPrepayment;
+    const summaries = await this.photos.summaries(
+      visit.orders.map((order) => order.costumeId),
+    );
 
     return {
       visitId: visit.id,
@@ -2242,6 +2252,8 @@ export class VisitOrderService {
         childName: order.child.name,
         costumeName: order.costume.name,
         inventoryCode: order.costume.inventoryCode,
+        photoCount: 0,
+        ...summaries.get(order.costumeId),
         rentPrice: order.rentPrice,
         prepaymentAmount: order.prepaymentAmount,
         tagStatus: order.tagStatus,
@@ -2419,6 +2431,9 @@ export class VisitOrderService {
     }
 
     const deposit = visit.deposits[0];
+    const summaries = await this.photos.summaries(
+      visit.orders.map((order) => order.costumeId),
+    );
 
     return {
       visitId: visit.id,
@@ -2435,6 +2450,8 @@ export class VisitOrderService {
         childName: order.child.name,
         costumeName: order.costume.name,
         inventoryCode: order.costume.inventoryCode,
+        photoCount: 0,
+        ...summaries.get(order.costumeId),
         rentPrice: order.rentPrice,
         prepaymentAmount: order.prepaymentAmount,
         finalPayment: order.finalPayment ?? 0,

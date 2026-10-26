@@ -93,6 +93,7 @@ model Order {
   rentPrice: int32;
   prepaymentAmount: int32;
   notes: string;
+  ...CostumeApp.Costumes.CostumePhotoSummary;
 }
 
 model NotWrittenOrdersResponse {
@@ -270,6 +271,7 @@ model VisitReadOrder {
   notes?: string;
   /** Состав на момент выдачи (у невыданных — текущий состав костюма). */
   parts?: CostumeApp.Costumes.CostumePart[];
+  ...CostumeApp.Costumes.CostumePhotoSummary;
 }
 
 model VisitReadDeposit {
@@ -556,6 +558,11 @@ model VisitsSearchResponse {
     costumesNames: string;
 }
 
+model VisitIssueOrder {
+  ...VisitOrder;
+  ...CostumeApp.Costumes.CostumePhotoSummary;
+}
+
 model VisitForIssueResponse {
   visitId: int32;
   visitCode: VisitCode;
@@ -569,7 +576,7 @@ model VisitForIssueResponse {
   totalPrepayment: int32;
   remainingToPay: int32;
   notes: string;
-  orders: VisitOrder[];
+  orders: VisitIssueOrder[];
 }
 
 model IssuedForReturnResponse {
@@ -606,6 +613,7 @@ model VisitReturnOrder {
   returned: boolean;
   /** Состав, выданный клиенту (у старых заказов без снимка — текущий состав костюма). */
   parts?: CostumeApp.Costumes.CostumePart[];
+  ...CostumeApp.Costumes.CostumePhotoSummary;
 }
 
 model VisitDepositInfo {

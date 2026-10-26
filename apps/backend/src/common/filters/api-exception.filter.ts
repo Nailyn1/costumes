@@ -20,6 +20,8 @@ const defaultMessages: Record<number, string> = {
   405: 'Операция недоступна',
   409: 'Конфликт данных. Обновите страницу и повторите попытку',
   429: 'Слишком много запросов. Повторите попытку позже',
+  502: 'Внешний сервис недоступен. Повторите попытку позже',
+  503: 'Сервис временно недоступен. Повторите попытку позже',
 };
 
 type ErrorDetails = {
@@ -132,10 +134,14 @@ export class ApiExceptionFilter implements ExceptionFilter {
       const status = exception.getStatus();
       if (status >= 500) {
         this.reportUnexpected(exception);
-        return {
-          status,
-          details: { message: 'Внутренняя ошибка сервера' },
-        };
+        // 502/503 бросаем намеренно (внешнее хранилище недоступно или не настроено):
+        // сотруднику нужен понятный русский текст, а не «внутренняя ошибка».
+        const raw = exception.getResponse();
+        const message =
+          status === 502 || status === 503
+            ? safeMessage(isRecord(raw) ? raw.message : raw, status)
+            : 'Внутренняя ошибка сервера';
+        return { status, details: { message } };
       }
       const response = exception.getResponse();
       const data = isRecord(response) ? response : { message: response };
