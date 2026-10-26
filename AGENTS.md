@@ -35,7 +35,7 @@ pnpm dev:frontend   # http://localhost:5173
 ## Главные правила
 
 1. **API меняется только через `shared`**: TypeSpec (`shared/api-spec/modules/*.tsp`) → `pnpm gen:api` (в `shared`) → ручной экспорт в `shared/src/*.ts` → `pnpm build` (в `shared`). Никаких локальных API-типов в apps. Подробно — [shared-api.md](.agents/shared-api.md).
-2. **Backend:** Controller → Service → Prisma, без репозиториев; валидация через `createZodDto(Schema)`; транзакции для многотабличных операций; **soft delete** (`deletedAt`) и фильтр `deletedAt: null` во всех выборках; ошибки — Nest-исключения с русским текстом.
+2. **Backend:** Controller → Service → Repository → Prisma (репозиторий — только доступ к данным, без бизнес-правил; добавляем постепенно в каждый модуль, пока есть модули, где Service ходит в Prisma напрямую — новые модули сразу с репозиторием); валидация через `createZodDto(Schema)`; транзакции для многотабличных операций; **soft delete** (`deletedAt`) и фильтр `deletedAt: null` во всех выборках; ошибки — Nest-исключения с русским текстом.
 3. **Время:** сервер в `TZ=UTC`, местное время хранится как UTC «как есть» — никаких конвертаций часовых поясов.
 4. **Frontend:** component → React Query hook → service → `apiClient`; только Mantine без своих CSS; формы — `@mantine/form` + `zodResolver`; каждый экран обязан работать на мобильном.
 5. `any` запрещён в обоих приложениях.

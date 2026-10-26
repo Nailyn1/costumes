@@ -11,7 +11,7 @@ src/
 ├── app.module.ts
 ├── auth/                   # login / refresh / logout, JWT-стратегии, guards (HTTP + WS)
 ├── client-child/           # клиенты, дети, чёрный список (2 контроллера, 1 сервис)
-├── costumes/               # костюмы, поиск, занятость, справочник категорий (в тех же controller/service), `costumes.repository.ts` — весь доступ к Prisma (по просьбе владельца для этого модуля), фильтры каталога (costume-filters.ts), маппер ответа (costume.mapper.ts); чтение состава — `common/utils/costume-parts.ts`
+├── costumes/               # костюмы, поиск, занятость, справочник категорий (в тех же controller/service), `costumes.repository.ts` — весь доступ к Prisma, фильтры каталога (costume-filters.ts), маппер ответа (costume.mapper.ts); чтение состава — `common/utils/costume-parts.ts`
 ├── visit-order/            # визиты и заказы; domain/visit.ts — решения по переходам, domain/visit-balance.ts — расчёт аренды
 ├── notification/           # WhatsApp: сервис, BullMQ-процессор, Green-API провайдер, вебхук, WS-gateway
 ├── prisma/                 # PrismaService, seed.ts, generated/ (НЕ редактировать, НЕ коммитить)
@@ -32,7 +32,7 @@ src/
 ## 2. Слои
 
 - **Controller** — только HTTP: роут, guard, парсинг params/query, вызов сервиса, возврат результата. Без бизнес-логики и без Prisma.
-- **Service** (`@Injectable()`) — координация правил, Redis и очереди. Обычно обращается к Prisma напрямую. `VisitOrderService` переводит ошибки чистой модели `Visit` в HTTP-исключения, загружает снимок визита и применяет решение в транзакции. В `notification` используется узкий `NotificationRepository` для выборок и записи уведомлений; он не содержит бизнес-правил и не является общей абстракцией для всех модулей.
+- **Service** (`@Injectable()`) — координация правил, Redis и очереди. Целевая схема — Service → Repository → Prisma: репозитории добавляем постепенно в каждый модуль (уже есть в `costumes` и `notification`), в остальных Service пока обращается к Prisma напрямую; новый модуль сразу делаем с репозиторием. `VisitOrderService` переводит ошибки чистой модели `Visit` в HTTP-исключения, загружает снимок визита и применяет решение в транзакции. `NotificationRepository` и `CostumesRepository` — выборки и запись без бизнес-правил; общей абстракции (базового класса) над ними нет.
 - Все защищённые эндпоинты — `@UseGuards(JwtAuthGuard)` на методе. Без `JwtAuthGuard` только `auth/login`, `auth/refresh` (свой `JwtRefreshGuard`) и вебхук `webhooks/whatsapp` (защищён `WebhookTokenGuard`, токен Green-API).
 
 ## 3. Контракт и валидация (критично)
