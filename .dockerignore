@@ -15,3 +15,11 @@ apps/*/node_modules
 !**/.env.example
 !**/.env.*.example
 !apps/crm-frontend/.env.production
+.claude
+.codex
+certs
+backups
+**/*.pem
+**/*.key
+**/*.dump
+**/*.backup

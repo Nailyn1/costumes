@@ -34,7 +34,7 @@
 | `NODE_ENV` | `development` | `production` включает secure-cookie и файловые логи без pretty |
 | `USER{1..5}_LOGIN/NAME/PASSWORD` | | пользователи для seed (login ≥ 6 символов, пароль ≥ 12) |
 
-Корневой `.env` используется прод-`docker-compose.yaml` (те же переменные).
+Корневой `.env` используется прод-`docker-compose.yaml` (те же переменные). Production VPS, сертификаты, восстановление БД и порядок запуска описаны в [deployment.md](./deployment.md).
 
 **`apps/backend/.env.test`** (для `pnpm test:int`, не коммитится): шаблон — `apps/backend/.env.test.example` (`DATABASE_URL` на БД `costumes_test`, `REDIS_DB=15`, тестовый сотрудник). Подробно — [testing.md §3.3](./testing.md#33-настройка-окружения-для-integration).
 

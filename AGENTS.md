@@ -13,6 +13,7 @@
 |---|---|
 | [.agents/domain.md](.agents/domain.md) | **Всегда** при работе с бизнес-логикой: сущности, статусы, флоу, инварианты, известные баги |
 | [.agents/architecture.md](.agents/architecture.md) | Как устроена система, Redis-ключи, auth, деплой |
+| [.agents/deployment.md](.agents/deployment.md) | Production VPS, расположение файлов, сертификаты, восстановление БД и деплой |
 | [.agents/backend.md](.agents/backend.md) | Любые изменения в `apps/backend` |
 | [.agents/frontend.md](.agents/frontend.md) | Любые изменения в `apps/crm-frontend` |
 | [.agents/shared-api.md](.agents/shared-api.md) | **Любое** изменение API (эндпоинт, параметр, тип) |

@@ -82,11 +82,11 @@ Feature-based структура (`features/{auth,clients-children,costumes,visi
 
 ## 4. Инфраструктура и деплой
 
-**Прод** — один VPS, `docker-compose.yaml`: `postgres`, `redis`, `redis-insight`, `backend` (порт 5000 внутри сети), `frontend` (Nginx, 80/443, сертификаты из `./certs`). Домен `costumes.duckdns.org`. Nginx раздаёт SPA, проксирует `/api/` → `backend:5000/` (префикс `/api` срезается) и `/socket.io/`.
+**Прод** — VPS Ubuntu 24.04, `185.100.66.194`, домен `pupavka.site` через Cloudflare. Проект — `/var/www/costumes`. `docker-compose.yaml`: `postgres`, `redis`, `backend` (порт 5000 внутри сети), `frontend` (Nginx, публичные 80/443); `redis-insight` — только профиль `tools`. PostgreSQL и Redis не публикуют порты. Сертификаты хоста `/etc/nginx/ssl/pupavka.site/origin.{pem,key}` подключаются read-only в `/etc/nginx/certs`. Nginx раздаёт SPA, проксирует `/api/` → `backend:5000/` (префикс `/api` срезается) и `/socket.io/`. Паспорт VPS, дерево файлов и инструкция первого запуска — [deployment.md](./deployment.md); фактическая готовность сервера ещё требует проверки владельцем.
 
 **CI/CD** — `.github/workflows/deploy.yaml`. На pull request в `main` и на push в `main` сначала job `check` (pnpm install --frozen-lockfile, сборка shared, `prisma generate`, typecheck backend и frontend, lint backend (`src/`) и frontend, `pnpm --filter @costumes/backend test`). Дальше — только на push в `main`:
 1. `build-and-push`, `needs: check`: сборка и push образов `nailyn1/costumes-backend` и `nailyn1/costumes-frontend` в Docker Hub с двумя тегами: `<git SHA коммита>` и `latest`;
-2. `deploy`: по SSH на сервере `git pull` → `export IMAGE_TAG=<SHA>` → `docker compose pull` → `up -d` → `prisma migrate deploy`.
+2. `deploy`: по SSH в `/var/www/costumes` fast-forward до точного SHA релиза → `export IMAGE_TAG=<SHA>` → проверка файлов сертификатов/Compose → скачивание образов → запуск и ожидание PostgreSQL/Redis → `prisma migrate deploy` в одноразовом контейнере → обновление backend → `nginx -t` → обновление frontend. Ошибка останавливает скрипт; workflow сериализован. Миграции на существующей установке должны быть совместимы с ещё работающей предыдущей версией backend.
 
 Упавший `check` блокирует сборку и деплой. `main` = прод.
 
@@ -95,7 +95,7 @@ Feature-based структура (`features/{auth,clients-children,costumes,visi
 **Откат на предыдущий SHA** (SHA — из истории `main`/Actions; образ с этим тегом должен быть в Docker Hub). На сервере:
 
 ```bash
-cd ~/costumes
+cd /var/www/costumes
 export IMAGE_TAG=<sha предыдущего рабочего коммита>
 docker compose pull backend frontend
 docker compose up -d backend frontend

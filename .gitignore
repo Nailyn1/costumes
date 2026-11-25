@@ -5,3 +5,9 @@ dist
 .env
 *.tsbuildinfo
 docker-compose.override.yml
+certs/
+backups/
+*.pem
+*.key
+*.dump
+*.backup

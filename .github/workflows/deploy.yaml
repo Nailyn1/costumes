@@ -8,6 +8,10 @@ on:
     branches:
       - main
 
+concurrency:
+  group: production-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -93,14 +97,25 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd ~/costumes
+            set -eu
+            cd /var/www/costumes
 
-            git pull origin main
+            git fetch origin main
+            git merge --ff-only ${{ github.sha }}
+            test "$(git rev-parse HEAD)" = "${{ github.sha }}"
 
             export IMAGE_TAG=${{ github.sha }}
+            export COMPOSE_FILE=docker-compose.yaml
+            export COMPOSE_FILE=docker-compose.yaml
 
-            docker compose pull
+            test -s /etc/nginx/ssl/pupavka.site/origin.pem
+            test -s /etc/nginx/ssl/pupavka.site/origin.key
+            docker compose config --quiet
+            docker compose pull backend frontend postgres redis
 
-            docker compose up -d
+            docker compose up -d --wait postgres redis
 
-            docker compose exec -T -w /app/apps/backend backend npx prisma migrate deploy
+            docker compose run --rm --no-deps backend ./node_modules/.bin/prisma migrate deploy
+            docker compose up -d backend
+            docker compose run --rm --no-deps frontend nginx -t
+            docker compose up -d frontend
