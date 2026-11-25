@@ -21,9 +21,9 @@ describe('IdempotencyInterceptor', () => {
 
   it('reports an already running request in Russian', async () => {
     const redis = {
-      get: jest.fn().mockResolvedValue(
-        JSON.stringify({ status: 'processing' }),
-      ),
+      get: jest
+        .fn()
+        .mockResolvedValue(JSON.stringify({ status: 'processing' })),
     } as unknown as Redis;
 
     await expect(
@@ -33,9 +33,11 @@ describe('IdempotencyInterceptor', () => {
 
   it('reports a different body for a reused key in Russian', async () => {
     const redis = {
-      get: jest.fn().mockResolvedValue(
-        JSON.stringify({ status: 'completed', requestHash: 'old' }),
-      ),
+      get: jest
+        .fn()
+        .mockResolvedValue(
+          JSON.stringify({ status: 'completed', requestHash: 'old' }),
+        ),
     } as unknown as Redis;
 
     await expect(

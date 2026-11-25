@@ -74,9 +74,7 @@ export class IdempotencyInterceptor implements NestInterceptor {
       const record = JSON.parse(cachedData) as IdempotencyRecord;
 
       if (record.status === 'processing') {
-        throw new ConflictException(
-          'Запрос с этим ключом уже обрабатывается',
-        );
+        throw new ConflictException('Запрос с этим ключом уже обрабатывается');
       }
 
       if (record.requestHash !== currentRequestHash) {
