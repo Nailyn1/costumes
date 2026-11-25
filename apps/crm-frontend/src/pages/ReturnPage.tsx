@@ -4,7 +4,9 @@ import {
   Stack,
   Center,
   Loader,
-  SegmentedControl,
+  Chip,
+  Group,
+  ScrollArea,
   Box,
 } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
@@ -96,17 +98,21 @@ export function ReturnPage() {
   return (
     <Stack gap="lg">
       <Title order={isMobile ? 3 : 2}>Возврат костюмов</Title>
-      <SegmentedControl
-        fullWidth
-        orientation={isMobile ? "vertical" : "horizontal"}
-        value={view}
-        onChange={setView}
-        data={[
-          { label: "Ожидают возврата", value: "awaiting" },
-          { label: "Забытые залоги", value: "deposits" },
-          { label: "Незакрытые расчёты", value: "balances" },
-        ]}
-      />
+      <ScrollArea type="never">
+        <Chip.Group value={view} onChange={setView}>
+          <Group wrap="nowrap" gap="xs" pb={4}>
+            {[
+              { label: "Ожидают возврата", value: "awaiting" },
+              { label: "Забытые залоги", value: "deposits" },
+              { label: "Незакрытые расчёты", value: "balances" },
+            ].map(({ label, value }) => (
+              <Chip key={value} value={value} variant="outline">
+                {label}
+              </Chip>
+            ))}
+          </Group>
+        </Chip.Group>
+      </ScrollArea>
       {view === "awaiting" && <ReturnSearchInput onSelectVisit={handleOpenVisit} />}
 
       <Stack gap="sm">
