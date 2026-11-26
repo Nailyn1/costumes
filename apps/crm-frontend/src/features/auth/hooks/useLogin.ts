@@ -7,6 +7,7 @@ export function useLogin() {
 
   return useMutation({
     mutationFn: authService.login,
+    meta: { showUnauthorized: true },
     onSuccess: (data) => {
       setAuth(data);
     },

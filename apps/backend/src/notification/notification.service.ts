@@ -1,4 +1,5 @@
 import { forwardRef, Inject, Injectable } from '@nestjs/common';
+import { createHash } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationStatus, Prisma } from '../prisma/generated/client';
 import { Queue, UnrecoverableError } from 'bullmq';
@@ -11,6 +12,10 @@ import { Logger } from 'pino';
 import { GreenApiWebhook } from './notification.controller';
 import { InjectQueue } from '@nestjs/bullmq';
 import { NotificationGateway } from './notification.gateway';
+import { buildVisitMessage } from '../common/utils/visit-message.utils';
+import { NotificationRepository } from './notification.repository';
+
+export type WhatsappAvailability = 'exists' | 'absent' | 'unknown';
 
 export type VisitWithDetails = Prisma.VisitGetPayload<{
   include: {
@@ -46,7 +51,49 @@ export class NotificationService {
     @InjectQueue('notifications') private readonly notificationsQueue: Queue,
     @Inject(forwardRef(() => NotificationGateway))
     private readonly notificationGateway: NotificationGateway,
+    private readonly notificationRepository: NotificationRepository,
   ) {}
+
+  async checkWhatsappAvailability(
+    phone: string,
+    force = false,
+    clientId?: number,
+  ): Promise<WhatsappAvailability> {
+    if (!force && clientId !== undefined) {
+      try {
+        const confirmed =
+          await this.notificationRepository.findClientIdsWithConfirmedWhatsapp([
+            clientId,
+          ]);
+        if (confirmed.has(clientId)) return 'exists';
+      } catch {
+        // История недоступна: проверяем номер обычным путём.
+      }
+    }
+    const key = `whatsapp:availability:${createHash('sha256').update(phone).digest('hex')}`;
+    if (!force) {
+      try {
+        const cached = await this.redis.get(key);
+        if (cached === 'exists' || cached === 'absent') return cached;
+      } catch {
+        // Неисправный кэш не должен превращать доступный Green-API в unknown.
+      }
+    }
+
+    try {
+      const status = (await this.whatsappProvider.checkWhatsapp(phone, force))
+        ? 'exists'
+        : 'absent';
+      try {
+        await this.redis.set(key, status, 'EX', 60 * 60);
+      } catch {
+        // Результат проверки всё равно пригоден для текущего действия.
+      }
+      return status;
+    } catch {
+      return 'unknown';
+    }
+  }
 
   async onModuleInit() {
     this.logger.info('Initializing module: Syncing WhatsApp status...');
@@ -76,28 +123,12 @@ export class NotificationService {
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
 
-    const totalToday = await this.prisma.notification.count({
-      where: { createdAt: { gte: startOfDay } },
-    });
-    const l: Logger =
-      loggerOverride || (this.logger.logger as unknown as Logger);
+    const totalToday =
+      await this.notificationRepository.countCreatedSince(startOfDay);
+    const l: Logger = loggerOverride || this.logger.logger;
     const traceId = l.bindings().traceId;
-    const notification = await this.prisma.notification.findUnique({
-      where: { id: notificationId },
-      include: {
-        visit: {
-          include: {
-            client: true,
-            orders: {
-              include: {
-                child: true,
-                costume: true,
-              },
-            },
-          },
-        },
-      },
-    });
+    const notification =
+      await this.notificationRepository.findForSending(notificationId);
 
     if (!notification || !notification.visit) {
       l.error({ notificationId }, 'Notification or visit not found in DB');
@@ -108,17 +139,36 @@ export class NotificationService {
 
     const { visit } = notification;
     const visitCode = visit.visitCode;
-    const phone = visit.client.phone;
+    if (notification.status === 'noAccount') return;
+
+    const availability = await this.checkWhatsappAvailability(
+      visit.client.phone,
+      false,
+      visit.clientId,
+    );
+    if (availability === 'absent') {
+      await this.prisma.notification.update({
+        where: { id: notificationId },
+        data: { status: 'noAccount', errorText: 'На номере нет WhatsApp' },
+      });
+      this.notificationGateway.emitNotificationStatusUpdate(
+        { notificationId, status: 'noAccount', totalToday },
+        traceId as string,
+      );
+      l.info({ notificationId, visitCode }, 'WhatsApp account not found');
+      return;
+    }
+    if (availability === 'unknown') {
+      throw new Error('Не удалось проверить наличие WhatsApp');
+    }
 
     try {
-      const message = this.buildVisitMessage(
-        notification.visit as VisitWithDetails,
-      );
+      const message = buildVisitMessage(notification.visit);
 
       const rawPhone = notification.visit.client.phone;
 
       l.info(
-        { notificationId, visitCode, phone },
+        { notificationId, visitCode },
         'Attempting to send WhatsApp message',
       );
 
@@ -154,7 +204,6 @@ export class NotificationService {
           err: error,
           notificationId,
           visitCode,
-          phone,
         },
         'Failed to send WhatsApp notification',
       );
@@ -187,9 +236,8 @@ export class NotificationService {
   async handleManualResend(notificationId: number, logger: Logger) {
     logger.info('Starting manual resend process');
     const traceId = logger.bindings().traceId;
-    const notification = await this.prisma.notification.findUnique({
-      where: { id: notificationId },
-    });
+    const notification =
+      await this.notificationRepository.findById(notificationId);
 
     if (!notification) {
       throw new Error(`Notification ${notificationId} not found`);
@@ -231,10 +279,8 @@ export class NotificationService {
     const traceId = logger.bindings().traceId;
     logger.info('Starting phone update and resend process');
 
-    const notification = await this.prisma.notification.findUnique({
-      where: { id: notificationId },
-      include: { visit: true },
-    });
+    const notification =
+      await this.notificationRepository.findWithVisit(notificationId);
 
     if (!notification || !notification.visit) {
       throw new Error(`Notification or related visit not found`);
@@ -242,21 +288,12 @@ export class NotificationService {
 
     const clientId = notification.visit.clientId;
 
-    await this.prisma.$transaction(async (tx) => {
-      await tx.client.update({
-        where: { id: clientId },
-        data: { phone: newPhone },
-      });
-
-      await tx.notification.update({
-        where: { id: notificationId },
-        data: {
-          status: 'pending',
-          errorText: null,
-          traceId: traceId,
-        },
-      });
-    });
+    await this.notificationRepository.updateClientPhoneAndQueueResend(
+      notificationId,
+      clientId,
+      newPhone,
+      traceId as string,
+    );
 
     logger.info(
       { clientId },
@@ -363,7 +400,7 @@ export class NotificationService {
       if (lastNotification) {
         await this.prisma.notification.update({
           where: { id: lastNotification.id },
-          data: { status: 'isConfirmed' as NotificationStatus },
+          data: { status: 'isConfirmed' },
         });
 
         this.notificationGateway.emitNotificationStatusUpdate(
@@ -378,22 +415,18 @@ export class NotificationService {
           {
             notificationId: lastNotification.id,
             visitId: lastNotification.visitId,
-            formattedPhone,
           },
           'Notification confirmed by client',
         );
       } else {
         l.debug(
-          { formattedPhone },
+          {},
           'Incoming message: No eligible notification found for confirmation',
         );
       }
     } catch (error) {
       const l = this.getL(loggerOverride);
-      l.error(
-        { err: error, formattedPhone, chatId },
-        'Failed to process incoming status change',
-      );
+      l.error({ err: error }, 'Failed to process incoming status change');
       throw error;
     }
   }
@@ -441,7 +474,7 @@ export class NotificationService {
   }
 
   async isInstanceAuthorized(): Promise<boolean> {
-    const instanceId = this.configService.get<string>('INSTANCE_ID');
+    const instanceId = this.configService.get<string>('GREEN_API_ID_INSTANCE');
     const statusKey = `whatsapp:instance:${instanceId}:status`;
 
     const status = await this.redis.get(statusKey);
@@ -483,59 +516,16 @@ export class NotificationService {
     }
     return traceId
       ? this.logger.logger.child({ traceId, webhookType: body.typeWebhook })
-      : (this.logger.logger as unknown as Logger);
+      : this.logger.logger;
   }
 
   private getL(loggerOverride?: Logger, dbTraceId?: string | null): Logger {
     if (loggerOverride) return loggerOverride;
 
     if (dbTraceId) {
-      return this.logger.logger.child({ traceId: dbTraceId }) as Logger;
+      return this.logger.logger.child({ traceId: dbTraceId });
     }
 
-    return this.logger.logger as unknown as Logger;
-  }
-
-  private buildVisitMessage(visit: VisitWithDetails): string {
-    const { orders, client, visitCode } = visit;
-
-    const formatDate = (date: Date) => date.toLocaleDateString('ru-RU');
-    const startDate = formatDate(visit.startDateTime);
-    const endDate = formatDate(visit.endDateTime);
-
-    const totalRent = orders.reduce((sum, o) => sum + o.rentPrice, 0);
-    const totalPrepayment = orders.reduce(
-      (sum, o) => sum + o.prepaymentAmount,
-      0,
-    );
-    const balance = totalRent - totalPrepayment;
-
-    const ordersList = orders
-      .map((o, index) => {
-        return `${index + 1}. *${o.child.name}*: ${o.costume.name}\n   Цена: ${o.rentPrice} | Внесено: ${o.prepaymentAmount}`;
-      })
-      .join('\n');
-
-    let message = `Здравствуйте, ${client.name}! \n`;
-    message += `Ваши костюмы забронированы. \n\n`;
-    message += `Код выдачи: *${visitCode}*\n\n`;
-
-    message += `*ДЕТАЛИ ЗАКАЗА:*\n`;
-    message += `${ordersList}\n\n`;
-
-    if (orders.length > 1) {
-      message += `*ИТОГО:*\n💰 Общая стоимость: ${totalRent}\n💳 Всего внесено: ${totalPrepayment}\n📉 Остаток к оплате: *${balance}*\n\n`;
-    } else if (balance > 0) {
-      message += `📉 Остаток к оплате: *${balance}*\n\n`;
-    }
-
-    message += `❗️ *УСЛОВИЯ АРЕНДЫ:*\n`;
-    message += `• Обязательный залог при выдаче — от 5 000 ₸.\n`;
-    message += `• В случае отказа от брони предоплата не возвращается.\n\n`;
-
-    message += `🗓 *ГРАФИК:*\n📍 Выдача: ${startDate} (с ${visit.issueTimeFrom} до ${visit.issueTimeTo})\n📅 Возврат: ${endDate} (до ${visit.returnTimeUntil})\n\n`;
-    message += `⚠️ _Пожалуйста, ответьте на это сообщение любым символом или цифрой 1, чтобы подтвердить, что данные верны и мы забронировали костюм за вами окончательно_`;
-
-    return message;
+    return this.logger.logger;
   }
 }

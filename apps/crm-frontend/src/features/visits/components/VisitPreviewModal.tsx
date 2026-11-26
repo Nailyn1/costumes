@@ -11,15 +11,18 @@ import {
   SimpleGrid,
   Checkbox,
 } from "@mantine/core";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { costumesKeys } from "src/features/costumes/hooks/useCostumes";
 import type { UseFormReturnType } from "@mantine/form";
 import type { BookingFormValues } from "../types/visitTypes";
 import type { SelectedClientData } from "src/features/clients-children/types/clientTypes";
 import type { SelectedCostumeData } from "src/features/costumes/types/costumeTypes";
-import { formatHumanDate } from "src/utills/formatters";
+import { formatHumanDate } from "src/utils/formatters";
 import { useState } from "react";
 import { clientKeys } from "src/features/clients-children/hooks/useClients";
+import { useWhatsappAvailability } from "src/features/clients-children/hooks/useClients";
+import { WhatsappAvailabilityNotice } from "src/features/clients-children/components/clients/WhatsappAvailabilityNotice";
+import { clientsService } from "src/features/clients-children/services/clients.service";
 
 interface VisitPreviewModalProps {
   opened: boolean;
@@ -43,6 +46,20 @@ export function VisitPreviewModal({
   const queryClient = useQueryClient();
   const { values } = form;
   const [sendNotification, setSendNotification] = useState(true);
+  const cachedClient = queryClient.getQueryData<SelectedClientData>(
+    clientKeys.formState(values.clientId?.toString() || ""),
+  );
+  const clientId = Number(values.clientId || 0);
+  const { data: detail } = useQuery({
+    queryKey: clientKeys.detail(clientId),
+    queryFn: () => clientsService.getDetaileClient(clientId),
+    enabled: opened && clientId > 0 && !cachedClient,
+  });
+  const clientPhone = cachedClient?.phone ?? detail?.client.phone ?? '';
+  const clientName = cachedClient?.name ?? detail?.client.name ?? '';
+  const whatsappConfirmed = cachedClient?.whatsappConfirmed ?? detail?.client.whatsappConfirmed ?? false;
+  const { status: whatsappStatus } = useWhatsappAvailability(clientId, clientPhone, whatsappConfirmed);
+  const canSend = !!clientPhone && whatsappStatus !== 'absent';
 
   return (
     <Modal
@@ -57,6 +74,12 @@ export function VisitPreviewModal({
       }}
     >
       <Stack gap="md">
+        <Paper withBorder p="sm" radius="md">
+          {clientPhone ? <>
+            <Text size="sm" fw={600}>{clientName}: {clientPhone}</Text>
+            <WhatsappAvailabilityNotice clientId={clientId} phone={clientPhone} whatsappConfirmed={whatsappConfirmed} />
+          </> : <Text size="sm" c="dimmed">Не удалось загрузить номер клиента. Визит можно создать без отправки WhatsApp.</Text>}
+        </Paper>
         <Paper withBorder p="md" bg="blue.0" radius="md">
           <Stack gap={2}>
             <Text size="xs" c="blue.9" fw={700}>
@@ -105,11 +128,7 @@ export function VisitPreviewModal({
         />
 
         {values.orders.map((order, index) => {
-          const clientData = queryClient.getQueryData<SelectedClientData>(
-            clientKeys.formState(values.clientId?.toString() || ""),
-          );
-
-          const child = clientData?.children?.find(
+          const child = cachedClient?.children?.find(
             (c) => Number(c.childId) === Number(order.childId),
           );
 
@@ -198,7 +217,8 @@ export function VisitPreviewModal({
           <Checkbox
             label="Отправить клиенту уведомление в WhatsApp"
             description="Сообщение с деталями бронирования уйдет автоматически"
-            checked={sendNotification}
+            checked={canSend && sendNotification}
+            disabled={!canSend}
             onChange={(event) =>
               setSendNotification(event.currentTarget.checked)
             }
@@ -212,7 +232,7 @@ export function VisitPreviewModal({
           fullWidth
           color="blue"
           mt="md"
-          onClick={() => onSubmit(sendNotification)}
+          onClick={() => onSubmit(canSend && sendNotification)}
           loading={isSubmitting}
         >
           Подтвердить и создать

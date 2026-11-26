@@ -9,8 +9,9 @@ import {
   Button,
 } from "@mantine/core";
 import { IconUser, IconShirt, IconArrowRight } from "@tabler/icons-react";
+import { Link } from "react-router-dom";
 import type { IssueListProps } from "../../types/visitTypes";
-import { formatPhoneNumber } from "src/utills/formatters";
+import { formatPhoneNumber } from "src/utils/formatters";
 import { WhatsAppButton } from "src/components/WhatsAppButton";
 
 function MobileCard({
@@ -78,7 +79,10 @@ function MobileCard({
 
         <Divider variant="dashed" size="sm" />
 
-        <Group justify="flex-end">
+        <Group justify="space-between">
+          <Button component={Link} to={`/bookings/visits/${visit.visitId}`} variant="subtle" size="sm">
+            Карточка
+          </Button>
           <Button
             size="md"
             variant="light"

@@ -15,6 +15,7 @@ import { useQueryClient } from "@tanstack/react-query";
 interface ChildSelectorProps {
   clientId: number | null;
   value?: number | null;
+  selectedChild?: SelectedChild | null;
   onChange: (childId: number | null) => void;
   error?: React.ReactNode;
 }
@@ -22,6 +23,7 @@ interface ChildSelectorProps {
 export const ChildSelector = memo(function ChildSelector({
   clientId,
   value,
+  selectedChild: selectedChildProp,
   onChange,
   error,
 }: ChildSelectorProps) {
@@ -29,12 +31,15 @@ export const ChildSelector = memo(function ChildSelector({
   const queryClient = useQueryClient();
 
   const selectedChild = useMemo(() => {
-    if (!client || !client.children || !value) {
+    if (!value) {
       return null;
     }
 
-    return client.children.find((c) => c.childId === value) || null;
-  }, [client, value]);
+    return (
+      client?.children?.find((c) => c.childId === value) ||
+      (selectedChildProp?.childId === value ? selectedChildProp : null)
+    );
+  }, [client, selectedChildProp, value]);
 
   const handleSelect = useCallback(
     (child: SelectedChild | null) => {

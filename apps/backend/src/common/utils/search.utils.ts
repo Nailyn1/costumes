@@ -40,6 +40,22 @@ export function buildWordStartFilters(
   ];
 }
 
+export function buildExactTextFilter(
+  query: NormalizedSearchQuery,
+): Prisma.StringFilter {
+  return { equals: query.raw, mode: 'insensitive' };
+}
+
+export function buildExactPhoneFilter(
+  query: NormalizedSearchQuery,
+): Prisma.StringFilter | null {
+  if (query.digits.length < 2) return null;
+  const digits = query.digits.startsWith('8')
+    ? `7${query.digits.slice(1)}`
+    : query.digits;
+  return { equals: `+${digits}` };
+}
+
 export function buildIdentifierFilters(
   query: NormalizedSearchQuery,
 ): Prisma.StringFilter[] {
@@ -56,7 +72,14 @@ export function buildPhoneFilters(
 ): Prisma.StringFilter[] {
   if (query.digits.length < 2) return [];
 
-  const filters: Prisma.StringFilter[] = [{ contains: query.digits }];
+  const phoneDigits = new Set([query.digits]);
+  if (query.digits.startsWith('8')) {
+    phoneDigits.add(`7${query.digits.slice(1)}`);
+  }
+
+  const filters: Prisma.StringFilter[] = [...phoneDigits].map((digits) => ({
+    contains: digits,
+  }));
 
   if (query.raw.startsWith('+')) {
     filters.unshift({ startsWith: query.raw });
@@ -118,16 +141,28 @@ export function scorePhoneMatch(
   if (!value || query.digits.length < 2) return 0;
 
   const digits = value.replace(/\D/g, '');
+  const queryDigits = query.digits.startsWith('8')
+    ? `7${query.digits.slice(1)}`
+    : query.digits;
 
-  if (digits === query.digits) return 100;
-  if (digits.startsWith(query.digits)) return 85;
-  if (digits.includes(query.digits)) return 55;
+  if (digits === queryDigits) return 100;
+  if (digits.startsWith(queryDigits)) return 85;
+  if (digits.includes(queryDigits)) return 55;
 
   return 0;
 }
 
 export function maxScore(scores: number[]): number {
   return scores.reduce((max, score) => Math.max(max, score), 0);
+}
+
+export function mergeUniqueById<T extends { id: number }>(
+  exact: T[],
+  broad: T[],
+): T[] {
+  return [
+    ...new Map([...exact, ...broad].map((item) => [item.id, item])).values(),
+  ];
 }
 
 export function sortBySearchScore<T>(

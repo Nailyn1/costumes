@@ -1,4 +1,4 @@
-import type { GetVisitsForReturnDto } from "@costumes/shared";
+import type { GetVisitsForReturnDto, visitCompleteReturnRequestDto } from "@costumes/shared";
 import {
   Stack,
   Group,
@@ -19,8 +19,9 @@ import {
   IconFileDescription,
 } from "@tabler/icons-react";
 import { useCompleteReturnVisit, useUnissueVisit } from "../../hooks/useVisits";
-import { formatPhoneNumber } from "src/utills/formatters";
+import { formatPhoneNumber } from "src/utils/formatters";
 import { useState } from "react";
+import { MoneyInput } from "src/components/MoneyInput";
 
 interface ReturnFormContentProps {
   visitId: number;
@@ -42,7 +43,9 @@ export function ReturnFormContent({
     initialValues: {
       depositReturned: data.deposit?.type !== "none",
       notes: "",
-      returnedItems: data.orders.map((order) => order.orderId),
+      returnedItems: [] as number[],
+      settleNow: false,
+      settlementAmount: "" as number | string,
     },
   });
 
@@ -57,9 +60,21 @@ export function ReturnFormContent({
   };
 
   const handleSubmit = form.onSubmit((values) => {
-    const payload = {
+    const due = data.balance.debt || data.balance.refundDue;
+    const amount = values.settlementAmount === "" ? due : Number(values.settlementAmount);
+    if (values.settleNow && (!Number.isInteger(amount) || amount <= 0 || amount > due)) {
+      form.setFieldError("settlementAmount", `Укажите сумму от 1 до ${due} ₸`);
+      return;
+    }
+    const payload: visitCompleteReturnRequestDto = {
       depositReturned: values.depositReturned,
       notes: values.notes,
+      ...(values.settleNow && {
+        settlement: {
+          kind: data.balance.debt > 0 ? "debt_payment" as const : "customer_refund" as const,
+          amount,
+        },
+      }),
     };
 
     returnMutation.mutate(
@@ -164,6 +179,32 @@ export function ReturnFormContent({
           })}
         </Stack>
 
+        {(data.balance.debt > 0 || data.balance.refundDue > 0) && (
+          <Paper withBorder p="md" radius="md">
+            <Stack gap="sm">
+              <Text fw={700}>Расчёт по аренде</Text>
+              <Text c={data.balance.debt > 0 ? "orange.9" : "red.8"} fw={600}>
+                {data.balance.debt > 0
+                  ? `Долг клиента: ${data.balance.debt} ₸`
+                  : `Вернуть клиенту: ${data.balance.refundDue} ₸`}
+              </Text>
+              <Checkbox
+                label={data.balance.debt > 0 ? "Принять оплату долга сейчас" : "Вернуть переплату сейчас"}
+                {...form.getInputProps("settleNow", { type: "checkbox" })}
+              />
+              {form.values.settleNow && (
+                <MoneyInput
+                  label={data.balance.debt > 0 ? "Получено от клиента" : "Выдано клиенту"}
+                  {...form.getInputProps("settlementAmount")}
+                  value={form.values.settlementAmount === "" ? data.balance.debt || data.balance.refundDue : form.values.settlementAmount}
+                  max={data.balance.debt || data.balance.refundDue}
+                />
+              )}
+              <Text size="sm" c="dimmed">Костюмы можно вернуть, даже если расчёт пока не завершён.</Text>
+            </Stack>
+          </Paper>
+        )}
+
         {data.deposit?.type !== "none" && (
           <Box bg="gray.0" p="sm" style={{ borderRadius: "8px" }}>
             <Checkbox
@@ -211,14 +252,14 @@ export function ReturnFormContent({
               onClick={() => setIsUnissuing(true)}
               disabled={returnMutation.isPending}
             >
-              Откатить выдачу
+              Отменить выдачу
             </Button>
           </Stack>
         ) : (
           <Paper withBorder p="md" radius="md" bg="orange.0" mt="sm">
             <Stack gap="sm">
               <Text fw={600} c="orange.9" ta="center">
-                Уверены, что хотите откатить выдачу?
+                Уверены, что хотите отменить выдачу?
               </Text>
               <Text size="sm" c="orange.9" ta="center" mt="-sm">
                 Визит снова появится в списке ожидающих выдачи.

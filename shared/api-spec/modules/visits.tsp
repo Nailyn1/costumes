@@ -28,6 +28,7 @@ enum DepositType {
 enum TagStatus {
     written,
     not_written,
+    not_required,
 }
 
 enum OrderStatus {
@@ -45,6 +46,8 @@ model VisitOrder {
   rentPrice: int32;
   prepaymentAmount: int32;
   tagStatus: TagStatus;
+  /** Текущий состав костюма — подсказка «Положить в пакет». */
+  parts?: CostumeApp.Costumes.CostumePart[];
 }
 model Visit {
   id: int32;
@@ -90,6 +93,7 @@ model Order {
   rentPrice: int32;
   prepaymentAmount: int32;
   notes: string;
+  ...CostumeApp.Costumes.CostumePhotoSummary;
 }
 
 model NotWrittenOrdersResponse {
@@ -116,7 +120,7 @@ model CreateVisitRequest {
 }
 
 model IssueVisitRequest {
-  additionalPayment: int32;
+  @minValue(0) additionalPayment: int32;
   deposit: {
     type: DepositType;
     amount?: int32;
@@ -124,9 +128,407 @@ model IssueVisitRequest {
   notes?: string;
 }
 
+model QuickIssueVisitRequest {
+  @format("uuid") commandId: string;
+  clientId: int32;
+  visitCode: VisitCode;
+  startDateTime: plainDate;
+  issueTimeFrom: TimeString;
+  issueTimeTo: TimeString;
+  endDateTime: plainDate;
+  returnTimeUntil: TimeString;
+  notes?: string;
+  @minItems(1)
+  orders: {
+    childId: int32;
+    costumeId: int32;
+    @minValue(0) rentPrice: int32;
+    notes?: string;
+  }[];
+  @minValue(0) additionalPayment: int32;
+  deposit: {
+    type: DepositType;
+    @minValue(0) amount?: int32;
+  };
+}
+
+model QuickIssueVisitResponse {
+  visitId: int32;
+  visitCode: VisitCode;
+  status: "issued";
+  version: int32;
+  balance: VisitBalance;
+}
+
+model UpdateReservedVisitOrder {
+  @minValue(1) orderId?: int32;
+  @minValue(1) childId: int32;
+  @minValue(1) costumeId: int32;
+  @minValue(0) rentPrice: int32;
+  /** Initial prepayment for a new order; an existing order's prepayment cannot change. */
+  @minValue(0) prepaymentAmount?: int32;
+  notes?: string;
+}
+
+model UpdateReservedVisitRequest {
+  @format("uuid") commandId: string;
+  @minValue(1) expectedVersion: int32;
+  startDateTime: plainDate;
+  issueTimeFrom: TimeString;
+  issueTimeTo: TimeString;
+  endDateTime: plainDate;
+  returnTimeUntil: TimeString;
+  notes?: string;
+  @minItems(1)
+  orders: UpdateReservedVisitOrder[];
+}
+
+model AddAndIssueVisitRequestOrder {
+  @minValue(1) childId: int32;
+  @minValue(1) costumeId: int32;
+  @minValue(0) rentPrice: int32;
+  notes?: string;
+}
+
+model AddAndIssueVisitRequest {
+  @format("uuid") commandId: string;
+  @minValue(1) expectedVersion: int32;
+  @minItems(1)
+  orders: AddAndIssueVisitRequestOrder[];
+  @minValue(0) additionalPayment: int32;
+}
+
+model ReturnMissingParts {
+  orderId: int32;
+  @minItems(1)
+  @maxItems(20)
+  parts: string[];
+}
+
 model CompleteReturnRequest {
   depositReturned: boolean;
   notes?: string;
+  settlement?: VisitSettlementRequest;
+  /** Части, которых не оказалось при возврате; возврат не блокируется и денег не начисляет. */
+  @maxItems(100)
+  missingParts?: ReturnMissingParts[];
+}
+
+model VisitBalance {
+  @minValue(0) totalRent: int32;
+  @minValue(0) totalPrepayment: int32;
+  @minValue(0) totalReceived: int32;
+  @minValue(0) totalRefunded: int32;
+  @doc("Положительное значение — долг, отрицательное — сумма к возврату клиенту")
+  signedBalance: int32;
+  @minValue(0) debt: int32;
+  @minValue(0) refundDue: int32;
+}
+
+model VisitListItem {
+  id: int32;
+  visitCode: VisitCode;
+  status: VisitStatus;
+  client: {
+    id: int32;
+    name: CostumeApp.Clients.ClientName;
+    phone: CostumeApp.Clients.PhoneString;
+  };
+  startDateTime: plainDate;
+  endDateTime: plainDate;
+  issueTimeFrom: TimeString;
+  issueTimeTo: TimeString;
+  returnTimeUntil: TimeString;
+  childrenNames: string;
+  costumesNames: string;
+  orderCount: int32;
+  totalRent: int32;
+  totalPrepayment: int32;
+  totalRemaining: int32;
+  createdAt: utcDateTime;
+}
+
+model PaginatedVisitsResponse {
+  items: VisitListItem[];
+  total: int32;
+  page: int32;
+  limit: int32;
+  hasMore: boolean;
+}
+
+model VisitReadOrder {
+  orderId: int32;
+  childId: int32;
+  childName: CostumeApp.Children.ChildName;
+  costumeId: int32;
+  costumeName: string;
+  inventoryCode: CostumeApp.Costumes.InventoryCode;
+  status: OrderStatus;
+  tagStatus: TagStatus;
+  rentPrice: int32;
+  prepaymentAmount: int32;
+  finalPayment?: int32;
+  notes?: string;
+  /** Состав на момент выдачи (у невыданных — текущий состав костюма). */
+  parts?: CostumeApp.Costumes.CostumePart[];
+  ...CostumeApp.Costumes.CostumePhotoSummary;
+}
+
+model VisitReadDeposit {
+  id: int32;
+  type: DepositType;
+  amount?: int32;
+  returned: boolean;
+  createdAt: utcDateTime;
+}
+
+model VisitReadMoneyOperation {
+  id: int32;
+  kind: "issue_payment" | "debt_payment" | "customer_refund";
+  amount: int32;
+  createdAt: utcDateTime;
+  voidedAt?: utcDateTime;
+  legacyImported: boolean;
+}
+
+model VisitReadTotals {
+  totalRent: int32;
+  totalPrepayment: int32;
+  totalRemaining: int32;
+}
+
+model VisitReadDetail {
+  id: int32;
+  visitCode: VisitCode;
+  status: VisitStatus;
+  version: int32;
+  client: {
+    id: int32;
+    name: CostumeApp.Clients.ClientName;
+    phone: CostumeApp.Clients.PhoneString;
+  };
+  startDateTime: plainDate;
+  endDateTime: plainDate;
+  issueTimeFrom: TimeString;
+  issueTimeTo: TimeString;
+  returnTimeUntil: TimeString;
+  notes?: string;
+  createdAt: utcDateTime;
+  orders: VisitReadOrder[];
+  moneyOperations: VisitReadMoneyOperation[];
+  deposits: VisitReadDeposit[];
+  totals: VisitReadTotals;
+  balance?: VisitBalance;
+}
+
+model VisitSettlementRequest {
+  kind: "debt_payment" | "customer_refund";
+  @minValue(1) amount: int32;
+}
+
+enum VisitHistorySource {
+  user,
+  system,
+  imported: "import",
+}
+
+enum VisitHistoryAction {
+  visitCreated: "visit.created",
+  visitUpdated: "visit.updated",
+  tagInvalidated: "tag.invalidated",
+  tagWritten: "tag.written",
+  visitIssued: "visit.issued",
+  visitUnissued: "visit.unissued",
+  visitCancelled: "visit.cancelled",
+  visitCompleted: "visit.completed",
+  depositReturned: "deposit.returned",
+  moneyReceived: "money.received",
+  moneyRefunded: "money.refunded",
+  ordersAddedAndIssued: "orders.added_and_issued",
+  returnMissingParts: "return.missing_parts",
+}
+
+model VisitHistoryOrderSnapshot {
+  orderId: int32;
+  childId?: int32;
+  childName: string;
+  costumeId?: int32;
+  costumeName: string;
+  inventoryCode: CostumeApp.Costumes.InventoryCode;
+  rentPrice: int32;
+  prepaymentAmount: int32;
+  tagStatus?: TagStatus;
+  notes?: string | null;
+}
+
+model VisitCreatedHistoryPayload {
+  kind: "visit.created";
+  visitCode: VisitCode;
+  clientId: int32;
+  clientName: string;
+  startDateTime: plainDate;
+  endDateTime: plainDate;
+  orders: VisitHistoryOrderSnapshot[];
+}
+
+model VisitUpdatedHistoryOrderChange {
+  change: "added" | "updated" | "removed";
+  orderId: int32;
+  before?: VisitHistoryOrderSnapshot;
+  after?: VisitHistoryOrderSnapshot;
+}
+
+model VisitUpdatedHistoryPayload {
+  kind: "visit.updated";
+  changedFields: {
+    startDateTime?: { before: plainDate; after: plainDate };
+    issueTimeFrom?: { before: TimeString; after: TimeString };
+    issueTimeTo?: { before: TimeString; after: TimeString };
+    endDateTime?: { before: plainDate; after: plainDate };
+    returnTimeUntil?: { before: TimeString; after: TimeString };
+    notes?: { before: string | null; after: string | null };
+  };
+  orderChanges: VisitUpdatedHistoryOrderChange[];
+}
+
+model TagInvalidatedHistoryPayload {
+  kind: "tag.invalidated";
+  orderId: int32;
+  childName: string;
+  costumeName: string;
+  inventoryCode: CostumeApp.Costumes.InventoryCode;
+  reason: "date_changed" | "window_changed" | "child_changed" | "costume_changed";
+  previousTagStatus: "written";
+  tagStatus: "not_written";
+}
+
+model TagWrittenHistoryPayload {
+  kind: "tag.written";
+  orderId: int32;
+  childName: string;
+  costumeName: string;
+  inventoryCode: CostumeApp.Costumes.InventoryCode;
+}
+
+model VisitIssuedHistoryPayload {
+  kind: "visit.issued";
+  visitCode: VisitCode;
+  additionalPayment: int32;
+  depositType: DepositType;
+  depositAmount: int32;
+  orders: VisitHistoryOrderSnapshot[];
+}
+
+model VisitUnissuedHistoryPayload {
+  kind: "visit.unissued";
+  visitCode: VisitCode;
+  voidedPaymentAmount: int32;
+  depositType?: DepositType;
+  depositAmount?: int32;
+  orders: VisitHistoryOrderSnapshot[];
+}
+
+model VisitCancelledHistoryPayload {
+  kind: "visit.cancelled";
+  visitCode: VisitCode;
+  reason?: string;
+}
+
+model VisitCompletedHistoryPayload {
+  kind: "visit.completed";
+  visitCode: VisitCode;
+  orders: VisitHistoryOrderSnapshot[];
+  settlementKind?: "debt_payment" | "customer_refund";
+  settlementAmount?: int32;
+}
+
+model DepositReturnedHistoryPayload {
+  kind: "deposit.returned";
+  depositType: DepositType;
+  amount: int32;
+}
+
+model MoneyReceivedHistoryPayload {
+  kind: "money.received";
+  moneyKind: "issue_payment" | "debt_payment";
+  amount: int32;
+}
+
+model MoneyRefundedHistoryPayload {
+  kind: "money.refunded";
+  amount: int32;
+}
+
+model OrdersAddedAndIssuedHistoryPayload {
+  kind: "orders.added_and_issued";
+  visitCode: VisitCode;
+  orders: VisitHistoryOrderSnapshot[];
+}
+
+model ReturnMissingPartsHistoryPayload {
+  kind: "return.missing_parts";
+  visitCode: VisitCode;
+  orderId: int32;
+  childName: string;
+  costumeName: string;
+  inventoryCode: CostumeApp.Costumes.InventoryCode;
+  parts: string[];
+}
+
+union VisitHistoryPayload {
+  visitCreated: VisitCreatedHistoryPayload,
+  visitUpdated: VisitUpdatedHistoryPayload,
+  tagInvalidated: TagInvalidatedHistoryPayload,
+  tagWritten: TagWrittenHistoryPayload,
+  visitIssued: VisitIssuedHistoryPayload,
+  visitUnissued: VisitUnissuedHistoryPayload,
+  visitCancelled: VisitCancelledHistoryPayload,
+  visitCompleted: VisitCompletedHistoryPayload,
+  depositReturned: DepositReturnedHistoryPayload,
+  moneyReceived: MoneyReceivedHistoryPayload,
+  moneyRefunded: MoneyRefundedHistoryPayload,
+  ordersAddedAndIssued: OrdersAddedAndIssuedHistoryPayload,
+  returnMissingParts: ReturnMissingPartsHistoryPayload,
+}
+
+model VisitHistoryEvent {
+  id: int32;
+  occurredAt: utcDateTime;
+  actorUserId?: int32;
+  actorNameSnapshot: string;
+  source: VisitHistorySource;
+  action: VisitHistoryAction;
+  entityType: "visit" | "order";
+  entityId: int32;
+  visitId: int32;
+  orderId?: int32;
+  commandId: string;
+  schemaVersion: 1;
+  payload: VisitHistoryPayload;
+}
+
+model PaginatedVisitHistoryResponse {
+  items: VisitHistoryEvent[];
+  total: int32;
+  page: int32;
+  limit: int32;
+  hasMore: boolean;
+}
+
+model UnsettledVisitBalance {
+  visitId: int32;
+  visitCode: VisitCode;
+  clientName: CostumeApp.Clients.ClientName;
+  clientPhone: CostumeApp.Clients.PhoneString;
+  balance: VisitBalance;
+}
+
+model PaginatedUnsettledVisitBalancesResponse {
+  items: UnsettledVisitBalance[];
+  total: int32;
+  page: int32;
+  limit: int32;
+  hasMore: boolean;
 }
 
 model GetReservedResponse {
@@ -156,6 +558,11 @@ model VisitsSearchResponse {
     costumesNames: string;
 }
 
+model VisitIssueOrder {
+  ...VisitOrder;
+  ...CostumeApp.Costumes.CostumePhotoSummary;
+}
+
 model VisitForIssueResponse {
   visitId: int32;
   visitCode: VisitCode;
@@ -169,7 +576,7 @@ model VisitForIssueResponse {
   totalPrepayment: int32;
   remainingToPay: int32;
   notes: string;
-  orders: VisitOrder[];
+  orders: VisitIssueOrder[];
 }
 
 model IssuedForReturnResponse {
@@ -192,6 +599,7 @@ model VisitForReturnResponse {
   notes: string;
   orders: VisitReturnOrder[];
   deposit: VisitDepositInfo;
+  balance: VisitBalance;
 }
 
 model VisitReturnOrder {
@@ -203,6 +611,9 @@ model VisitReturnOrder {
   prepaymentAmount: int32;
   finalPayment: int32;
   returned: boolean;
+  /** Состав, выданный клиенту (у старых заказов без снимка — текущий состав костюма). */
+  parts?: CostumeApp.Costumes.CostumePart[];
+  ...CostumeApp.Costumes.CostumePhotoSummary;
 }
 
 model VisitDepositInfo {
@@ -215,6 +626,7 @@ model CompleteReturnResponse {
   visitCode: VisitCode;
   status: VisitStatus;
   message: string;
+  balance: VisitBalance;
 }
 
 model MarkDepositReturnedResponse {
@@ -303,7 +715,8 @@ interface VisitOperation {
   @route("preview-code")
   previewCode(): {
     @statusCode statusCode: 201;
-    visitCode: VisitCode;
+    @header contentType: "application/json";
+    @body body: VisitCode;
   } | Common.Error;
 
   @post
@@ -312,6 +725,66 @@ interface VisitOperation {
     @body body: CreateVisitRequest): {
     @statusCode statusCode: 201;
     @body body: Visit;
+  } | Common.Error;
+
+  @post
+  @route("quick-issue")
+  quickIssue(@body body: QuickIssueVisitRequest): {
+    @statusCode statusCode: 201;
+    @body body: QuickIssueVisitResponse;
+  } | Common.Error;
+
+  @patch
+  @route("{visitId}")
+  updateReserved(
+    @path visitId: int32,
+    @body body: UpdateReservedVisitRequest,
+  ): {
+    @statusCode statusCode: 200;
+    @body body: VisitReadDetail;
+  } | Common.Error;
+
+  @post
+  @route("{visitId}/add-and-issue")
+  addAndIssue(
+    @path visitId: int32,
+    @body body: AddAndIssueVisitRequest,
+  ): {
+    @statusCode statusCode: 200;
+    @body body: VisitReadDetail;
+  } | Common.Error;
+
+  @get
+  list(
+    @query @minLength(2) q?: string,
+    @query status?: VisitStatus,
+    @query startDateFrom?: plainDate,
+    @query startDateTo?: plainDate,
+    @query endDateFrom?: plainDate,
+    @query endDateTo?: plainDate,
+    @query @minValue(1) page?: int32,
+    @query @minValue(1) @maxValue(100) limit?: int32,
+  ): {
+    @statusCode statusCode: 200;
+    @body body: PaginatedVisitsResponse;
+  } | Common.Error;
+
+  @get
+  @route("{visitId}")
+  getDetail(@path visitId: int32): {
+    @statusCode statusCode: 200;
+    @body body: VisitReadDetail;
+  } | Common.Error;
+
+  @get
+  @route("{visitId}/history")
+  getHistory(
+    @path visitId: int32,
+    @query @minValue(1) page?: int32,
+    @query @minValue(1) @maxValue(100) limit?: int32,
+  ): {
+    @statusCode statusCode: 200;
+    @body body: PaginatedVisitHistoryResponse;
   } | Common.Error;
 
 @get
@@ -339,6 +812,13 @@ getReserved(
   searchForReturn(@query @minLength(2) q: string): {
     @statusCode statusCode: 200;
     @body body: VisitReturnSearchResponse[];
+  } | Common.Error;
+
+  @get
+  @route("unsettled-balances")
+  getUnsettledBalances(@query page?: int32, @query limit?: int32): {
+    @statusCode statusCode: 200;
+    @body body: PaginatedUnsettledVisitBalancesResponse;
   } | Common.Error;
 
 
@@ -381,8 +861,22 @@ getReserved(
   @post
   @route("{visitId}/complete-return")
   completeReturn(@path visitId: int32, @body body: CompleteReturnRequest): {
-    @statusCode statusCode: 200;
+    @statusCode statusCode: 201;
     @body body: CompleteReturnResponse;
+  } | Common.Error;
+
+  @get
+  @route("{visitId}/balance")
+  getBalance(@path visitId: int32): {
+    @statusCode statusCode: 200;
+    @body body: VisitBalance;
+  } | Common.Error;
+
+  @post
+  @route("{visitId}/settlement")
+  settle(@path visitId: int32, @body body: VisitSettlementRequest): {
+    @statusCode statusCode: 200;
+    @body body: VisitBalance;
   } | Common.Error;
 
  

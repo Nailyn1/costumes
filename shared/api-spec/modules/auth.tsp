@@ -32,7 +32,7 @@ interface AuthOperations {
     @post
     @route("login")
     login(@body body: LoginRequest): {
-        @statusCode statusCode: 200;
+        @statusCode statusCode: 201;
         @header("Set-Cookie")
     refreshToken: string;
         @body response: LoginSuccessResponse;
@@ -44,7 +44,7 @@ interface AuthOperations {
     refresh(
         @header("Cookie") cookie: string
     ) : {
-        @statusCode statusCode: 200;
+        @statusCode statusCode: 201;
         @body response: RefreshSuccessResponse;
     } | Common.Error;
 

@@ -3,6 +3,7 @@ import { TextInput, ActionIcon, Popover, Box } from "@mantine/core";
 import { DatePicker } from "@mantine/dates";
 import { IconCalendar } from "@tabler/icons-react";
 import dayjs from "dayjs";
+import { parseSmartDate } from "../utils/bookingForm";
 
 interface SmartDateInputProps {
   label: string;
@@ -10,6 +11,7 @@ interface SmartDateInputProps {
   onChange: (val: string | null) => void;
   error?: React.ReactNode;
   minDate?: string | null;
+  disabled?: boolean;
 }
 export function SmartDateInput({
   label,
@@ -17,6 +19,7 @@ export function SmartDateInput({
   onChange,
   error,
   minDate,
+  disabled = false,
 }: SmartDateInputProps) {
   const [inputValue, setInputValue] = useState(
     value ? dayjs(value).format("DD.MM") : "",
@@ -35,34 +38,9 @@ export function SmartDateInput({
       return;
     }
 
-    const dayMatch = rawVal.match(/^\d{1,2}$/);
-    if (dayMatch) {
-      const day = parseInt(dayMatch[0], 10);
-      if (day >= 1 && day <= 31) {
-        const now = dayjs();
-        let smartDate = now.date(day).startOf("day");
-
-        if (smartDate.isBefore(now, "day")) {
-          smartDate = smartDate.add(1, "month");
-        }
-
-        if (smartDate.isValid()) {
-          onChange(smartDate.format("YYYY-MM-DD"));
-        }
-        return;
-      }
-    }
-
-    // Если введено DD.MM (например 15.05)
-    const fullMatch = rawVal.match(/^(\d{1,2})\.(\d{1,2})$/);
-    if (fullMatch) {
-      const day = parseInt(fullMatch[1], 10);
-      const month = parseInt(fullMatch[2], 10) - 1; // в JS месяцы 0-11
-      const smartDate = dayjs().month(month).date(day).startOf("day");
-
-      if (smartDate.isValid()) {
-        onChange(smartDate.format("YYYY-MM-DD"));
-      }
+    const parsed = parseSmartDate(rawVal);
+    if (parsed) {
+      onChange(parsed);
       return;
     }
 
@@ -89,6 +67,7 @@ export function SmartDateInput({
         placeholder="Напр: 4 или 15.05"
         value={inputValue}
         error={error}
+        disabled={disabled}
         onChange={(e) =>
           setInputValue(e.currentTarget.value.replace(/[^0-9.]/g, ""))
         }
@@ -106,6 +85,7 @@ export function SmartDateInput({
               <ActionIcon
                 variant="subtle"
                 color="gray"
+                disabled={disabled}
                 onClick={() => setOpened((o) => !o)}
               >
                 <IconCalendar size="1.2rem" />

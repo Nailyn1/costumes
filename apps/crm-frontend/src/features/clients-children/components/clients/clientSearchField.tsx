@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, memo } from "react";
 import { Select, Loader, Group, Text, Badge } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
 import { useSearchClients } from "../../hooks/useClients";
-import { formatPhoneNumber } from "src/utills/formatters";
+import { formatPhoneNumber } from "src/utils/formatters";
 import type { ClientSearchFieldProps } from "../../types/clientTypes";
 
 export const ClientSearchField = memo(function ClientSearchField({
@@ -39,6 +39,7 @@ export const ClientSearchField = memo(function ClientSearchField({
           name: client.name,
           phone: client.phone,
           children: client.children,
+          whatsappConfirmed: client.whatsappConfirmed,
         });
 
         setSearch("");

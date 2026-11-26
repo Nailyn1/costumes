@@ -33,7 +33,7 @@ export class JwtRefreshStrategy extends PassportStrategy(
     const refreshToken = req.cookies?.refreshToken as string;
 
     if (!refreshToken) {
-      throw new UnauthorizedException('Refresh token not found in cookies');
+      throw new UnauthorizedException('Недействительный токен обновления');
     }
 
     return { id: payload.id, login: payload.login, refreshToken };

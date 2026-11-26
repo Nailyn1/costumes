@@ -9,8 +9,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         connection: {
-          host: configService.get('REDIS_HOST') || 'localhost',
-          port: configService.get('REDIS_PORT') || 6379,
+          host: configService.get<string>('REDIS_HOST') || 'localhost',
+          port: Number(configService.get<string>('REDIS_PORT') || 6379),
         },
       }),
     }),

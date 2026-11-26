@@ -1,11 +1,12 @@
 import { Stack, Group, TextInput, Button } from "@mantine/core";
 import { IconCheck, IconX } from "@tabler/icons-react";
 import { useForm } from "@mantine/form";
-import { zodResolver } from "mantine-form-zod-resolver";
+import { schemaResolver } from "@mantine/form";
 import { IMaskInput } from "react-imask";
 import { UpdateClientRequestSchema } from "@costumes/shared";
 import { useUpdateClient } from "../../hooks/useClients";
 import type { ClientUpdateFormProps } from "../../types/clientTypes";
+import { applyApiFieldErrors } from "src/utils/handleError";
 
 export function ClientUpdateForm({
   client,
@@ -19,7 +20,7 @@ export function ClientUpdateForm({
       name: client.name,
       phone: client.phone,
     },
-    validate: zodResolver(UpdateClientRequestSchema),
+    validate: schemaResolver(UpdateClientRequestSchema),
   });
 
   const handleSubmit = (values: typeof form.values) => {
@@ -29,11 +30,13 @@ export function ClientUpdateForm({
         data: values,
       },
       {
+        onError: (error) => applyApiFieldErrors(error, ["name", "phone"], form.setFieldError),
         onSuccess: (res) => {
           onSuccess({
             ...client,
             name: res.name,
             phone: res.phone,
+            whatsappConfirmed: res.whatsappConfirmed,
           });
         },
       },

@@ -26,11 +26,12 @@ export function useSearchAvailableCostumes(
   searchQuery: string,
   startDate: string,
   endDate: string,
+  excludeVisitId?: number,
 ) {
   return useQuery({
-    queryKey: [...costumesKeys.search(searchQuery), startDate, endDate],
+    queryKey: [...costumesKeys.search(searchQuery), startDate, endDate, excludeVisitId],
     queryFn: () =>
-      costumeService.searchAvailableCostumes(searchQuery, startDate, endDate),
+      costumeService.searchAvailableCostumes(searchQuery, startDate, endDate, excludeVisitId),
     enabled: searchQuery.trim().length >= 2 && !!startDate && !!endDate,
     staleTime: 1000 * 60 * 5,
   });

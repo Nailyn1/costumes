@@ -1,5 +1,5 @@
 import {
-  BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -18,26 +18,70 @@ import {
   AddClientInBlackListRequestDto,
 } from '@costumes/shared';
 import { Prisma } from '../prisma/generated/client';
+import { NotificationRepository } from '../notification/notification.repository';
 import {
+  buildExactPhoneFilter,
+  buildExactTextFilter,
   buildPhoneFilters,
   buildWordStartFilters,
   isSearchQueryReady,
   maxScore,
+  mergeUniqueById,
   normalizeSearchQuery,
   scorePhoneMatch,
   scoreTextMatch,
   sortBySearchScore,
 } from '../common/utils/search.utils';
 
+function isPhoneUniqueConstraintViolation(error: unknown): boolean {
+  if (
+    typeof error !== 'object' ||
+    error === null ||
+    !('code' in error) ||
+    error.code !== 'P2002'
+  ) {
+    return false;
+  }
+
+  if (!('meta' in error) || typeof error.meta !== 'object' || !error.meta) {
+    return true;
+  }
+
+  if (!('target' in error.meta)) return true;
+  const target = error.meta.target;
+  const targets = Array.isArray(target) ? target : [target];
+  return targets.some(
+    (field) =>
+      field === 'phone' ||
+      (typeof field === 'string' && field.includes('clients_phone_key')),
+  );
+}
+
+const DUPLICATE_CLIENT_PHONE_MESSAGE =
+  'Клиент с таким телефоном уже существует';
+
 @Injectable()
 export class ClientChildService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationRepository: NotificationRepository,
+  ) {}
+
+  async getActiveClientPhone(clientId: number): Promise<string> {
+    const client = await this.prisma.client.findFirst({
+      where: { id: clientId, deletedAt: null },
+      select: { phone: true },
+    });
+    if (!client)
+      throw new NotFoundException(`Клиент с ID ${clientId} не найден`);
+    return client.phone;
+  }
 
   async createChild(
     data: CreateChildRequestDto,
   ): Promise<CreateChildResponsetDto> {
     const client = await this.prisma.client.findUnique({
-      where: { id: data.clientId },
+      where: { id: data.clientId, deletedAt: null },
     });
 
     if (!client) {
@@ -62,14 +106,14 @@ export class ClientChildService {
   ): Promise<UpdateChildResponseDto> {
     const child = await this.prisma.child
       .update({
-        where: { id: childId },
+        where: { id: childId, deletedAt: null },
         data: {
           name: data.name,
         },
       })
       .catch((err) => {
         if (err.code === 'P2025') {
-          throw new NotFoundException(`Ребенок с этим ID ${childId} не найден`);
+          throw new NotFoundException(`Ребенок с ID ${childId} не найден`);
         }
         throw err;
       });
@@ -84,11 +128,11 @@ export class ClientChildService {
   async deleteChild(childId: number): Promise<void> {
     await this.prisma.child
       .update({
-        where: { id: childId },
+        where: { id: childId, deletedAt: null },
         data: { deletedAt: new Date() },
       })
       .catch(() => {
-        throw new NotFoundException(`Ребенок с этим ID ${childId} не найден`);
+        throw new NotFoundException(`Ребенок с ID ${childId} не найден`);
       });
   }
 
@@ -102,11 +146,16 @@ export class ClientChildService {
       },
     });
     if (existingClient) {
-      throw new BadRequestException('Client with this phone already exists');
+      throw new ConflictException(DUPLICATE_CLIENT_PHONE_MESSAGE);
     }
-    const client = await this.prisma.client.create({
-      data: { name: data.name, phone: data.phone },
-    });
+    const client = await this.prisma.client
+      .create({ data: { name: data.name, phone: data.phone } })
+      .catch((error: unknown) => {
+        if (isPhoneUniqueConstraintViolation(error)) {
+          throw new ConflictException(DUPLICATE_CLIENT_PHONE_MESSAGE);
+        }
+        throw error;
+      });
 
     const { id: clientId, name, phone, isBlacklisted } = client;
     return {
@@ -115,6 +164,7 @@ export class ClientChildService {
       phone,
       children: [],
       isBlacklisted,
+      whatsappConfirmed: false,
     };
   }
 
@@ -122,9 +172,22 @@ export class ClientChildService {
     data: UpdateClientRequestDto,
     clientId: number,
   ): Promise<UpdateClientResponseDto> {
+    if (data.phone) {
+      const existingClient = await this.prisma.client.findFirst({
+        where: {
+          phone: data.phone,
+          deletedAt: null,
+          id: { not: clientId },
+        },
+      });
+      if (existingClient) {
+        throw new ConflictException(DUPLICATE_CLIENT_PHONE_MESSAGE);
+      }
+    }
+
     const client = await this.prisma.client
       .update({
-        where: { id: clientId },
+        where: { id: clientId, deletedAt: null },
         data: {
           name: data.name,
           phone: data.phone,
@@ -132,7 +195,10 @@ export class ClientChildService {
       })
       .catch((err) => {
         if (err.code === 'P2025') {
-          throw new NotFoundException(`Client with id ${clientId} not found`);
+          throw new NotFoundException(`Клиент с ID ${clientId} не найден`);
+        }
+        if (isPhoneUniqueConstraintViolation(err)) {
+          throw new ConflictException(DUPLICATE_CLIENT_PHONE_MESSAGE);
         }
         throw err;
       });
@@ -144,17 +210,18 @@ export class ClientChildService {
       phone,
       children: [],
       isBlacklisted,
+      whatsappConfirmed: false,
     };
   }
 
   async deleteClient(clientId: number): Promise<void> {
     await this.prisma.client
       .update({
-        where: { id: clientId },
+        where: { id: clientId, deletedAt: null },
         data: { deletedAt: new Date() },
       })
       .catch(() => {
-        throw new NotFoundException(`Client with ID ${clientId} not found`);
+        throw new NotFoundException(`Клиент с ID ${clientId} не найден`);
       });
   }
 
@@ -178,42 +245,59 @@ export class ClientChildService {
       })),
     ];
 
-    const clients = await this.prisma.client.findMany({
-      where: {
-        deletedAt: null,
-        OR: searchFilters,
+    const select = {
+      id: true,
+      name: true,
+      phone: true,
+      children: {
+        where: { deletedAt: null },
+        select: { name: true, id: true },
       },
-      select: {
-        id: true,
-        name: true,
-        phone: true,
-        children: {
-          where: { deletedAt: null },
-          select: { name: true, id: true },
-        },
-        isBlacklisted: true,
-      },
-      take: 30,
-    });
+      isBlacklisted: true,
+    } as const;
+    const exactName = buildExactTextFilter(search);
+    const exactPhone = buildExactPhoneFilter(search);
+    const exactFilters: Prisma.ClientWhereInput[] = [
+      { name: exactName },
+      { children: { some: { deletedAt: null, name: exactName } } },
+      ...(exactPhone ? [{ phone: exactPhone }] : []),
+    ];
+    const [exactClients, broadClients] = await Promise.all([
+      this.prisma.client.findMany({
+        where: { deletedAt: null, OR: exactFilters },
+        select,
+        take: 10,
+      }),
+      this.prisma.client.findMany({
+        where: { deletedAt: null, OR: searchFilters },
+        select,
+        take: 30,
+      }),
+    ]);
+    const clients = mergeUniqueById(exactClients, broadClients);
 
-    return sortBySearchScore(clients, (client) =>
+    const matches = sortBySearchScore(clients, (client) =>
       maxScore([
         scoreTextMatch(client.name, search),
         scorePhoneMatch(client.phone, search),
         ...client.children.map((child) => scoreTextMatch(child.name, search)),
       ]),
-    )
-      .slice(0, 10)
-      .map((client) => ({
-        clientId: client.id,
-        name: client.name,
-        phone: client.phone,
-        children: client.children?.map((child) => ({
-          childId: child.id,
-          name: child.name,
-        })),
-        isBlacklisted: client.isBlacklisted,
-      }));
+    ).slice(0, 10);
+    const confirmedIds =
+      await this.notificationRepository.findClientIdsWithConfirmedWhatsapp(
+        matches.map((client) => client.id),
+      );
+    return matches.map((client) => ({
+      clientId: client.id,
+      name: client.name,
+      phone: client.phone,
+      children: client.children?.map((child) => ({
+        childId: child.id,
+        name: child.name,
+      })),
+      isBlacklisted: client.isBlacklisted,
+      whatsappConfirmed: confirmedIds.has(client.id),
+    }));
   }
 
   async listClients(
@@ -292,6 +376,11 @@ export class ClientChildService {
       throw new NotFoundException(`Клиент с ID ${clientId} не найден`);
     }
 
+    const confirmedIds =
+      await this.notificationRepository.findClientIdsWithConfirmedWhatsapp([
+        clientId,
+      ]);
+
     const visits = clientData.visits.map((visit) => {
       return {
         visitId: visit.id,
@@ -322,6 +411,7 @@ export class ClientChildService {
         name: clientData.name,
         phone: clientData.phone,
         isBlacklisted: clientData.isBlacklisted,
+        whatsappConfirmed: confirmedIds.has(clientId),
         blacklistReason: clientData.blacklistReason || undefined,
         children: clientData.children.map((child) => ({
           childId: child.id,
@@ -337,7 +427,7 @@ export class ClientChildService {
   ): Promise<void> {
     await this.prisma.client
       .update({
-        where: { id: clientId },
+        where: { id: clientId, deletedAt: null },
         data: {
           isBlacklisted: true,
           blacklistReason: body.blacklistReason,
@@ -351,7 +441,7 @@ export class ClientChildService {
   async removeClientFromBlacklist(clientId: number): Promise<void> {
     await this.prisma.client
       .update({
-        where: { id: clientId },
+        where: { id: clientId, deletedAt: null },
         data: {
           isBlacklisted: false,
           blacklistReason: null,

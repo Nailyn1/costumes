@@ -16,7 +16,7 @@ import {
   SEARCH_COMBOBOX_MAX_HEIGHT,
   SEARCH_COMBOBOX_Z_INDEX,
 } from "src/components/searchComboboxSettings";
-import { formatPhoneNumber } from "src/utills/formatters";
+import { formatPhoneNumber } from "src/utils/formatters";
 import { useSearchClients } from "../../hooks/useClients";
 
 interface ClientSearchInputProps {

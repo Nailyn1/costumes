@@ -1,4 +1,6 @@
 import {
+  CreateCostumeCategoryRequestSchema,
+  UpdateCostumeCategoryRequestSchema,
   CostumesAvailabilityResponseSchema,
   CostumesSearchAvailableResponseSchema,
   CostumesSearchResponseSchema,
@@ -25,4 +27,10 @@ export class CostumesSearchAvailableResponse extends createZodDto(
 ) {}
 export class CostumesAvailabilityResponse extends createZodDto(
   CostumesAvailabilityResponseSchema,
+) {}
+export class CreateCostumeCategoryRequest extends createZodDto(
+  CreateCostumeCategoryRequestSchema,
+) {}
+export class UpdateCostumeCategoryRequest extends createZodDto(
+  UpdateCostumeCategoryRequestSchema,
 ) {}

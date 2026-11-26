@@ -1,24 +1,26 @@
 import { Stack, Group, TextInput, Button, Divider } from "@mantine/core";
 import { IconCheck } from "@tabler/icons-react";
 import { useForm } from "@mantine/form";
-import { zodResolver } from "mantine-form-zod-resolver";
+import { schemaResolver } from "@mantine/form";
 import { CreateClientRequestSchema } from "@costumes/shared";
 import { IMaskInput } from "react-imask";
 import { useCreateClient } from "../../hooks/useClients";
 import type { ClientCreateFormProps } from "../../types/clientTypes";
+import { applyApiFieldErrors } from "src/utils/handleError";
 
 export function ClientCreateForm({ onCreated }: ClientCreateFormProps) {
   const createClientMutation = useCreateClient();
 
   const form = useForm({
     initialValues: { name: "", phone: "" },
-    validate: zodResolver(CreateClientRequestSchema),
+    validate: schemaResolver(CreateClientRequestSchema),
   });
 
   const handleSubmit = (values: typeof form.values) => {
     createClientMutation.mutate(
       { name: values.name, phone: values.phone },
       {
+        onError: (error) => applyApiFieldErrors(error, ["name", "phone"], form.setFieldError),
         onSuccess: (createdClient) => {
           onCreated({
             id: createdClient.clientId.toString(),
@@ -26,6 +28,7 @@ export function ClientCreateForm({ onCreated }: ClientCreateFormProps) {
             phone: createdClient.phone,
             children: [],
             isBlacklisted: false,
+            whatsappConfirmed: createdClient.whatsappConfirmed,
           });
           form.reset();
         },

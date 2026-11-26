@@ -8,6 +8,7 @@ generator client {
   provider = "prisma-client"
   output   = "../src/prisma/generated"
   moduleFormat    = "cjs"
+  previewFeatures = ["partialIndexes"]
 }
 
 datasource db {
@@ -22,6 +23,10 @@ model User {
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+
+  auditEvents AuditEvent[]
+  costumePhotos CostumePhoto[]
+  commandReceipts CommandReceipt[]
 
   @@map("users")
 }
@@ -43,6 +48,7 @@ model Client {
   updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
 
+  @@unique([phone], where: { deletedAt: null })
   @@map("clients")
 }
 
@@ -65,16 +71,50 @@ model Costume {
   id            Int           @id @default(autoincrement())
   inventoryCode String        @unique @default(dbgenerated("generate_costume_code()")) @map("inventory_code")
   name          String
-  status        CostumeStatus @default(available)
   notes         String?
-  
+
+  categoryId    Int?          @map("category_id")
+  category      CostumeCategory? @relation(fields: [categoryId], references: [id])
+  gender        CostumeGender?
+  heightFrom    Int?          @map("height_from")
+  heightTo      Int?          @map("height_to")
+  sizeLabel     String?       @map("size_label")
+  // Теряемые части: [{ name, qty }], схема CostumePartsSchema из shared
+  parts         Json          @default("[]")
+
   orders        Order[]
+  photos        CostumePhoto[]
 
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
   deletedAt     DateTime?     @map("deleted_at")
 
+  @@index([categoryId])
   @@map("costumes")
+}
+
+model CostumeCategory {
+  id        Int       @id @default(autoincrement())
+  name      String
+  parentId  Int?      @map("parent_id")
+  parent    CostumeCategory?  @relation("CostumeCategoryTree", fields: [parentId], references: [id])
+  children  CostumeCategory[] @relation("CostumeCategoryTree")
+  sortOrder Int       @default(0) @map("sort_order")
+
+  costumes  Costume[]
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@index([parentId])
+  @@map("costume_categories")
+}
+
+enum CostumeGender {
+  girl
+  boy
+  unisex
 }
 
 model Visit {
@@ -91,17 +131,73 @@ model Visit {
   returnTimeUntil String      @map("return_time_until")
   
   status          VisitStatus @default(reserved)
+  version         Int         @default(1)
   notes           String?     @db.Text
   
   orders          Order[]
   notifications Notification[]
-  deposit         Deposit?
+  deposits        Deposit[]
+  moneyOperations VisitMoneyOperation[]
+  auditEvents     AuditEvent[]
 
   createdAt       DateTime    @default(now()) @map("created_at")
   updatedAt       DateTime    @updatedAt @map("updated_at")
   deletedAt       DateTime?   @map("deleted_at")
 
   @@map("visits")
+}
+
+model AuditEvent {
+  id                Int      @id @default(autoincrement())
+  occurredAt        DateTime @default(now()) @map("occurred_at")
+  actorUserId       Int?     @map("actor_user_id")
+  actorUser         User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  actorNameSnapshot String   @map("actor_name_snapshot")
+  source            String
+  action            String
+  entityType        String   @map("entity_type")
+  entityId          Int      @map("entity_id")
+  visitId           Int?     @map("visit_id")
+  visit             Visit?   @relation(fields: [visitId], references: [id], onDelete: SetNull)
+  orderId           Int?     @map("order_id")
+  commandId         String   @map("command_id")
+  schemaVersion     Int      @default(1) @map("schema_version")
+  payload           Json
+
+  @@index([visitId, occurredAt, id])
+  @@index([occurredAt, id])
+  @@index([actorUserId])
+  @@index([entityType, entityId])
+  @@index([orderId])
+  @@map("audit_events")
+}
+
+model CommandReceipt {
+  id            Int      @id @default(autoincrement())
+  commandId     String   @unique @map("command_id")
+  actorUserId   Int      @map("actor_user_id")
+  actorUser     User     @relation(fields: [actorUserId], references: [id])
+  commandPath   String   @map("command_path")
+  requestHash   String   @map("request_hash")
+  result        Json
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([actorUserId, createdAt])
+  @@map("command_receipts")
+}
+
+model VisitMoneyOperation {
+  id             Int                     @id @default(autoincrement())
+  visitId        Int                     @map("visit_id")
+  visit          Visit                   @relation(fields: [visitId], references: [id])
+  kind           VisitMoneyOperationKind
+  amount         Int
+  legacyImported Boolean                 @default(false) @map("legacy_imported")
+  createdAt      DateTime                @default(now()) @map("created_at")
+  voidedAt       DateTime?               @map("voided_at")
+
+  @@index([visitId, voidedAt])
+  @@map("visit_money_operations")
 }
 
 model Order {
@@ -125,6 +221,8 @@ model Order {
   rentPrice        Int         @map("rent_price")
   prepaymentAmount Int         @default(0) @map("prepayment_amount")
   finalPayment     Int?        @map("final_payment")
+  // Снимок состава костюма на момент выдачи (T-110); null у заказов до выдачи и старых
+  issuedParts      Json?       @map("issued_parts")
 
   tagStatus        TagStatus   @default(not_written) @map("tag_status")
   status           OrderStatus @default(reserved)
@@ -138,7 +236,7 @@ model Order {
 }
 model Deposit {
   id        Int         @id @default(autoincrement())
-  visitId   Int         @unique @map("visit_id")
+  visitId   Int         @map("visit_id")
   visit     Visit       @relation(fields: [visitId], references: [id])
   type      DepositType @default(none)
   returned  Boolean     @default(false)
@@ -148,6 +246,7 @@ model Deposit {
   updatedAt DateTime    @updatedAt @map("updated_at")
   deletedAt DateTime?   @map("deleted_at")
 
+  @@unique([visitId], map: "deposits_active_visit_id_key", where: raw("deleted_at IS NULL"))
   @@map("deposits")
 }
 model Notification {
@@ -183,17 +282,18 @@ enum DepositType {
   none
 }
 
+enum VisitMoneyOperationKind {
+  issue_payment
+  debt_payment
+  customer_refund
+}
+
 
 enum VisitStatus {
   reserved
   issued
   completed
   cancelled
-}
-
-enum CostumeStatus {
-  available
-  issued
 }
 
 enum OrderStatus {
@@ -206,4 +306,28 @@ enum OrderStatus {
 enum TagStatus {
   written
   not_written
+  not_required
+}
+
+// Фото костюма (T-111). key/thumbKey — ключи объектов в S3 (costumes/{costumeId}/{uuid}.jpg).
+model CostumePhoto {
+  id              Int       @id @default(autoincrement())
+  costumeId       Int       @map("costume_id")
+  costume         Costume   @relation(fields: [costumeId], references: [id])
+
+  key             String
+  thumbKey        String    @map("thumb_key")
+  width           Int
+  height          Int
+  sizeBytes       Int       @map("size_bytes")
+  sortOrder       Int       @default(0) @map("sort_order")
+
+  createdByUserId Int?      @map("created_by_user_id")
+  createdByUser   User?     @relation(fields: [createdByUserId], references: [id])
+
+  createdAt       DateTime  @default(now()) @map("created_at")
+  deletedAt       DateTime? @map("deleted_at")
+
+  @@index([costumeId, deletedAt, sortOrder])
+  @@map("costume_photos")
 }

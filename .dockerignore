@@ -1,5 +1,6 @@
-node_modules
+**/node_modules
 npm-debug.log
+pnpm-debug.log
 Dockerfile
 .dockerignore
 .git
@@ -9,3 +10,16 @@ apps/*/dist
 shared/dist
 *.tsbuildinfo
 apps/*/node_modules
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.*.example
+!apps/crm-frontend/.env.production
+.claude
+.codex
+certs
+backups
+**/*.pem
+**/*.key
+**/*.dump
+**/*.backup

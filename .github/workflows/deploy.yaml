@@ -4,45 +4,147 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: production-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: "123456"
+          POSTGRES_DB: costumes_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d costumes_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared
+        run: pnpm --filter @costumes/shared build
+
+      - name: Generate Prisma client
+        run: pnpm exec prisma generate
+        working-directory: apps/backend
+
+      - name: Typecheck backend
+        run: pnpm --filter @costumes/backend typecheck
+
+      - name: Typecheck frontend
+        run: pnpm exec tsc -b
+        working-directory: apps/crm-frontend
+
+      - name: Lint backend
+        run: pnpm --filter @costumes/backend lint
+
+      - name: Lint frontend
+        run: pnpm lint
+        working-directory: apps/crm-frontend
+
+      - name: Test backend and frontend
+        run: pnpm test
+
+      - name: Configure integration test environment
+        run: cp apps/backend/.env.test.example apps/backend/.env.test
+
+      - name: Test backend integration
+        run: pnpm test:int
+
   build-and-push:
+    if: github.event_name == 'push'
+    needs: check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
 
       - name: Login to Docker Hub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build and Push Docker Images
+        env:
+          IMAGE_TAG: ${{ github.sha }}
         run: |
 
           touch .env
           docker compose build
 
+          # Тег по SHA (для отката) и плавающий latest
           docker compose push
+
+          docker tag nailyn1/costumes-backend:"$IMAGE_TAG" nailyn1/costumes-backend:latest
+          docker tag nailyn1/costumes-frontend:"$IMAGE_TAG" nailyn1/costumes-frontend:latest
+          docker push nailyn1/costumes-backend:latest
+          docker push nailyn1/costumes-frontend:latest
 
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
       - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.2
         with:
           host: ${{ secrets.SERVER_IP }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd ~/costumes
+            set -eu
+            cd /var/www/costumes
 
-            git pull origin main
+            git fetch origin main
+            git merge --ff-only ${{ github.sha }}
+            test "$(git rev-parse HEAD)" = "${{ github.sha }}"
 
-            docker compose pull
+            export IMAGE_TAG=${{ github.sha }}
+            export COMPOSE_FILE=docker-compose.yaml
+            export COMPOSE_FILE=docker-compose.yaml
 
-            docker compose up -d
+            test -s /etc/nginx/ssl/pupavka.site/origin.pem
+            test -s /etc/nginx/ssl/pupavka.site/origin.key
+            docker compose config --quiet
+            docker compose pull backend frontend postgres redis
 
-            docker compose exec -T -w /app/apps/backend backend npx prisma migrate deploy
+            docker compose up -d --wait postgres redis
+
+            docker compose run --rm --no-deps backend ./node_modules/.bin/prisma migrate deploy
+            docker compose up -d backend
+            docker compose run --rm --no-deps frontend nginx -t
+            docker compose up -d frontend

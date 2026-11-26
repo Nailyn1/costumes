@@ -20,6 +20,7 @@ import {
   IconMessage2,
   IconShirt,
   IconUsers,
+  IconClipboardList,
 } from "@tabler/icons-react";
 import { useNotWrittenCostumes } from "src/features/visits/hooks/useVisits";
 
@@ -47,6 +48,11 @@ export function MainLayout() {
       link: "/bookings/return",
       label: "Возврат костюмов",
       icon: IconPackageImport,
+    },
+    {
+      link: "/bookings/visits",
+      label: "Визиты",
+      icon: IconClipboardList,
     },
     {
       link: "/bookings/notifications",
@@ -80,7 +86,7 @@ export function MainLayout() {
           </Badge>
         ) : null
       }
-      active={location.pathname === link.link}
+      active={location.pathname === link.link || location.pathname.startsWith(`${link.link}/`)}
       onClick={() => {
         if (opened) toggle();
       }}

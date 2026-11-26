@@ -5,9 +5,11 @@ import {
   HttpStatus,
   Post,
   Req,
+  UseGuards,
 } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
+import { WebhookTokenGuard } from './webhook-token.guard';
 
 export interface GreenApiStatusWebhook {
   typeWebhook: 'outgoingMessageStatus' | 'outgoingAPIMessageStatus';
@@ -60,9 +62,7 @@ export interface GreenApiStateWebhook {
 }
 
 export type GreenApiWebhook =
-  | GreenApiStatusWebhook
-  | GreenApiIncomingWebhook
-  | GreenApiStateWebhook;
+  GreenApiStatusWebhook | GreenApiIncomingWebhook | GreenApiStateWebhook;
 
 @Controller('webhooks/whatsapp')
 export class NotificationController {
@@ -73,14 +73,12 @@ export class NotificationController {
   ) {}
 
   @Post()
+  @UseGuards(WebhookTokenGuard)
   @HttpCode(HttpStatus.OK)
   async handleWebHook(@Body() body: GreenApiWebhook, @Req() req: any) {
     const l = await this.notificationService.getContextualLogger(body, req);
 
-    l.debug(
-      { webhookType: body.typeWebhook, payload: body },
-      'Received Green-API webhook',
-    );
+    l.debug({ webhookType: body.typeWebhook }, 'Received Green-API webhook');
     try {
       if (
         body.typeWebhook === 'outgoingMessageStatus' ||

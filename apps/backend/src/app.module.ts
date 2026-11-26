@@ -6,6 +6,8 @@ import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
 import { ClientChildModule } from './client-child/client-child.module';
 import { CostumesModule } from './costumes/costumes.module';
+import { CostumePhotosModule } from './costume-photos/costume-photos.module';
+import { S3Module } from './storage/s3.module';
 import { VisitOrderModule } from './visit-order/visit-order.module';
 import { QueueModule } from './redis/queue.module';
 import { NotificationModule } from './notification/notification.module';
@@ -19,7 +21,8 @@ import { loggerConfigFactory } from './config/logger.config';
     SentryModule.forRoot(),
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: ['.env', 'apps/backend/.env'],
+      // При запуске из корня значения backend/.env имеют приоритет над корневым .env.
+      envFilePath: ['apps/backend/.env', '.env'],
     }),
     LoggerModule.forRootAsync({
       imports: [ConfigModule],
@@ -31,7 +34,9 @@ import { loggerConfigFactory } from './config/logger.config';
     QueueModule,
     AuthModule,
     ClientChildModule,
+    S3Module,
     CostumesModule,
+    CostumePhotosModule,
     VisitOrderModule,
     NotificationModule,
   ],

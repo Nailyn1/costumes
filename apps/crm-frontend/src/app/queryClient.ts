@@ -1,9 +1,9 @@
 import { QueryClient, QueryCache, MutationCache } from "@tanstack/react-query";
 import { notifications } from "@mantine/notifications";
-import { handleError } from "src/utills/handleError";
+import { handleError } from "src/utils/handleError";
 
-const QUERY_ERROR_TITLE = "Data upload error";
-const MUTATION_ERROR_TITLE = "Operation error";
+const QUERY_ERROR_TITLE = "Не удалось загрузить данные";
+const MUTATION_ERROR_TITLE = "Не удалось выполнить действие";
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -32,10 +32,10 @@ export const queryClient = new QueryClient({
   }),
 
   mutationCache: new MutationCache({
-    onError: (error) => {
+    onError: (error, _variables, _context, mutation) => {
       const message = handleError(error, {
         title: MUTATION_ERROR_TITLE,
-        silentStatuses: [401],
+        silentStatuses: mutation.meta?.showUnauthorized === true ? [] : [401],
       });
 
       if (message) {

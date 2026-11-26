@@ -1,13 +1,17 @@
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
+
+RUN corepack enable
 
 WORKDIR /app
 
 COPY . .
 
-RUN npm install
+RUN pnpm install --frozen-lockfile
+
+RUN pnpm --filter @costumes/shared build
 
 WORKDIR /app/apps/crm-frontend
-RUN npm run build
+RUN pnpm build
 
 FROM nginx:alpine AS production
 

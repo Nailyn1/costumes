@@ -1,81 +1,53 @@
-# Project: Costumes CRM
+# Costumes CRM
 
-## 1. Project Overview
+Внутренняя CRM точки проката детских костюмов: клиенты и дети, костюмы, бронирование (визиты и заказы), бирки, выдача, возврат, залоги, WhatsApp-уведомления клиентам. Одна точка, несколько сотрудников без ролей, работа с ПК и телефона. Пиковый сезон — новогодние праздники; система в проде с прошлого сезона (~500 аренд).
 
-Это full-stack система (CRM) для управления бизнесом по аренде костюмов.
-Главные бизнес-процессы: учет клиентов, бронирование костюмов, ведение заказов (визитов) и управление детскими костюмами.
+Монорепозиторий (pnpm workspaces):
+- `apps/backend` — NestJS 12, Prisma 7, PostgreSQL 15, Redis 7, BullMQ, Socket.IO
+- `apps/crm-frontend` — React 19, Vite 8, Mantine 9, TanStack Query 5, Zustand 5
+- `shared` — контракт API: TypeSpec → OpenAPI → Zod 4-схемы + typed-openapi-клиент
 
-## 2. Tech Stack
+## Документация — читай перед работой
 
-- **Frontend:** React, Mantine (UI), Tanstack Query, Zustand, TypeScript.
-- **Backend:** Node.js, Nest.js, TypeScript.
-- **Database / Cache:** PostgreSQL, Redis.
-- **Infrastructure:** Docker, Nginx.
-- **API & Types:** TypeSpec (для генерации OpenAPI и Zod-схем в пакете `shared`).
+| Файл | Когда читать |
+|---|---|
+| [.agents/domain.md](.agents/domain.md) | **Всегда** при работе с бизнес-логикой: сущности, статусы, флоу, инварианты, известные баги |
+| [.agents/architecture.md](.agents/architecture.md) | Как устроена система, Redis-ключи, auth, деплой |
+| [.agents/deployment.md](.agents/deployment.md) | Production VPS, расположение файлов, сертификаты, восстановление БД и деплой |
+| [.agents/backend.md](.agents/backend.md) | Любые изменения в `apps/backend` |
+| [.agents/frontend.md](.agents/frontend.md) | Любые изменения в `apps/crm-frontend` |
+| [.agents/shared-api.md](.agents/shared-api.md) | **Любое** изменение API (эндпоинт, параметр, тип) |
+| [.agents/setup.md](.agents/setup.md) | Запуск, env, команды |
+| [.agents/workflow.md](.agents/workflow.md) | Цикл задачи, Definition of Done, правила коммитов |
+| [.agents/testing.md](.agents/testing.md) | Тесты: стратегия, структура, команды (`pnpm test`, `pnpm test:int`); читай при любом изменении логики и баг-фиксе |
+| [tasks/](tasks/README.md) | Задачи: `backlog/` · `in-progress/` · `done/` (один файл = одна задача) |
 
-## 3. Directory Structure & Specific Rules
+## Быстрый старт
 
-- `apps/crm-frontend` — React приложение. [Перед работой с UI читай /docs/FRONTEND_RULES.md]
-- `apps/backend` — Node.js сервер. [Перед работой с API читай /docs/BACKEND_RULES.md]
-- `/shared` — Общий пакет типов, схем и контрактов API.
-- `/docs` — Архитектурные решения и правила для frontend and backend.
-
-## 4. CRITICAL WORKFLOW: Modifying API & Shared Types
-
-- Никогда не коммить чувствительные данные (env файлы)
-
-**ВАЖНО:** Запрещено напрямую менять типы и контракты API в бэкенде или фронтенде. Любое изменение API (добавление эндпоинта, изменение параметров, обновление типов) ДОЛЖНО происходить через пакет `shared` по следующему строгому алгоритму:
-
-1. **Обнови TypeSpec файлы:**
-   Внеси изменения в `.tsp` файлы в `shared/modules/` (например, `auth.tsp`, `children.tsp`, `clients.tsp`, `costumes.tsp`, `visits.tsp`).
-2. **Сгенерируй OpenAPI:**
-   Перейди в директорию `shared` (или `costumes/shared`) и выполни команду генерации API:
-   `[npm run gen:api в папке shared]`
-3. **Экспортируй типы и схемы:**
-   Если был создан новый эндпоинт или тип, открой соответствующий файл в `shared/src/` (например, `auth.ts`, `children-client.ts`, `costumes.ts`, `visits-orders.ts`) и вручную пропиши экспорт Zod-схемы и TypeScript типа на основе сгенерированных данных.
-   _Пример:_
-
-```typescript
-   export type AddClientInBlackListRequestDto = z.infer<typeof schemas.Clients_blacklistReason>;
-   export const CreateClientRequestSchema = schemas.Clients_CreateClientRequest;
-4. **Собери пакет shared:**
-    Выполни сборку пакета, чтобы обновить файлы в папке dist. Только после этого бэкенд и фронтенд получат доступ к новым типам.
-    [npm run build в папке shared]
-
-## 5. Useful Commands
-    Запуск инфраструктуры локально (БД, Redis): [docker compose -f docker-compose.dev.yml up -d]
-    Запуск Backend: в корне проекта costumes [npm run dev:backend]
-    Запуск Frontend: в корне проекта costumes [npm run dev:frontend]
+```bash
+pnpm install
+docker compose -f docker-compose.dev.yml up -d
+pnpm --filter @costumes/shared build
+cd apps/backend && pnpm exec prisma migrate dev && pnpm db:seed && cd ../..
+pnpm dev:backend    # http://localhost:5000
+pnpm dev:frontend   # http://localhost:5173
 ```
 
-## Git & Commit Rules
+## Главные правила
 
-- Do not commit unless the user explicitly asks.
-- Before committing, run relevant checks when practical.
-- Use Conventional Commits.
-- Commit messages must be in English.
-- Format: `<type>(<scope>): <summary>`
+1. **API меняется только через `shared`**: TypeSpec (`shared/api-spec/modules/*.tsp`) → `pnpm gen:api` (в `shared`) → ручной экспорт в `shared/src/*.ts` → `pnpm build` (в `shared`). Никаких локальных API-типов в apps. Подробно — [shared-api.md](.agents/shared-api.md).
+2. **Backend:** Controller → Service → Repository → Prisma (репозиторий — только доступ к данным, без бизнес-правил; добавляем постепенно в каждый модуль, пока есть модули, где Service ходит в Prisma напрямую — новые модули сразу с репозиторием); валидация через `createZodDto(Schema)`; транзакции для многотабличных операций; **soft delete** (`deletedAt`) и фильтр `deletedAt: null` во всех выборках; ошибки — Nest-исключения с русским текстом.
+3. **Время:** сервер в `TZ=UTC`, местное время хранится как UTC «как есть» — никаких конвертаций часовых поясов.
+4. **Frontend:** component → React Query hook → service → `apiClient`; только Mantine без своих CSS; формы — `@mantine/form` + `zodResolver`; каждый экран обязан работать на мобильном.
+5. `any` запрещён в обоих приложениях.
+6. Неясное бизнес-правило — **спроси владельца**, не угадывай. Новые найденные проблемы — задачей в [`tasks/backlog/`](tasks/README.md), не чинить молча.
+7. **Тесты:** новая бизнес-логика и баг-фиксы — вместе с тестами ([testing.md](.agents/testing.md)); `pnpm test` и `pnpm test:int` зелёные до коммита.
+8. Миграции Prisma — только новые через `prisma migrate dev`; применённые не редактировать; деструктивные — только с согласия владельца (в проде живые данные).
 
-Allowed types:
+## Git
 
-- `feat` - new feature
-- `fix` - bug fix
-- `refactor` - code restructuring without behavior change
-- `chore` - tooling/config/maintenance
-- `docs` - documentation only
-- `test` - tests only
-- `style` - formatting only
-
-Scopes:
-
-- `front`
-- `back`
-- `shared`
-- `root`
-- `infra`
-
-Examples:
-
-- `fix(front): keep search combobox above app header`
-- `feat(back): add visit return endpoint`
-- `docs(root): document local development workflow`
+- **Не коммитить и не пушить без явной просьбы владельца.** Перед коммитом — проверки из Definition of Done ([workflow.md](.agents/workflow.md#3-definition-of-done)).
+- Никогда не коммитить `.env*` (кроме `apps/crm-frontend/.env.production`), сертификаты, дампы, `dist`, `src/prisma/generated`.
+- Conventional Commits на английском: `<type>(<scope>): <summary>`; type: `feat | fix | refactor | chore | docs | test | style`; scope: `front | back | shared | root | infra`.
+  Примеры: `fix(front): keep search combobox above app header`, `feat(back): add visit return endpoint`.
+- Ветки: `<type>/<short-description>` от `main`. **`main` = прод** (автодеплой через GitHub Actions).

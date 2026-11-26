@@ -9,6 +9,7 @@ import { HttpModule } from '@nestjs/axios';
 import { NotificationGateway } from './notification.gateway';
 import { WsJwtGuard } from '../auth/jwt/ws-jwt.guard';
 import { AuthModule } from '../auth/auth.module';
+import { NotificationRepository } from './notification.repository';
 
 @Module({
   imports: [
@@ -32,10 +33,11 @@ import { AuthModule } from '../auth/auth.module';
   providers: [
     NotificationService,
     WhatsappProvider,
+    NotificationRepository,
     NotificationProcessor,
     NotificationGateway,
     WsJwtGuard,
   ],
-  exports: [BullModule],
+  exports: [BullModule, NotificationService, NotificationRepository],
 })
 export class NotificationModule {}

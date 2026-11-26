@@ -4,7 +4,9 @@ import {
   Stack,
   Center,
   Loader,
-  SegmentedControl,
+  Chip,
+  Group,
+  ScrollArea,
   Box,
 } from "@mantine/core";
 import { useDisclosure, useMediaQuery } from "@mantine/hooks";
@@ -15,10 +17,13 @@ import { MarkDepositModal } from "src/features/visits/components/returnPage/Mark
 import { ReturnCard } from "src/features/visits/components/returnPage/ReturnCard";
 import { ReturnModal } from "src/features/visits/components/returnPage/ReturnModal";
 import { ReturnSearchInput } from "src/features/visits/components/returnPage/ReturnSearchInput";
+import { SettleBalanceModal } from "src/features/visits/components/returnPage/SettleBalanceModal";
+import { UnsettledBalanceCard, type UnsettledBalanceItem } from "src/features/visits/components/returnPage/UnsettledBalanceCard";
 import {
   useIssuedVisits,
   useUnreturnedDeposits,
   useVisitForReturn,
+  useUnsettledBalances,
 } from "src/features/visits/hooks/useVisits";
 import type { UnreturnedDepositItem } from "src/features/visits/types/visitTypes";
 
@@ -33,6 +38,8 @@ export function ReturnPage() {
     useDisclosure(false);
   const [selectedDepVisit, setSelectedDepVisit] =
     useState<UnreturnedDepositItem | null>(null);
+  const [selectedBalanceVisit, setSelectedBalanceVisit] =
+    useState<UnsettledBalanceItem | null>(null);
 
   const {
     data: infiniteData,
@@ -49,6 +56,14 @@ export function ReturnPage() {
     hasNextPage: hasNextDep,
     isFetchingNextPage: isFetchingNextDep,
   } = useUnreturnedDeposits(view === "deposits");
+
+  const {
+    data: balancesData,
+    isLoading: isBalancesLoading,
+    fetchNextPage: fetchNextBalance,
+    hasNextPage: hasNextBalance,
+    isFetchingNextPage: isFetchingNextBalance,
+  } = useUnsettledBalances(view === "balances");
 
   const {
     data: visitDetails,
@@ -78,24 +93,31 @@ export function ReturnPage() {
 
   const allVisits = infiniteData?.pages.flatMap((page) => page.items) || [];
   const allDeposits = depData?.pages.flatMap((page) => page.items) || [];
+  const allBalances = balancesData?.pages.flatMap((page) => page.items) || [];
 
   return (
     <Stack gap="lg">
       <Title order={isMobile ? 3 : 2}>Возврат костюмов</Title>
-      <SegmentedControl
-        fullWidth
-        value={view}
-        onChange={setView}
-        data={[
-          { label: "Ожидают возврата", value: "awaiting" },
-          { label: "Забытые залоги", value: "deposits" },
-        ]}
-      />
-      <ReturnSearchInput onSelectVisit={handleOpenVisit} />
+      <ScrollArea type="never">
+        <Chip.Group value={view} onChange={setView}>
+          <Group wrap="nowrap" gap="xs" pb={4}>
+            {[
+              { label: "Ожидают возврата", value: "awaiting" },
+              { label: "Забытые залоги", value: "deposits" },
+              { label: "Незакрытые расчёты", value: "balances" },
+            ].map(({ label, value }) => (
+              <Chip key={value} value={value} variant="outline">
+                {label}
+              </Chip>
+            ))}
+          </Group>
+        </Chip.Group>
+      </ScrollArea>
+      {view === "awaiting" && <ReturnSearchInput onSelectVisit={handleOpenVisit} />}
 
       <Stack gap="sm">
         <Text fw={700} size="sm" c="dimmed" tt="uppercase">
-          Ожидают возврата
+          {view === "deposits" ? "Забытые залоги" : view === "balances" ? "Незакрытые расчёты" : "Ожидают возврата"}
         </Text>
         {view === "awaiting" && (
           <>
@@ -163,6 +185,27 @@ export function ReturnPage() {
             )}
           </>
         )}
+        {view === "balances" && (
+          <>
+            {isBalancesLoading && <Center p="xl"><Loader /></Center>}
+            {!isBalancesLoading && allBalances.length === 0 && (
+              <Center p="xl"><Text c="dimmed">Нет незакрытых расчётов</Text></Center>
+            )}
+            {allBalances.map((visit) => (
+              <UnsettledBalanceCard
+                key={visit.visitId}
+                visit={visit}
+                onSelect={() => setSelectedBalanceVisit(visit)}
+              />
+            ))}
+            <InView onChange={(inView) =>
+              inView && hasNextBalance && !isFetchingNextBalance && fetchNextBalance()
+            }>
+              <Box h={20} />
+            </InView>
+            {isFetchingNextBalance && <Center p="sm"><Loader size="sm" /></Center>}
+          </>
+        )}
       </Stack>
       <ReturnModal
         opened={opened}
@@ -179,6 +222,11 @@ export function ReturnPage() {
         onClose={handleCloseDeposit}
         visitId={selectedDepVisit?.visitId}
         clientName={selectedDepVisit?.clientName || ""}
+      />
+      <SettleBalanceModal
+        visitId={selectedBalanceVisit?.visitId ?? null}
+        visitCode={selectedBalanceVisit?.visitCode ?? ""}
+        onClose={() => setSelectedBalanceVisit(null)}
       />
     </Stack>
   );

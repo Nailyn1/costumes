@@ -1,8 +1,8 @@
 import { Button, Paper, Stack, Text, TextInput, Title } from "@mantine/core";
-import { useForm } from "@mantine/form";
-import { zodResolver } from "mantine-form-zod-resolver";
+import { schemaResolver, useForm } from "@mantine/form";
 import { LoginRequestSchema } from "@costumes/shared";
 import { useLogin } from "../hooks/useLogin";
+import { applyApiFieldErrors } from "src/utils/handleError";
 
 export const LoginForm = () => {
   const loginMutation = useLogin();
@@ -11,11 +11,13 @@ export const LoginForm = () => {
       login: "",
       password: "",
     },
-    validate: zodResolver(LoginRequestSchema),
+    validate: schemaResolver(LoginRequestSchema),
   });
 
   const onSubmit = form.onSubmit((values) => {
-    loginMutation.mutate(values);
+    loginMutation.mutate(values, {
+      onError: (error) => applyApiFieldErrors(error, ["login", "password"], form.setFieldError),
+    });
   });
 
   return (

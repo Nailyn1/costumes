@@ -1,95 +1,80 @@
-import { makeApi, Zodios, type ZodiosOptions } from "@zodios/core";
+// @ts-nocheck
+import type * as __TypedOpenapi from "./openapi-client.types.js";
+
 import { z } from "zod";
 
-const Auth_LoginRequest = z
+// <Schemas>
+export type Auth_LoginRequest = __TypedOpenapi.Schemas.Auth_LoginRequest;
+export const Auth_LoginRequest = z
   .object({ login: z.string().min(6), password: z.string().min(12) })
-  .passthrough();
-const Auth_LoginSuccessResponse = z
-  .object({
-    accessToken: z.string(),
-    user: z.object({ login: z.string(), name: z.string() }).passthrough(),
-  })
-  .passthrough();
-const Common_Error = z
-  .object({ code: z.number().int(), message: z.string() })
-  .passthrough();
-const Auth_RefreshSuccessResponse = z
-  .object({ accessToken: z.string() })
-  .passthrough();
-const Children_ChildName = z.string();
-const Children_CreateChildRequest = z
-  .object({
-    clientId: z.number().int(),
-    name: Children_ChildName.min(2).regex(
-      /^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\s-]+$/
-    ),
-  })
-  .passthrough();
-const Children_ChildResponse = z
-  .object({
-    childId: z.number().int(),
-    name: Children_ChildName.min(2).regex(
-      /^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\s-]+$/
-    ),
-    clientId: z.number().int(),
-  })
-  .passthrough();
-const Children_UpdateChildRequest = z
-  .object({
-    name: Children_ChildName.min(2).regex(
-      /^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\s-]+$/
-    ),
-  })
-  .partial()
-  .passthrough();
-const Children_ChildUpdateResponse = z
-  .object({
-    childId: z.number().int(),
-    name: Children_ChildName.min(2).regex(
-      /^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\s-]+$/
-    ),
-  })
-  .passthrough();
-const Clients_ClientName = z.string();
-const Clients_PhoneString = z.string();
-const Clients_CreateClientRequest = z
-  .object({
-    name: Clients_ClientName.min(2).regex(
-      /^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\s-]+$/
-    ),
-    phone: Clients_PhoneString.regex(/^\+7\d{10}$/),
-  })
-  .passthrough();
-const Children_Child = z
-  .object({ childId: z.number().int(), name: z.string() })
-  .passthrough();
-const Clients_Client = z
+  .catchall(z.unknown());
+
+export type Auth_LoginSuccessResponse = __TypedOpenapi.Schemas.Auth_LoginSuccessResponse;
+export const Auth_LoginSuccessResponse = z
+  .object({ accessToken: z.string(), user: z.object({ login: z.string(), name: z.string() }).catchall(z.unknown()) })
+  .catchall(z.unknown());
+
+export type Auth_RefreshSuccessResponse = __TypedOpenapi.Schemas.Auth_RefreshSuccessResponse;
+export const Auth_RefreshSuccessResponse = z.object({ accessToken: z.string() }).catchall(z.unknown());
+
+export type Children_Child = __TypedOpenapi.Schemas.Children_Child;
+export const Children_Child = z.object({ childId: z.number().int(), name: z.string() }).catchall(z.unknown());
+
+export type Children_ChildName = __TypedOpenapi.Schemas.Children_ChildName;
+export const Children_ChildName = z.string().min(2).regex(new RegExp("^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\\s-]+$"));
+
+export type Children_ChildResponse = __TypedOpenapi.Schemas.Children_ChildResponse;
+export const Children_ChildResponse = z
+  .object({ childId: z.number().int(), name: Children_ChildName, clientId: z.number().int() })
+  .catchall(z.unknown());
+
+export type Children_ChildUpdateResponse = __TypedOpenapi.Schemas.Children_ChildUpdateResponse;
+export const Children_ChildUpdateResponse = z
+  .object({ childId: z.number().int(), name: Children_ChildName })
+  .catchall(z.unknown());
+
+export type Children_CreateChildRequest = __TypedOpenapi.Schemas.Children_CreateChildRequest;
+export const Children_CreateChildRequest = z
+  .object({ clientId: z.number().int(), name: Children_ChildName })
+  .catchall(z.unknown());
+
+export type Children_UpdateChildRequest = __TypedOpenapi.Schemas.Children_UpdateChildRequest;
+export const Children_UpdateChildRequest = z.object({ name: Children_ChildName }).partial().catchall(z.unknown());
+
+export type Clients_ClientName = __TypedOpenapi.Schemas.Clients_ClientName;
+export const Clients_ClientName = z.string().min(2).regex(new RegExp("^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\\s-]+$"));
+
+export type Clients_PhoneString = __TypedOpenapi.Schemas.Clients_PhoneString;
+export const Clients_PhoneString = z.string().regex(new RegExp("^\\+7\\d{10}$"));
+
+export type Clients_Client = __TypedOpenapi.Schemas.Clients_Client;
+export const Clients_Client = z
   .object({
     clientId: z.number().int(),
-    name: Clients_ClientName.min(2).regex(
-      /^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\s-]+$/
-    ),
-    phone: Clients_PhoneString.regex(/^\+7\d{10}$/),
+    name: Clients_ClientName,
+    phone: Clients_PhoneString,
     children: z.array(Children_Child).optional(),
     isBlacklisted: z.boolean(),
     blacklistReason: z.string().optional(),
+    whatsappConfirmed: z.boolean(),
   })
-  .passthrough();
-const Costumes_VisitCode = z.string();
-const Visits_VisitStatus = z.enum([
-  "reserved",
-  "issued",
-  "completed",
-  "cancelled",
-]);
-const Visits_TimeString = z.string();
-const Visits_OrderStatus = z.enum([
-  "reserved",
-  "issued",
-  "returned",
-  "cancelled",
-]);
-const Clients_ClientOrderHistory = z
+  .catchall(z.unknown());
+
+export type Clients_ClientItem = __TypedOpenapi.Schemas.Clients_ClientItem;
+export const Clients_ClientItem = z
+  .object({
+    clientId: z.number().int(),
+    name: Clients_ClientName,
+    phone: Clients_PhoneString,
+    isBlacklisted: z.boolean(),
+  })
+  .catchall(z.unknown());
+
+export type Visits_OrderStatus = __TypedOpenapi.Schemas.Visits_OrderStatus;
+export const Visits_OrderStatus = z.enum(["reserved", "issued", "returned", "cancelled"]);
+
+export type Clients_ClientOrderHistory = __TypedOpenapi.Schemas.Clients_ClientOrderHistory;
+export const Clients_ClientOrderHistory = z
   .object({
     orderId: z.number().int(),
     costumeName: z.string(),
@@ -100,42 +85,45 @@ const Clients_ClientOrderHistory = z
     prepaymentAmount: z.number().int(),
     finalPayment: z.number().int().optional(),
   })
-  .passthrough();
-const Clients_ClientVisitHistory = z
+  .catchall(z.unknown());
+
+export type Costumes_VisitCode = __TypedOpenapi.Schemas.Costumes_VisitCode;
+export const Costumes_VisitCode = z.string().regex(new RegExp("^\\d{4}$"));
+
+export type Visits_VisitStatus = __TypedOpenapi.Schemas.Visits_VisitStatus;
+export const Visits_VisitStatus = z.enum(["reserved", "issued", "completed", "cancelled"]);
+
+export type Visits_TimeString = __TypedOpenapi.Schemas.Visits_TimeString;
+export const Visits_TimeString = z.string().regex(new RegExp("^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$"));
+
+export type Clients_ClientVisitHistory = __TypedOpenapi.Schemas.Clients_ClientVisitHistory;
+export const Clients_ClientVisitHistory = z
   .object({
     visitId: z.number().int(),
-    visitCode: Costumes_VisitCode.regex(/^\d{4}$/),
+    visitCode: Costumes_VisitCode,
     visitStatus: Visits_VisitStatus,
-    createdAt: z.string().datetime({ offset: true }),
-    startDateTime: z.string(),
-    endDateTime: z.string(),
-    issueTimeFrom: Visits_TimeString.regex(
-      /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/
-    ),
-    returnTimeUntil: Visits_TimeString.regex(
-      /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/
-    ),
+    createdAt: z.iso.datetime(),
+    startDateTime: z.iso.date(),
+    endDateTime: z.iso.date(),
+    issueTimeFrom: Visits_TimeString,
+    returnTimeUntil: Visits_TimeString,
     visitNote: z.string().optional(),
     orders: z.array(Clients_ClientOrderHistory),
   })
-  .passthrough();
-const Clients_GetClientDetailed = z
-  .object({
-    client: Clients_Client,
-    visits: z.array(Clients_ClientVisitHistory),
-  })
-  .passthrough();
-const Clients_ClientItem = z
-  .object({
-    clientId: z.number().int(),
-    name: Clients_ClientName.min(2).regex(
-      /^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\s-]+$/
-    ),
-    phone: Clients_PhoneString.regex(/^\+7\d{10}$/),
-    isBlacklisted: z.boolean(),
-  })
-  .passthrough();
-const Clients_GetClientList = z
+  .catchall(z.unknown());
+
+export type Clients_CreateClientRequest = __TypedOpenapi.Schemas.Clients_CreateClientRequest;
+export const Clients_CreateClientRequest = z
+  .object({ name: Clients_ClientName, phone: Clients_PhoneString })
+  .catchall(z.unknown());
+
+export type Clients_GetClientDetailed = __TypedOpenapi.Schemas.Clients_GetClientDetailed;
+export const Clients_GetClientDetailed = z
+  .object({ client: Clients_Client, visits: z.array(Clients_ClientVisitHistory) })
+  .catchall(z.unknown());
+
+export type Clients_GetClientList = __TypedOpenapi.Schemas.Clients_GetClientList;
+export const Clients_GetClientList = z
   .object({
     items: z.array(Clients_ClientItem),
     totalOrders: z.number().int(),
@@ -144,32 +132,208 @@ const Clients_GetClientList = z
     limit: z.number().int(),
     hasMore: z.boolean(),
   })
-  .passthrough();
-const Clients_UpdateClientRequest = z
+  .catchall(z.unknown());
+
+export type Clients_UpdateClientRequest = __TypedOpenapi.Schemas.Clients_UpdateClientRequest;
+export const Clients_UpdateClientRequest = z
+  .object({ name: Clients_ClientName, phone: Clients_PhoneString })
+  .partial()
+  .catchall(z.unknown());
+
+export type Clients_WhatsappAvailability = __TypedOpenapi.Schemas.Clients_WhatsappAvailability;
+export const Clients_WhatsappAvailability = z
+  .object({ status: z.enum(["exists", "absent", "unknown"]) })
+  .catchall(z.unknown());
+
+export type Clients_blacklistReason = __TypedOpenapi.Schemas.Clients_blacklistReason;
+export const Clients_blacklistReason = z.object({ blacklistReason: z.string() }).partial().catchall(z.unknown());
+
+export type Common_Error = __TypedOpenapi.Schemas.Common_Error;
+export const Common_Error = z
   .object({
-    name: Clients_ClientName.min(2).regex(
-      /^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\s-]+$/
-    ),
-    phone: Clients_PhoneString.regex(/^\+7\d{10}$/),
+    statusCode: z.number().int(),
+    message: z.string(),
+    error: z.string().optional(),
+    code: z.string().optional(),
+    fieldErrors: z.record(z.string(), z.array(z.string())).optional(),
   })
-  .partial()
-  .passthrough();
-const Clients_blacklistReason = z
-  .object({ blacklistReason: z.string() })
-  .partial()
-  .passthrough();
-const Costumes_CreateCostumeRequest = z
-  .object({ name: z.string().min(2) })
-  .passthrough();
-const Costumes_InventoryCode = z.string();
-const Costumes_Costume = z
+  .catchall(z.unknown());
+
+export type Costumes_AvailabilityPeriod = __TypedOpenapi.Schemas.Costumes_AvailabilityPeriod;
+export const Costumes_AvailabilityPeriod = z
+  .object({
+    visitCode: Costumes_VisitCode,
+    clientName: z.string(),
+    childName: z.string(),
+    clientPhone: z.string(),
+    startDateTime: z.iso.date(),
+    endDateTime: z.iso.date(),
+    issueTimeFrom: Visits_TimeString,
+    returnTimeUntil: Visits_TimeString,
+  })
+  .catchall(z.unknown());
+
+export type Costumes_InventoryCode = __TypedOpenapi.Schemas.Costumes_InventoryCode;
+export const Costumes_InventoryCode = z.string().regex(new RegExp("^C-\\d{4}$"));
+
+export type Costumes_CostumeCategoryRef = __TypedOpenapi.Schemas.Costumes_CostumeCategoryRef;
+export const Costumes_CostumeCategoryRef = z
+  .object({
+    id: z.number().int(),
+    name: z.string(),
+    parentId: z.number().int().nullable(),
+    parentName: z.string().nullable(),
+  })
+  .catchall(z.unknown());
+
+export type Costumes_CostumeGender = __TypedOpenapi.Schemas.Costumes_CostumeGender;
+export const Costumes_CostumeGender = z.enum(["girl", "boy", "unisex"]);
+
+export type Costumes_HeightCm = __TypedOpenapi.Schemas.Costumes_HeightCm;
+export const Costumes_HeightCm = z.number().int().min(50).max(200);
+
+export type Costumes_SizeLabel = __TypedOpenapi.Schemas.Costumes_SizeLabel;
+export const Costumes_SizeLabel = z.string().max(20);
+
+export type Costumes_CostumePart = __TypedOpenapi.Schemas.Costumes_CostumePart;
+export const Costumes_CostumePart = z
+  .object({ name: z.string().min(1).max(40), qty: z.number().int().min(1).max(20) })
+  .catchall(z.unknown());
+
+export type Costumes_CostumeStatus = __TypedOpenapi.Schemas.Costumes_CostumeStatus;
+export const Costumes_CostumeStatus = z.enum(["available", "issued"]);
+
+export type Costumes_AvailableCostume = __TypedOpenapi.Schemas.Costumes_AvailableCostume;
+export const Costumes_AvailableCostume = z
   .object({
     costumeId: z.number().int(),
     name: z.string(),
-    inventoryCode: Costumes_InventoryCode.regex(/^C-\d{4}$/),
+    inventoryCode: Costumes_InventoryCode,
+    category: Costumes_CostumeCategoryRef.nullable().optional(),
+    gender: Costumes_CostumeGender.nullable().optional(),
+    heightFrom: Costumes_HeightCm.nullable().optional(),
+    heightTo: Costumes_HeightCm.nullable().optional(),
+    sizeLabel: Costumes_SizeLabel.nullable().optional(),
+    parts: z.array(Costumes_CostumePart).optional(),
+    coverThumbUrl: z.string().optional(),
+    photoCount: z.number().int().default(0),
+    status: Costumes_CostumeStatus,
   })
-  .passthrough();
-const Costumes_GetCostumesList = z
+  .catchall(z.unknown());
+
+export type Costumes_CategoryName = __TypedOpenapi.Schemas.Costumes_CategoryName;
+export const Costumes_CategoryName = z.string().min(2).max(40);
+
+export type Costumes_Costume = __TypedOpenapi.Schemas.Costumes_Costume;
+export const Costumes_Costume = z
+  .object({
+    costumeId: z.number().int(),
+    name: z.string(),
+    inventoryCode: Costumes_InventoryCode,
+    category: Costumes_CostumeCategoryRef.nullable().optional(),
+    gender: Costumes_CostumeGender.nullable().optional(),
+    heightFrom: Costumes_HeightCm.nullable().optional(),
+    heightTo: Costumes_HeightCm.nullable().optional(),
+    sizeLabel: Costumes_SizeLabel.nullable().optional(),
+    parts: z.array(Costumes_CostumePart).optional(),
+    coverThumbUrl: z.string().optional(),
+    photoCount: z.number().int().default(0),
+  })
+  .catchall(z.unknown());
+
+export type Costumes_CostumeCategory = __TypedOpenapi.Schemas.Costumes_CostumeCategory;
+export const Costumes_CostumeCategory = z
+  .object({
+    id: z.number().int(),
+    name: z.string(),
+    parentId: z.number().int().nullable(),
+    sortOrder: z.number().int(),
+  })
+  .catchall(z.unknown());
+
+export type Costumes_CostumeSubcategory = __TypedOpenapi.Schemas.Costumes_CostumeSubcategory;
+export const Costumes_CostumeSubcategory = z
+  .object({ id: z.number().int(), name: z.string(), sortOrder: z.number().int() })
+  .catchall(z.unknown());
+
+export type Costumes_CostumeCategoryNode = __TypedOpenapi.Schemas.Costumes_CostumeCategoryNode;
+export const Costumes_CostumeCategoryNode = z
+  .object({
+    id: z.number().int(),
+    name: z.string(),
+    sortOrder: z.number().int(),
+    children: z.array(Costumes_CostumeSubcategory),
+  })
+  .catchall(z.unknown());
+
+export type Costumes_CostumeFullAvailability = __TypedOpenapi.Schemas.Costumes_CostumeFullAvailability;
+export const Costumes_CostumeFullAvailability = z
+  .object({
+    costumeId: z.number().int(),
+    name: z.string(),
+    inventoryCode: Costumes_InventoryCode,
+    category: Costumes_CostumeCategoryRef.nullable().optional(),
+    gender: Costumes_CostumeGender.nullable().optional(),
+    heightFrom: Costumes_HeightCm.nullable().optional(),
+    heightTo: Costumes_HeightCm.nullable().optional(),
+    sizeLabel: Costumes_SizeLabel.nullable().optional(),
+    parts: z.array(Costumes_CostumePart).optional(),
+    coverThumbUrl: z.string().optional(),
+    photoCount: z.number().int().default(0),
+    periods: z.array(Costumes_AvailabilityPeriod),
+    noPeriodsMessage: z.string().nullable(),
+  })
+  .catchall(z.unknown());
+
+export type Costumes_CostumePhoto = __TypedOpenapi.Schemas.Costumes_CostumePhoto;
+export const Costumes_CostumePhoto = z
+  .object({
+    id: z.number().int(),
+    url: z.string(),
+    thumbUrl: z.string(),
+    width: z.number().int(),
+    height: z.number().int(),
+  })
+  .catchall(z.unknown());
+
+export type Costumes_CostumeSearchResult = __TypedOpenapi.Schemas.Costumes_CostumeSearchResult;
+export const Costumes_CostumeSearchResult = z
+  .object({
+    costumeId: z.number().int(),
+    name: z.string(),
+    inventoryCode: Costumes_InventoryCode,
+    category: Costumes_CostumeCategoryRef.nullable().optional(),
+    gender: Costumes_CostumeGender.nullable().optional(),
+    heightFrom: Costumes_HeightCm.nullable().optional(),
+    heightTo: Costumes_HeightCm.nullable().optional(),
+    sizeLabel: Costumes_SizeLabel.nullable().optional(),
+    parts: z.array(Costumes_CostumePart).optional(),
+    coverThumbUrl: z.string().optional(),
+    photoCount: z.number().int().default(0),
+    display: z.string(),
+  })
+  .catchall(z.unknown());
+
+export type Costumes_CreateCostumeCategoryRequest = __TypedOpenapi.Schemas.Costumes_CreateCostumeCategoryRequest;
+export const Costumes_CreateCostumeCategoryRequest = z
+  .object({ name: Costumes_CategoryName, parentId: z.number().int().optional() })
+  .catchall(z.unknown());
+
+export type Costumes_CreateCostumeRequest = __TypedOpenapi.Schemas.Costumes_CreateCostumeRequest;
+export const Costumes_CreateCostumeRequest = z
+  .object({
+    name: z.string().min(2),
+    categoryId: z.number().int().nullable().optional(),
+    gender: Costumes_CostumeGender.nullable().optional(),
+    heightFrom: Costumes_HeightCm.nullable().optional(),
+    heightTo: Costumes_HeightCm.nullable().optional(),
+    sizeLabel: Costumes_SizeLabel.nullable().optional(),
+    parts: z.array(Costumes_CostumePart).max(20).optional(),
+  })
+  .catchall(z.unknown());
+
+export type Costumes_GetCostumesList = __TypedOpenapi.Schemas.Costumes_GetCostumesList;
+export const Costumes_GetCostumesList = z
   .object({
     items: z.array(Costumes_Costume),
     total: z.number().int(),
@@ -177,66 +341,115 @@ const Costumes_GetCostumesList = z
     limit: z.number().int(),
     hasMore: z.boolean(),
   })
-  .passthrough();
-const Costumes_CostumeSearchResult = z
-  .object({
-    costumeId: z.number().int(),
-    name: z.string(),
-    inventoryCode: Costumes_InventoryCode.regex(/^C-\d{4}$/),
-    display: z.string(),
-  })
-  .passthrough();
-const Costumes_CostumeStatus = z.enum(["available", "issued"]);
-const Costumes_AvailableCostume = z
-  .object({
-    costumeId: z.number().int(),
-    name: z.string(),
-    inventoryCode: Costumes_InventoryCode.regex(/^C-\d{4}$/),
-    status: Costumes_CostumeStatus,
-  })
-  .passthrough();
-const Costumes_UpdateCostumeRequest = z
-  .object({ name: z.string().min(2) })
+  .catchall(z.unknown());
+
+export type Costumes_PhotoDimension = __TypedOpenapi.Schemas.Costumes_PhotoDimension;
+export const Costumes_PhotoDimension = z.number().int().min(1).max(10000);
+
+export type Costumes_ReorderCostumePhotosRequest = __TypedOpenapi.Schemas.Costumes_ReorderCostumePhotosRequest;
+export const Costumes_ReorderCostumePhotosRequest = z
+  .object({ photoIds: z.array(z.number().int()).min(1).max(15) })
+  .catchall(z.unknown());
+
+export type Costumes_UpdateCostumeCategoryRequest = __TypedOpenapi.Schemas.Costumes_UpdateCostumeCategoryRequest;
+export const Costumes_UpdateCostumeCategoryRequest = z
+  .object({ name: Costumes_CategoryName, sortOrder: z.number().int() })
   .partial()
-  .passthrough();
-const Costumes_AvailabilityPeriod = z
+  .catchall(z.unknown());
+
+export type Costumes_UpdateCostumeRequest = __TypedOpenapi.Schemas.Costumes_UpdateCostumeRequest;
+export const Costumes_UpdateCostumeRequest = z
   .object({
-    visitCode: Costumes_VisitCode.regex(/^\d{4}$/),
-    clientName: z.string(),
-    childName: z.string(),
-    clientPhone: z.string(),
-    startDateTime: z.string(),
-    endDateTime: z.string(),
-    issueTimeFrom: Visits_TimeString.regex(
-      /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/
-    ),
-    returnTimeUntil: Visits_TimeString.regex(
-      /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/
-    ),
+    name: z.string().min(2),
+    categoryId: z.number().int().nullable(),
+    gender: Costumes_CostumeGender.nullable(),
+    heightFrom: Costumes_HeightCm.nullable(),
+    heightTo: Costumes_HeightCm.nullable(),
+    sizeLabel: Costumes_SizeLabel.nullable(),
+    parts: z.array(Costumes_CostumePart).max(20),
   })
-  .passthrough();
-const Costumes_CostumeFullAvailability = z
+  .partial()
+  .catchall(z.unknown());
+
+export type Costumes_UploadCostumePhotoForm = __TypedOpenapi.Schemas.Costumes_UploadCostumePhotoForm;
+export const Costumes_UploadCostumePhotoForm = z
+  .object({ image: z.unknown(), thumb: z.unknown(), width: Costumes_PhotoDimension, height: Costumes_PhotoDimension })
+  .catchall(z.unknown());
+
+export type Visits_AddAndIssueVisitRequestOrder = __TypedOpenapi.Schemas.Visits_AddAndIssueVisitRequestOrder;
+export const Visits_AddAndIssueVisitRequestOrder = z
   .object({
-    costumeId: z.number().int(),
-    name: z.string(),
-    inventoryCode: Costumes_InventoryCode.regex(/^C-\d{4}$/),
-    periods: z.array(Costumes_AvailabilityPeriod),
-    noPeriodsMessage: z.union([z.string(), z.null()]),
+    childId: z.number().int().min(1),
+    costumeId: z.number().int().min(1),
+    rentPrice: z.number().int().min(0),
+    notes: z.string().optional(),
   })
-  .passthrough();
-const Visits_CreateVisitRequest = z
+  .catchall(z.unknown());
+
+export type Visits_AddAndIssueVisitRequest = __TypedOpenapi.Schemas.Visits_AddAndIssueVisitRequest;
+export const Visits_AddAndIssueVisitRequest = z
+  .object({
+    commandId: z.uuid(),
+    expectedVersion: z.number().int().min(1),
+    orders: z.array(Visits_AddAndIssueVisitRequestOrder).min(1),
+    additionalPayment: z.number().int().min(0),
+  })
+  .catchall(z.unknown());
+
+export type Visits_VisitSettlementRequest = __TypedOpenapi.Schemas.Visits_VisitSettlementRequest;
+export const Visits_VisitSettlementRequest = z
+  .object({ kind: z.enum(["debt_payment", "customer_refund"]), amount: z.number().int().min(1) })
+  .catchall(z.unknown());
+
+export type Visits_ReturnMissingParts = __TypedOpenapi.Schemas.Visits_ReturnMissingParts;
+export const Visits_ReturnMissingParts = z
+  .object({ orderId: z.number().int(), parts: z.array(z.string()).min(1).max(20) })
+  .catchall(z.unknown());
+
+export type Visits_CompleteReturnRequest = __TypedOpenapi.Schemas.Visits_CompleteReturnRequest;
+export const Visits_CompleteReturnRequest = z
+  .object({
+    depositReturned: z.boolean(),
+    notes: z.string().optional(),
+    settlement: Visits_VisitSettlementRequest.optional(),
+    missingParts: z.array(Visits_ReturnMissingParts).max(100).optional(),
+  })
+  .catchall(z.unknown());
+
+export type Visits_VisitBalance = __TypedOpenapi.Schemas.Visits_VisitBalance;
+export const Visits_VisitBalance = z
+  .object({
+    totalRent: z.number().int().min(0),
+    totalPrepayment: z.number().int().min(0),
+    totalReceived: z.number().int().min(0),
+    totalRefunded: z.number().int().min(0),
+    signedBalance: z.number().int(),
+    debt: z.number().int().min(0),
+    refundDue: z.number().int().min(0),
+  })
+  .catchall(z.unknown());
+
+export type Visits_CompleteReturnResponse = __TypedOpenapi.Schemas.Visits_CompleteReturnResponse;
+export const Visits_CompleteReturnResponse = z
+  .object({
+    visitId: z.number().int(),
+    visitCode: Costumes_VisitCode,
+    status: Visits_VisitStatus,
+    message: z.string(),
+    balance: Visits_VisitBalance,
+  })
+  .catchall(z.unknown());
+
+export type Visits_CreateVisitRequest = __TypedOpenapi.Schemas.Visits_CreateVisitRequest;
+export const Visits_CreateVisitRequest = z
   .object({
     clientId: z.number().int(),
-    visitCode: Costumes_VisitCode.regex(/^\d{4}$/),
-    startDateTime: z.string(),
-    issueTimeFrom: Visits_TimeString.regex(
-      /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/
-    ),
-    issueTimeTo: Visits_TimeString.regex(/^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/),
-    endDateTime: z.string(),
-    returnTimeUntil: Visits_TimeString.regex(
-      /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/
-    ),
+    visitCode: Costumes_VisitCode,
+    startDateTime: z.iso.date(),
+    issueTimeFrom: Visits_TimeString,
+    issueTimeTo: Visits_TimeString,
+    endDateTime: z.iso.date(),
+    returnTimeUntil: Visits_TimeString,
     notes: z.string().optional(),
     orders: z.array(
       z
@@ -247,85 +460,41 @@ const Visits_CreateVisitRequest = z
           prepaymentAmount: z.number().int(),
           notes: z.string().optional(),
         })
-        .passthrough()
+        .catchall(z.unknown()),
     ),
   })
-  .passthrough();
-const Visits_Notification = z
-  .object({
-    id: z.number().int(),
-    type: z.string(),
-    status: z.enum(["pending", "sent", "delivered", "failed", "read"]),
-    createdAt: z.string().datetime({ offset: true }),
-  })
-  .passthrough();
-const Visits_TagStatus = z.enum(["written", "not_written"]);
-const Visits_VisitOrder = z
-  .object({
-    orderId: z.number().int(),
-    childName: Children_ChildName.min(2).regex(
-      /^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\s-]+$/
-    ),
-    costumeName: z.string(),
-    inventoryCode: Costumes_InventoryCode.regex(/^C-\d{4}$/),
-    rentPrice: z.number().int(),
-    prepaymentAmount: z.number().int(),
-    tagStatus: Visits_TagStatus,
-  })
-  .passthrough();
-const Visits_Visit = z
-  .object({
-    id: z.number().int(),
-    visitCode: Costumes_VisitCode.regex(/^\d{4}$/),
-    status: Visits_VisitStatus,
-    client: z
-      .object({
-        id: z.number().int(),
-        fullname: Clients_ClientName.min(2).regex(
-          /^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\s-]+$/
-        ),
-        phone: Clients_PhoneString.regex(/^\+7\d{10}$/),
-      })
-      .passthrough(),
-    visitDate: z
-      .object({
-        startDateTime: z.string(),
-        endDateTime: z.string(),
-        issueTimeFrom: Visits_TimeString.regex(
-          /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/
-        ),
-        issueTimeTo: Visits_TimeString.regex(
-          /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/
-        ),
-        returnTimeUntil: Visits_TimeString.regex(
-          /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/
-        ),
-      })
-      .passthrough(),
-    notifications: z.array(Visits_Notification),
-    orders: z.array(Visits_VisitOrder),
-  })
-  .passthrough();
-const Visits_DepositType = z.enum(["cash", "document", "none"]);
-const Visits_VisitDepositInfo = z
+  .catchall(z.unknown());
+
+export type Visits_DepositType = __TypedOpenapi.Schemas.Visits_DepositType;
+export const Visits_DepositType = z.enum(["cash", "document", "none"]);
+
+export type Visits_DepositReturnedHistoryPayload = __TypedOpenapi.Schemas.Visits_DepositReturnedHistoryPayload;
+export const Visits_DepositReturnedHistoryPayload = z
+  .object({ kind: z.literal("deposit.returned"), depositType: Visits_DepositType, amount: z.number().int() })
+  .catchall(z.unknown());
+
+export type Visits_VisitDepositInfo = __TypedOpenapi.Schemas.Visits_VisitDepositInfo;
+export const Visits_VisitDepositInfo = z
   .object({ type: Visits_DepositType, amount: z.number().int().optional() })
-  .passthrough();
-const Visits_GetIssuedItem = z
+  .catchall(z.unknown());
+
+export type Visits_GetIssuedItem = __TypedOpenapi.Schemas.Visits_GetIssuedItem;
+export const Visits_GetIssuedItem = z
   .object({
     visitId: z.number().int(),
-    visitCode: Costumes_VisitCode.regex(/^\d{4}$/),
-    clientName: Clients_ClientName.min(2).regex(
-      /^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\s-]+$/
-    ),
-    clientPhone: Clients_PhoneString.regex(/^\+7\d{10}$/),
-    startDateTime: z.string(),
-    endDateTime: z.string(),
+    visitCode: Costumes_VisitCode,
+    clientName: Clients_ClientName,
+    clientPhone: Clients_PhoneString,
+    startDateTime: z.iso.date(),
+    endDateTime: z.iso.date(),
     childrenNames: z.string(),
     costumesNames: z.string(),
     deposit: Visits_VisitDepositInfo,
   })
-  .passthrough();
-const Visits_GetIssuedResponse = z
+  .catchall(z.unknown());
+
+export type Visits_GetIssuedResponse = __TypedOpenapi.Schemas.Visits_GetIssuedResponse;
+export const Visits_GetIssuedResponse = z
   .object({
     items: z.array(Visits_GetIssuedItem),
     total: z.number().int(),
@@ -333,71 +502,24 @@ const Visits_GetIssuedResponse = z
     limit: z.number().int(),
     hasMore: z.boolean(),
   })
-  .passthrough();
-const Visits_IssuedForReturnResponse = z
-  .object({
-    visitId: z.number().int(),
-    visitCode: Costumes_VisitCode.regex(/^\d{4}$/),
-    clientName: Clients_ClientName.min(2).regex(
-      /^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\s-]+$/
-    ),
-    childrenNames: z.string(),
-    costumeNames: z.string(),
-    endDateTime: z.string(),
-    clientPhone: Clients_PhoneString.regex(/^\+7\d{10}$/),
-    notes: z.string(),
-  })
-  .passthrough();
-const Visits_Order = z
-  .object({
-    orderId: z.number().int(),
-    inventoryCode: Costumes_InventoryCode.regex(/^C-\d{4}$/),
-    costumeName: z.string(),
-    visitCode: Costumes_VisitCode.regex(/^\d{4}$/),
-    childName: Children_ChildName.min(2).regex(
-      /^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\s-]+$/
-    ),
-    clientPhone: Clients_PhoneString.regex(/^\+7\d{10}$/),
-    startDateTime: z.string(),
-    endDateTime: z.string(),
-    issueTimeFrom: Visits_TimeString.regex(
-      /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/
-    ),
-    issueTimeTo: Visits_TimeString.regex(/^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/),
-    returnTimeUntil: Visits_TimeString.regex(
-      /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/
-    ),
-    rentPrice: z.number().int(),
-    prepaymentAmount: z.number().int(),
-    notes: z.string(),
-  })
-  .passthrough();
-const Visits_NotWrittenOrdersResponse = z
-  .object({ items: z.array(Visits_Order), message: z.string().optional() })
-  .passthrough();
-const Visits_NotificationItem = z
+  .catchall(z.unknown());
+
+export type Visits_NotificationItem = __TypedOpenapi.Schemas.Visits_NotificationItem;
+export const Visits_NotificationItem = z
   .object({
     notificationId: z.number().int(),
-    status: z.enum([
-      "pending",
-      "sent",
-      "delivered",
-      "failed",
-      "isConfirmed",
-      "read",
-      "noAccount",
-    ]),
-    visitCode: Costumes_VisitCode.regex(/^\d{4}$/),
-    clientName: Clients_ClientName.min(2).regex(
-      /^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\s-]+$/
-    ),
-    clientPhone: Clients_PhoneString.regex(/^\+7\d{10}$/),
+    status: z.enum(["pending", "sent", "delivered", "failed", "isConfirmed", "read", "noAccount"]),
+    visitCode: Costumes_VisitCode,
+    clientName: Clients_ClientName,
+    clientPhone: Clients_PhoneString,
     childrenNames: z.string(),
     costumeNames: z.string(),
     message: z.string(),
   })
-  .passthrough();
-const Visits_GetNotificationResponse = z
+  .catchall(z.unknown());
+
+export type Visits_GetNotificationResponse = __TypedOpenapi.Schemas.Visits_GetNotificationResponse;
+export const Visits_GetNotificationResponse = z
   .object({
     items: z.array(Visits_NotificationItem),
     totalToday: z.number().int(),
@@ -406,71 +528,38 @@ const Visits_GetNotificationResponse = z
     limit: z.number().int(),
     hasMore: z.boolean(),
   })
-  .passthrough();
-const Visits_GetReservedResponse = z
+  .catchall(z.unknown());
+
+export type Visits_GetReservedResponse = __TypedOpenapi.Schemas.Visits_GetReservedResponse;
+export const Visits_GetReservedResponse = z
   .object({
     visitId: z.number().int(),
-    visitCode: Costumes_VisitCode.regex(/^\d{4}$/),
-    clientName: Clients_ClientName.min(2).regex(
-      /^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\s-]+$/
-    ),
+    visitCode: Costumes_VisitCode,
+    clientName: Clients_ClientName,
     childrenNames: z.string(),
     costumesNames: z.string(),
-    clientPhone: Clients_PhoneString.regex(/^\+7\d{10}$/),
+    clientPhone: Clients_PhoneString,
   })
-  .passthrough();
-const Visits_PaginatedReservedResponse = z
-  .object({
-    items: z.array(Visits_GetReservedResponse),
-    total: z.number().int(),
-    page: z.number().int(),
-    limit: z.number().int(),
-    hasMore: z.boolean(),
-  })
-  .passthrough();
-const Visits_VisitReturnSearchResponse = z
+  .catchall(z.unknown());
+
+export type Visits_GetUnreturnedResponse = __TypedOpenapi.Schemas.Visits_GetUnreturnedResponse;
+export const Visits_GetUnreturnedResponse = z
   .object({
     visitId: z.number().int(),
-    visitCode: Costumes_VisitCode.regex(/^\d{4}$/),
-    childrenNames: z.string(),
-    costumesNames: z.string(),
-    returnDate: z.string(),
-    clientPhone: Clients_PhoneString.regex(/^\+7\d{10}$/),
-    clientName: Clients_ClientName.min(2).regex(
-      /^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\s-]+$/
-    ),
-  })
-  .passthrough();
-const Visits_VisitsSearchResponse = z
-  .object({
-    visitId: z.number().int(),
-    visitCode: Costumes_VisitCode.regex(/^\d{4}$/),
-    clientName: Clients_ClientName.min(2).regex(
-      /^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\s-]+$/
-    ),
-    clientPhone: Clients_PhoneString.regex(/^\+7\d{10}$/),
-    startDateTime: z.string(),
-    childrenNames: z.string(),
-    costumesNames: z.string(),
-  })
-  .passthrough();
-const Visits_GetUnreturnedResponse = z
-  .object({
-    visitId: z.number().int(),
-    visitCode: Costumes_VisitCode.regex(/^\d{4}$/),
+    visitCode: Costumes_VisitCode,
     childrenNames: z.string(),
     costumeNames: z.string(),
-    startDateTime: z.string(),
-    endDateTime: z.string(),
-    clientPhone: Clients_PhoneString.regex(/^\+7\d{10}$/),
-    clientName: Clients_ClientName.min(2).regex(
-      /^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\s-]+$/
-    ),
+    startDateTime: z.iso.date(),
+    endDateTime: z.iso.date(),
+    clientPhone: Clients_PhoneString,
+    clientName: Clients_ClientName,
     deposit: Visits_VisitDepositInfo,
     notes: z.string(),
   })
-  .passthrough();
-const Visits_GetUnreturnedDepositsResponse = z
+  .catchall(z.unknown());
+
+export type Visits_GetUnreturnedDepositsResponse = __TypedOpenapi.Schemas.Visits_GetUnreturnedDepositsResponse;
+export const Visits_GetUnreturnedDepositsResponse = z
   .object({
     items: z.array(Visits_GetUnreturnedResponse),
     total: z.number().int(),
@@ -478,820 +567,2672 @@ const Visits_GetUnreturnedDepositsResponse = z
     limit: z.number().int(),
     hasMore: z.boolean(),
   })
-  .passthrough();
-const Visits_VisitCancelRequest = z
-  .object({ reason: z.string() })
-  .partial()
-  .passthrough();
-const Visits_CompleteReturnRequest = z
-  .object({ depositReturned: z.boolean(), notes: z.string().optional() })
-  .passthrough();
-const Visits_CompleteReturnResponse = z
+  .catchall(z.unknown());
+
+export type Visits_IssueVisitRequest = __TypedOpenapi.Schemas.Visits_IssueVisitRequest;
+export const Visits_IssueVisitRequest = z
   .object({
-    visitId: z.number().int(),
-    visitCode: Costumes_VisitCode.regex(/^\d{4}$/),
-    status: Visits_VisitStatus,
-    message: z.string(),
+    additionalPayment: z.number().int().min(0),
+    deposit: z.object({ type: Visits_DepositType, amount: z.number().int().optional() }).catchall(z.unknown()),
+    notes: z.string().optional(),
   })
-  .passthrough();
-const Visits_VisitForIssueResponse = z
+  .catchall(z.unknown());
+
+export type Visits_IssuedForReturnResponse = __TypedOpenapi.Schemas.Visits_IssuedForReturnResponse;
+export const Visits_IssuedForReturnResponse = z
   .object({
     visitId: z.number().int(),
-    visitCode: Costumes_VisitCode.regex(/^\d{4}$/),
-    client: z
+    visitCode: Costumes_VisitCode,
+    clientName: Clients_ClientName,
+    childrenNames: z.string(),
+    costumeNames: z.string(),
+    endDateTime: z.iso.date(),
+    clientPhone: Clients_PhoneString,
+    notes: z.string(),
+  })
+  .catchall(z.unknown());
+
+export type Visits_MarkDepositReturnedResponse = __TypedOpenapi.Schemas.Visits_MarkDepositReturnedResponse;
+export const Visits_MarkDepositReturnedResponse = z
+  .object({ visitId: z.number().int(), depositReturned: z.boolean(), message: z.string() })
+  .catchall(z.unknown());
+
+export type Visits_MoneyReceivedHistoryPayload = __TypedOpenapi.Schemas.Visits_MoneyReceivedHistoryPayload;
+export const Visits_MoneyReceivedHistoryPayload = z
+  .object({
+    kind: z.literal("money.received"),
+    moneyKind: z.enum(["issue_payment", "debt_payment"]),
+    amount: z.number().int(),
+  })
+  .catchall(z.unknown());
+
+export type Visits_MoneyRefundedHistoryPayload = __TypedOpenapi.Schemas.Visits_MoneyRefundedHistoryPayload;
+export const Visits_MoneyRefundedHistoryPayload = z
+  .object({ kind: z.literal("money.refunded"), amount: z.number().int() })
+  .catchall(z.unknown());
+
+export type Visits_Order = __TypedOpenapi.Schemas.Visits_Order;
+export const Visits_Order = z
+  .object({
+    orderId: z.number().int(),
+    inventoryCode: Costumes_InventoryCode,
+    costumeName: z.string(),
+    visitCode: Costumes_VisitCode,
+    childName: Children_ChildName,
+    clientPhone: Clients_PhoneString,
+    startDateTime: z.iso.date(),
+    endDateTime: z.iso.date(),
+    issueTimeFrom: Visits_TimeString,
+    issueTimeTo: Visits_TimeString,
+    returnTimeUntil: Visits_TimeString,
+    rentPrice: z.number().int(),
+    prepaymentAmount: z.number().int(),
+    notes: z.string(),
+    coverThumbUrl: z.string().optional(),
+    photoCount: z.number().int().default(0),
+  })
+  .catchall(z.unknown());
+
+export type Visits_NotWrittenOrdersResponse = __TypedOpenapi.Schemas.Visits_NotWrittenOrdersResponse;
+export const Visits_NotWrittenOrdersResponse = z
+  .object({ items: z.array(Visits_Order), message: z.string().optional() })
+  .catchall(z.unknown());
+
+export type Visits_Notification = __TypedOpenapi.Schemas.Visits_Notification;
+export const Visits_Notification = z
+  .object({
+    id: z.number().int(),
+    type: z.string(),
+    status: z.enum(["pending", "sent", "delivered", "failed", "read"]),
+    createdAt: z.iso.datetime(),
+  })
+  .catchall(z.unknown());
+
+export type Visits_TagStatus = __TypedOpenapi.Schemas.Visits_TagStatus;
+export const Visits_TagStatus = z.enum(["written", "not_written", "not_required"]);
+
+export type Visits_VisitHistoryOrderSnapshot = __TypedOpenapi.Schemas.Visits_VisitHistoryOrderSnapshot;
+export const Visits_VisitHistoryOrderSnapshot = z
+  .object({
+    orderId: z.number().int(),
+    childId: z.number().int().optional(),
+    childName: z.string(),
+    costumeId: z.number().int().optional(),
+    costumeName: z.string(),
+    inventoryCode: Costumes_InventoryCode,
+    rentPrice: z.number().int(),
+    prepaymentAmount: z.number().int(),
+    tagStatus: Visits_TagStatus.optional(),
+    notes: z.string().nullable().optional(),
+  })
+  .catchall(z.unknown());
+
+export type Visits_OrdersAddedAndIssuedHistoryPayload =
+  __TypedOpenapi.Schemas.Visits_OrdersAddedAndIssuedHistoryPayload;
+export const Visits_OrdersAddedAndIssuedHistoryPayload = z
+  .object({
+    kind: z.literal("orders.added_and_issued"),
+    visitCode: Costumes_VisitCode,
+    orders: z.array(Visits_VisitHistoryOrderSnapshot),
+  })
+  .catchall(z.unknown());
+
+export type Visits_PaginatedReservedResponse = __TypedOpenapi.Schemas.Visits_PaginatedReservedResponse;
+export const Visits_PaginatedReservedResponse = z
+  .object({
+    items: z.array(Visits_GetReservedResponse),
+    total: z.number().int(),
+    page: z.number().int(),
+    limit: z.number().int(),
+    hasMore: z.boolean(),
+  })
+  .catchall(z.unknown());
+
+export type Visits_UnsettledVisitBalance = __TypedOpenapi.Schemas.Visits_UnsettledVisitBalance;
+export const Visits_UnsettledVisitBalance = z
+  .object({
+    visitId: z.number().int(),
+    visitCode: Costumes_VisitCode,
+    clientName: Clients_ClientName,
+    clientPhone: Clients_PhoneString,
+    balance: Visits_VisitBalance,
+  })
+  .catchall(z.unknown());
+
+export type Visits_PaginatedUnsettledVisitBalancesResponse =
+  __TypedOpenapi.Schemas.Visits_PaginatedUnsettledVisitBalancesResponse;
+export const Visits_PaginatedUnsettledVisitBalancesResponse = z
+  .object({
+    items: z.array(Visits_UnsettledVisitBalance),
+    total: z.number().int(),
+    page: z.number().int(),
+    limit: z.number().int(),
+    hasMore: z.boolean(),
+  })
+  .catchall(z.unknown());
+
+export type Visits_VisitHistorySource = __TypedOpenapi.Schemas.Visits_VisitHistorySource;
+export const Visits_VisitHistorySource = z.enum(["user", "system", "import"]);
+
+export type Visits_VisitHistoryAction = __TypedOpenapi.Schemas.Visits_VisitHistoryAction;
+export const Visits_VisitHistoryAction = z.enum([
+  "visit.created",
+  "visit.updated",
+  "tag.invalidated",
+  "tag.written",
+  "visit.issued",
+  "visit.unissued",
+  "visit.cancelled",
+  "visit.completed",
+  "deposit.returned",
+  "money.received",
+  "money.refunded",
+  "orders.added_and_issued",
+  "return.missing_parts",
+]);
+
+export type Visits_VisitCreatedHistoryPayload = __TypedOpenapi.Schemas.Visits_VisitCreatedHistoryPayload;
+export const Visits_VisitCreatedHistoryPayload = z
+  .object({
+    kind: z.literal("visit.created"),
+    visitCode: Costumes_VisitCode,
+    clientId: z.number().int(),
+    clientName: z.string(),
+    startDateTime: z.iso.date(),
+    endDateTime: z.iso.date(),
+    orders: z.array(Visits_VisitHistoryOrderSnapshot),
+  })
+  .catchall(z.unknown());
+
+export type Visits_VisitUpdatedHistoryOrderChange = __TypedOpenapi.Schemas.Visits_VisitUpdatedHistoryOrderChange;
+export const Visits_VisitUpdatedHistoryOrderChange = z
+  .object({
+    change: z.enum(["added", "updated", "removed"]),
+    orderId: z.number().int(),
+    before: Visits_VisitHistoryOrderSnapshot.optional(),
+    after: Visits_VisitHistoryOrderSnapshot.optional(),
+  })
+  .catchall(z.unknown());
+
+export type Visits_VisitUpdatedHistoryPayload = __TypedOpenapi.Schemas.Visits_VisitUpdatedHistoryPayload;
+export const Visits_VisitUpdatedHistoryPayload = z
+  .object({
+    kind: z.literal("visit.updated"),
+    changedFields: z
       .object({
-        name: Clients_ClientName.min(2).regex(
-          /^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\s-]+$/
-        ),
-        phone: Clients_PhoneString.regex(/^\+7\d{10}$/),
+        startDateTime: z.object({ before: z.iso.date(), after: z.iso.date() }).catchall(z.unknown()),
+        issueTimeFrom: z.object({ before: Visits_TimeString, after: Visits_TimeString }).catchall(z.unknown()),
+        issueTimeTo: z.object({ before: Visits_TimeString, after: Visits_TimeString }).catchall(z.unknown()),
+        endDateTime: z.object({ before: z.iso.date(), after: z.iso.date() }).catchall(z.unknown()),
+        returnTimeUntil: z.object({ before: Visits_TimeString, after: Visits_TimeString }).catchall(z.unknown()),
+        notes: z.object({ before: z.string().nullable(), after: z.string().nullable() }).catchall(z.unknown()),
       })
-      .passthrough(),
-    startDateTime: z.string(),
-    issueTimeFrom: Visits_TimeString.regex(
-      /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/
-    ),
-    issueTimeTo: Visits_TimeString.regex(/^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/),
-    returnTimeUntil: Visits_TimeString.regex(
-      /^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$/
-    ),
-    endDateTime: z.string(),
+      .partial()
+      .catchall(z.unknown()),
+    orderChanges: z.array(Visits_VisitUpdatedHistoryOrderChange),
+  })
+  .catchall(z.unknown());
+
+export type Visits_TagInvalidatedHistoryPayload = __TypedOpenapi.Schemas.Visits_TagInvalidatedHistoryPayload;
+export const Visits_TagInvalidatedHistoryPayload = z
+  .object({
+    kind: z.literal("tag.invalidated"),
+    orderId: z.number().int(),
+    childName: z.string(),
+    costumeName: z.string(),
+    inventoryCode: Costumes_InventoryCode,
+    reason: z.enum(["date_changed", "window_changed", "child_changed", "costume_changed"]),
+    previousTagStatus: z.literal("written"),
+    tagStatus: z.literal("not_written"),
+  })
+  .catchall(z.unknown());
+
+export type Visits_TagWrittenHistoryPayload = __TypedOpenapi.Schemas.Visits_TagWrittenHistoryPayload;
+export const Visits_TagWrittenHistoryPayload = z
+  .object({
+    kind: z.literal("tag.written"),
+    orderId: z.number().int(),
+    childName: z.string(),
+    costumeName: z.string(),
+    inventoryCode: Costumes_InventoryCode,
+  })
+  .catchall(z.unknown());
+
+export type Visits_VisitIssuedHistoryPayload = __TypedOpenapi.Schemas.Visits_VisitIssuedHistoryPayload;
+export const Visits_VisitIssuedHistoryPayload = z
+  .object({
+    kind: z.literal("visit.issued"),
+    visitCode: Costumes_VisitCode,
+    additionalPayment: z.number().int(),
+    depositType: Visits_DepositType,
+    depositAmount: z.number().int(),
+    orders: z.array(Visits_VisitHistoryOrderSnapshot),
+  })
+  .catchall(z.unknown());
+
+export type Visits_VisitUnissuedHistoryPayload = __TypedOpenapi.Schemas.Visits_VisitUnissuedHistoryPayload;
+export const Visits_VisitUnissuedHistoryPayload = z
+  .object({
+    kind: z.literal("visit.unissued"),
+    visitCode: Costumes_VisitCode,
+    voidedPaymentAmount: z.number().int(),
+    depositType: Visits_DepositType.optional(),
+    depositAmount: z.number().int().optional(),
+    orders: z.array(Visits_VisitHistoryOrderSnapshot),
+  })
+  .catchall(z.unknown());
+
+export type Visits_VisitCancelledHistoryPayload = __TypedOpenapi.Schemas.Visits_VisitCancelledHistoryPayload;
+export const Visits_VisitCancelledHistoryPayload = z
+  .object({ kind: z.literal("visit.cancelled"), visitCode: Costumes_VisitCode, reason: z.string().optional() })
+  .catchall(z.unknown());
+
+export type Visits_VisitCompletedHistoryPayload = __TypedOpenapi.Schemas.Visits_VisitCompletedHistoryPayload;
+export const Visits_VisitCompletedHistoryPayload = z
+  .object({
+    kind: z.literal("visit.completed"),
+    visitCode: Costumes_VisitCode,
+    orders: z.array(Visits_VisitHistoryOrderSnapshot),
+    settlementKind: z.enum(["debt_payment", "customer_refund"]).optional(),
+    settlementAmount: z.number().int().optional(),
+  })
+  .catchall(z.unknown());
+
+export type Visits_ReturnMissingPartsHistoryPayload = __TypedOpenapi.Schemas.Visits_ReturnMissingPartsHistoryPayload;
+export const Visits_ReturnMissingPartsHistoryPayload = z
+  .object({
+    kind: z.literal("return.missing_parts"),
+    visitCode: Costumes_VisitCode,
+    orderId: z.number().int(),
+    childName: z.string(),
+    costumeName: z.string(),
+    inventoryCode: Costumes_InventoryCode,
+    parts: z.array(z.string()),
+  })
+  .catchall(z.unknown());
+
+export type Visits_VisitHistoryPayload = __TypedOpenapi.Schemas.Visits_VisitHistoryPayload;
+export const Visits_VisitHistoryPayload = z.union([
+  Visits_VisitCreatedHistoryPayload,
+  Visits_VisitUpdatedHistoryPayload,
+  Visits_TagInvalidatedHistoryPayload,
+  Visits_TagWrittenHistoryPayload,
+  Visits_VisitIssuedHistoryPayload,
+  Visits_VisitUnissuedHistoryPayload,
+  Visits_VisitCancelledHistoryPayload,
+  Visits_VisitCompletedHistoryPayload,
+  Visits_DepositReturnedHistoryPayload,
+  Visits_MoneyReceivedHistoryPayload,
+  Visits_MoneyRefundedHistoryPayload,
+  Visits_OrdersAddedAndIssuedHistoryPayload,
+  Visits_ReturnMissingPartsHistoryPayload,
+]);
+
+export type Visits_VisitHistoryEvent = __TypedOpenapi.Schemas.Visits_VisitHistoryEvent;
+export const Visits_VisitHistoryEvent = z
+  .object({
+    id: z.number().int(),
+    occurredAt: z.iso.datetime(),
+    actorUserId: z.number().int().optional(),
+    actorNameSnapshot: z.string(),
+    source: Visits_VisitHistorySource,
+    action: Visits_VisitHistoryAction,
+    entityType: z.enum(["visit", "order"]),
+    entityId: z.number().int(),
+    visitId: z.number().int(),
+    orderId: z.number().int().optional(),
+    commandId: z.string(),
+    schemaVersion: z.literal(1),
+    payload: Visits_VisitHistoryPayload,
+  })
+  .catchall(z.unknown());
+
+export type Visits_PaginatedVisitHistoryResponse = __TypedOpenapi.Schemas.Visits_PaginatedVisitHistoryResponse;
+export const Visits_PaginatedVisitHistoryResponse = z
+  .object({
+    items: z.array(Visits_VisitHistoryEvent),
+    total: z.number().int(),
+    page: z.number().int(),
+    limit: z.number().int(),
+    hasMore: z.boolean(),
+  })
+  .catchall(z.unknown());
+
+export type Visits_VisitListItem = __TypedOpenapi.Schemas.Visits_VisitListItem;
+export const Visits_VisitListItem = z
+  .object({
+    id: z.number().int(),
+    visitCode: Costumes_VisitCode,
+    status: Visits_VisitStatus,
+    client: z
+      .object({ id: z.number().int(), name: Clients_ClientName, phone: Clients_PhoneString })
+      .catchall(z.unknown()),
+    startDateTime: z.iso.date(),
+    endDateTime: z.iso.date(),
+    issueTimeFrom: Visits_TimeString,
+    issueTimeTo: Visits_TimeString,
+    returnTimeUntil: Visits_TimeString,
+    childrenNames: z.string(),
+    costumesNames: z.string(),
+    orderCount: z.number().int(),
+    totalRent: z.number().int(),
+    totalPrepayment: z.number().int(),
+    totalRemaining: z.number().int(),
+    createdAt: z.iso.datetime(),
+  })
+  .catchall(z.unknown());
+
+export type Visits_PaginatedVisitsResponse = __TypedOpenapi.Schemas.Visits_PaginatedVisitsResponse;
+export const Visits_PaginatedVisitsResponse = z
+  .object({
+    items: z.array(Visits_VisitListItem),
+    total: z.number().int(),
+    page: z.number().int(),
+    limit: z.number().int(),
+    hasMore: z.boolean(),
+  })
+  .catchall(z.unknown());
+
+export type Visits_QuickIssueVisitRequest = __TypedOpenapi.Schemas.Visits_QuickIssueVisitRequest;
+export const Visits_QuickIssueVisitRequest = z
+  .object({
+    commandId: z.uuid(),
+    clientId: z.number().int(),
+    visitCode: Costumes_VisitCode,
+    startDateTime: z.iso.date(),
+    issueTimeFrom: Visits_TimeString,
+    issueTimeTo: Visits_TimeString,
+    endDateTime: z.iso.date(),
+    returnTimeUntil: Visits_TimeString,
+    notes: z.string().optional(),
+    orders: z
+      .array(
+        z
+          .object({
+            childId: z.number().int(),
+            costumeId: z.number().int(),
+            rentPrice: z.number().int().min(0),
+            notes: z.string().optional(),
+          })
+          .catchall(z.unknown()),
+      )
+      .min(1),
+    additionalPayment: z.number().int().min(0),
+    deposit: z.object({ type: Visits_DepositType, amount: z.number().int().min(0).optional() }).catchall(z.unknown()),
+  })
+  .catchall(z.unknown());
+
+export type Visits_QuickIssueVisitResponse = __TypedOpenapi.Schemas.Visits_QuickIssueVisitResponse;
+export const Visits_QuickIssueVisitResponse = z
+  .object({
+    visitId: z.number().int(),
+    visitCode: Costumes_VisitCode,
+    status: z.literal("issued"),
+    version: z.number().int(),
+    balance: Visits_VisitBalance,
+  })
+  .catchall(z.unknown());
+
+export type Visits_UpdateReservedVisitOrder = __TypedOpenapi.Schemas.Visits_UpdateReservedVisitOrder;
+export const Visits_UpdateReservedVisitOrder = z
+  .object({
+    orderId: z.number().int().min(1).optional(),
+    childId: z.number().int().min(1),
+    costumeId: z.number().int().min(1),
+    rentPrice: z.number().int().min(0),
+    prepaymentAmount: z.number().int().min(0).optional(),
+    notes: z.string().optional(),
+  })
+  .catchall(z.unknown());
+
+export type Visits_UpdateReservedVisitRequest = __TypedOpenapi.Schemas.Visits_UpdateReservedVisitRequest;
+export const Visits_UpdateReservedVisitRequest = z
+  .object({
+    commandId: z.uuid(),
+    expectedVersion: z.number().int().min(1),
+    startDateTime: z.iso.date(),
+    issueTimeFrom: Visits_TimeString,
+    issueTimeTo: Visits_TimeString,
+    endDateTime: z.iso.date(),
+    returnTimeUntil: Visits_TimeString,
+    notes: z.string().optional(),
+    orders: z.array(Visits_UpdateReservedVisitOrder).min(1),
+  })
+  .catchall(z.unknown());
+
+export type Visits_VisitOrder = __TypedOpenapi.Schemas.Visits_VisitOrder;
+export const Visits_VisitOrder = z
+  .object({
+    orderId: z.number().int(),
+    childName: Children_ChildName,
+    costumeName: z.string(),
+    inventoryCode: Costumes_InventoryCode,
+    rentPrice: z.number().int(),
+    prepaymentAmount: z.number().int(),
+    tagStatus: Visits_TagStatus,
+    parts: z.array(Costumes_CostumePart).optional(),
+  })
+  .catchall(z.unknown());
+
+export type Visits_Visit = __TypedOpenapi.Schemas.Visits_Visit;
+export const Visits_Visit = z
+  .object({
+    id: z.number().int(),
+    visitCode: Costumes_VisitCode,
+    status: Visits_VisitStatus,
+    client: z
+      .object({ id: z.number().int(), fullname: Clients_ClientName, phone: Clients_PhoneString })
+      .catchall(z.unknown()),
+    visitDate: z
+      .object({
+        startDateTime: z.iso.date(),
+        endDateTime: z.iso.date(),
+        issueTimeFrom: Visits_TimeString,
+        issueTimeTo: Visits_TimeString,
+        returnTimeUntil: Visits_TimeString,
+      })
+      .catchall(z.unknown()),
+    notifications: z.array(Visits_Notification),
+    orders: z.array(Visits_VisitOrder),
+  })
+  .catchall(z.unknown());
+
+export type Visits_VisitCancelRequest = __TypedOpenapi.Schemas.Visits_VisitCancelRequest;
+export const Visits_VisitCancelRequest = z.object({ reason: z.string() }).partial().catchall(z.unknown());
+
+export type Visits_VisitIssueOrder = __TypedOpenapi.Schemas.Visits_VisitIssueOrder;
+export const Visits_VisitIssueOrder = z
+  .object({
+    orderId: z.number().int(),
+    childName: Children_ChildName,
+    costumeName: z.string(),
+    inventoryCode: Costumes_InventoryCode,
+    rentPrice: z.number().int(),
+    prepaymentAmount: z.number().int(),
+    tagStatus: Visits_TagStatus,
+    parts: z.array(Costumes_CostumePart).optional(),
+    coverThumbUrl: z.string().optional(),
+    photoCount: z.number().int().default(0),
+  })
+  .catchall(z.unknown());
+
+export type Visits_VisitForIssueResponse = __TypedOpenapi.Schemas.Visits_VisitForIssueResponse;
+export const Visits_VisitForIssueResponse = z
+  .object({
+    visitId: z.number().int(),
+    visitCode: Costumes_VisitCode,
+    client: z.object({ name: Clients_ClientName, phone: Clients_PhoneString }).catchall(z.unknown()),
+    startDateTime: z.iso.date(),
+    issueTimeFrom: Visits_TimeString,
+    issueTimeTo: Visits_TimeString,
+    returnTimeUntil: Visits_TimeString,
+    endDateTime: z.iso.date(),
     totalRentPrice: z.number().int(),
     totalPrepayment: z.number().int(),
     remainingToPay: z.number().int(),
     notes: z.string(),
-    orders: z.array(Visits_VisitOrder),
+    orders: z.array(Visits_VisitIssueOrder),
   })
-  .passthrough();
-const Visits_VisitReturnOrder = z
+  .catchall(z.unknown());
+
+export type Visits_VisitReturnOrder = __TypedOpenapi.Schemas.Visits_VisitReturnOrder;
+export const Visits_VisitReturnOrder = z
   .object({
     orderId: z.number().int(),
-    childName: Children_ChildName.min(2).regex(
-      /^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\s-]+$/
-    ),
+    childName: Children_ChildName,
     costumeName: z.string(),
-    inventoryCode: Costumes_InventoryCode.regex(/^C-\d{4}$/),
+    inventoryCode: Costumes_InventoryCode,
     rentPrice: z.number().int(),
     prepaymentAmount: z.number().int(),
     finalPayment: z.number().int(),
     returned: z.boolean(),
+    parts: z.array(Costumes_CostumePart).optional(),
+    coverThumbUrl: z.string().optional(),
+    photoCount: z.number().int().default(0),
   })
-  .passthrough();
-const Visits_VisitForReturnResponse = z
+  .catchall(z.unknown());
+
+export type Visits_VisitForReturnResponse = __TypedOpenapi.Schemas.Visits_VisitForReturnResponse;
+export const Visits_VisitForReturnResponse = z
   .object({
     visitId: z.number().int(),
-    visitCode: Costumes_VisitCode.regex(/^\d{4}$/),
-    client: z
-      .object({
-        name: Clients_ClientName.min(2).regex(
-          /^[a-zA-Zа-яА-ЯёЁәіңғүұқөһӘІҢҒҮҰҚӨҺ\s-]+$/
-        ),
-        phone: Clients_PhoneString.regex(/^\+7\d{10}$/),
-      })
-      .passthrough(),
-    startDateTime: z.string(),
-    endDateTime: z.string(),
+    visitCode: Costumes_VisitCode,
+    client: z.object({ name: Clients_ClientName, phone: Clients_PhoneString }).catchall(z.unknown()),
+    startDateTime: z.iso.date(),
+    endDateTime: z.iso.date(),
     notes: z.string(),
     orders: z.array(Visits_VisitReturnOrder),
     deposit: Visits_VisitDepositInfo,
+    balance: Visits_VisitBalance,
   })
-  .passthrough();
-const Visits_IssueVisitRequest = z
+  .catchall(z.unknown());
+
+export type Visits_VisitReadDeposit = __TypedOpenapi.Schemas.Visits_VisitReadDeposit;
+export const Visits_VisitReadDeposit = z
   .object({
-    additionalPayment: z.number().int(),
-    deposit: z
-      .object({ type: Visits_DepositType, amount: z.number().int().optional() })
-      .passthrough(),
-    notes: z.string().optional(),
+    id: z.number().int(),
+    type: Visits_DepositType,
+    amount: z.number().int().optional(),
+    returned: z.boolean(),
+    createdAt: z.iso.datetime(),
   })
-  .passthrough();
-const Visits_MarkDepositReturnedResponse = z
+  .catchall(z.unknown());
+
+export type Visits_VisitReadOrder = __TypedOpenapi.Schemas.Visits_VisitReadOrder;
+export const Visits_VisitReadOrder = z
+  .object({
+    orderId: z.number().int(),
+    childId: z.number().int(),
+    childName: Children_ChildName,
+    costumeId: z.number().int(),
+    costumeName: z.string(),
+    inventoryCode: Costumes_InventoryCode,
+    status: Visits_OrderStatus,
+    tagStatus: Visits_TagStatus,
+    rentPrice: z.number().int(),
+    prepaymentAmount: z.number().int(),
+    finalPayment: z.number().int().optional(),
+    notes: z.string().optional(),
+    parts: z.array(Costumes_CostumePart).optional(),
+    coverThumbUrl: z.string().optional(),
+    photoCount: z.number().int().default(0),
+  })
+  .catchall(z.unknown());
+
+export type Visits_VisitReadMoneyOperation = __TypedOpenapi.Schemas.Visits_VisitReadMoneyOperation;
+export const Visits_VisitReadMoneyOperation = z
+  .object({
+    id: z.number().int(),
+    kind: z.enum(["issue_payment", "debt_payment", "customer_refund"]),
+    amount: z.number().int(),
+    createdAt: z.iso.datetime(),
+    voidedAt: z.iso.datetime().optional(),
+    legacyImported: z.boolean(),
+  })
+  .catchall(z.unknown());
+
+export type Visits_VisitReadTotals = __TypedOpenapi.Schemas.Visits_VisitReadTotals;
+export const Visits_VisitReadTotals = z
+  .object({ totalRent: z.number().int(), totalPrepayment: z.number().int(), totalRemaining: z.number().int() })
+  .catchall(z.unknown());
+
+export type Visits_VisitReadDetail = __TypedOpenapi.Schemas.Visits_VisitReadDetail;
+export const Visits_VisitReadDetail = z
+  .object({
+    id: z.number().int(),
+    visitCode: Costumes_VisitCode,
+    status: Visits_VisitStatus,
+    version: z.number().int(),
+    client: z
+      .object({ id: z.number().int(), name: Clients_ClientName, phone: Clients_PhoneString })
+      .catchall(z.unknown()),
+    startDateTime: z.iso.date(),
+    endDateTime: z.iso.date(),
+    issueTimeFrom: Visits_TimeString,
+    issueTimeTo: Visits_TimeString,
+    returnTimeUntil: Visits_TimeString,
+    notes: z.string().optional(),
+    createdAt: z.iso.datetime(),
+    orders: z.array(Visits_VisitReadOrder),
+    moneyOperations: z.array(Visits_VisitReadMoneyOperation),
+    deposits: z.array(Visits_VisitReadDeposit),
+    totals: Visits_VisitReadTotals,
+    balance: Visits_VisitBalance.optional(),
+  })
+  .catchall(z.unknown());
+
+export type Visits_VisitReturnSearchResponse = __TypedOpenapi.Schemas.Visits_VisitReturnSearchResponse;
+export const Visits_VisitReturnSearchResponse = z
   .object({
     visitId: z.number().int(),
-    depositReturned: z.boolean(),
-    message: z.string(),
+    visitCode: Costumes_VisitCode,
+    childrenNames: z.string(),
+    costumesNames: z.string(),
+    returnDate: z.iso.date(),
+    clientPhone: Clients_PhoneString,
+    clientName: Clients_ClientName,
   })
-  .passthrough();
+  .catchall(z.unknown());
 
-export const schemas = {
-  Auth_LoginRequest,
-  Auth_LoginSuccessResponse,
-  Common_Error,
-  Auth_RefreshSuccessResponse,
-  Children_ChildName,
-  Children_CreateChildRequest,
-  Children_ChildResponse,
-  Children_UpdateChildRequest,
-  Children_ChildUpdateResponse,
-  Clients_ClientName,
-  Clients_PhoneString,
-  Clients_CreateClientRequest,
-  Children_Child,
-  Clients_Client,
-  Costumes_VisitCode,
-  Visits_VisitStatus,
-  Visits_TimeString,
-  Visits_OrderStatus,
-  Clients_ClientOrderHistory,
-  Clients_ClientVisitHistory,
-  Clients_GetClientDetailed,
-  Clients_ClientItem,
-  Clients_GetClientList,
-  Clients_UpdateClientRequest,
-  Clients_blacklistReason,
-  Costumes_CreateCostumeRequest,
-  Costumes_InventoryCode,
-  Costumes_Costume,
-  Costumes_GetCostumesList,
-  Costumes_CostumeSearchResult,
-  Costumes_CostumeStatus,
-  Costumes_AvailableCostume,
-  Costumes_UpdateCostumeRequest,
-  Costumes_AvailabilityPeriod,
-  Costumes_CostumeFullAvailability,
-  Visits_CreateVisitRequest,
-  Visits_Notification,
-  Visits_TagStatus,
-  Visits_VisitOrder,
-  Visits_Visit,
-  Visits_DepositType,
-  Visits_VisitDepositInfo,
-  Visits_GetIssuedItem,
-  Visits_GetIssuedResponse,
-  Visits_IssuedForReturnResponse,
-  Visits_Order,
-  Visits_NotWrittenOrdersResponse,
-  Visits_NotificationItem,
-  Visits_GetNotificationResponse,
-  Visits_GetReservedResponse,
-  Visits_PaginatedReservedResponse,
-  Visits_VisitReturnSearchResponse,
-  Visits_VisitsSearchResponse,
-  Visits_GetUnreturnedResponse,
-  Visits_GetUnreturnedDepositsResponse,
-  Visits_VisitCancelRequest,
-  Visits_CompleteReturnRequest,
-  Visits_CompleteReturnResponse,
-  Visits_VisitForIssueResponse,
-  Visits_VisitReturnOrder,
-  Visits_VisitForReturnResponse,
-  Visits_IssueVisitRequest,
-  Visits_MarkDepositReturnedResponse,
+export type Visits_VisitsSearchResponse = __TypedOpenapi.Schemas.Visits_VisitsSearchResponse;
+export const Visits_VisitsSearchResponse = z
+  .object({
+    visitId: z.number().int(),
+    visitCode: Costumes_VisitCode,
+    clientName: Clients_ClientName,
+    clientPhone: Clients_PhoneString,
+    startDateTime: z.iso.date(),
+    childrenNames: z.string(),
+    costumesNames: z.string(),
+  })
+  .catchall(z.unknown());
+
+// </Schemas>
+
+// <Endpoints>
+export type post_AuthOperations_login = __TypedOpenapi.Endpoints.post_AuthOperations_login;
+export const post_AuthOperations_login = {
+  method: z.literal("POST"),
+  path: z.literal("/auth/login"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { body: Auth_LoginRequest },
+  responses: { 201: Auth_LoginSuccessResponse, default: Common_Error },
+  responseHeaders: { 201: z.strictObject({ "Set-Cookie": z.string() }) },
 };
 
-const endpoints = makeApi([
-  {
-    method: "post",
-    path: "/auth/login",
-    alias: "AuthOperations_login",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: Auth_LoginRequest,
-      },
-    ],
-    response: Auth_LoginSuccessResponse,
-  },
-  {
-    method: "post",
-    path: "/auth/logout",
-    alias: "AuthOperations_logout",
-    requestFormat: "json",
-    response: z.void(),
-  },
-  {
-    method: "post",
-    path: "/auth/refresh",
-    alias: "AuthOperations_refresh",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "Cookie",
-        type: "Header",
-        schema: z.string(),
-      },
-    ],
-    response: z.object({ accessToken: z.string() }).passthrough(),
-  },
-  {
-    method: "post",
-    path: "/children",
-    alias: "ChildOperations_create",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: Children_CreateChildRequest,
-      },
-    ],
-    response: Children_ChildResponse,
-  },
-  {
-    method: "patch",
-    path: "/children/:childId",
-    alias: "ChildOperations_update",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: Children_UpdateChildRequest,
-      },
-      {
-        name: "childId",
-        type: "Path",
-        schema: z.number().int(),
-      },
-    ],
-    response: Children_ChildUpdateResponse,
-  },
-  {
-    method: "delete",
-    path: "/children/:childId",
-    alias: "ChildOperations_delete",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "childId",
-        type: "Path",
-        schema: z.number().int(),
-      },
-    ],
-    response: z.void(),
-  },
-  {
-    method: "post",
-    path: "/clients",
-    alias: "ClientOperations_create",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: Clients_CreateClientRequest,
-      },
-    ],
-    response: Clients_Client,
-  },
-  {
-    method: "patch",
-    path: "/clients/:clientId",
-    alias: "ClientOperations_update",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: Clients_UpdateClientRequest,
-      },
-      {
-        name: "clientId",
-        type: "Path",
-        schema: z.number().int(),
-      },
-    ],
-    response: Clients_Client,
-  },
-  {
-    method: "delete",
-    path: "/clients/:clientId",
-    alias: "ClientOperations_delete",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "clientId",
-        type: "Path",
-        schema: z.number().int(),
-      },
-    ],
-    response: z.void(),
-  },
-  {
-    method: "post",
-    path: "/clients/:clientId/blacklist",
-    alias: "ClientOperations_addClientInBlackList",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: z
-          .object({ blacklistReason: z.string() })
-          .partial()
-          .passthrough(),
-      },
-      {
-        name: "clientId",
-        type: "Path",
-        schema: z.number().int(),
-      },
-    ],
-    response: z.void(),
-  },
-  {
-    method: "delete",
-    path: "/clients/:clientId/blacklist",
-    alias: "ClientOperations_removeClientFromBlackList",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "clientId",
-        type: "Path",
-        schema: z.number().int(),
-      },
-    ],
-    response: z.void(),
-  },
-  {
-    method: "get",
-    path: "/clients/detail/:clientId",
-    alias: "ClientOperations_getClientDetail",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "clientId",
-        type: "Path",
-        schema: z.number().int(),
-      },
-    ],
-    response: Clients_GetClientDetailed,
-  },
-  {
-    method: "get",
-    path: "/clients/list",
-    alias: "ClientOperations_getClientList",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "page",
-        type: "Query",
-        schema: z.number().int().optional(),
-      },
-      {
-        name: "limit",
-        type: "Query",
-        schema: z.number().int().optional(),
-      },
-    ],
-    response: Clients_GetClientList,
-  },
-  {
-    method: "get",
-    path: "/clients/search",
-    alias: "ClientOperations_search",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "q",
-        type: "Query",
-        schema: z.string().min(2),
-      },
-    ],
-    response: z.array(Clients_Client),
-  },
-  {
-    method: "post",
-    path: "/costumes",
-    alias: "CostumeOperations_create",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: z.object({ name: z.string().min(2) }).passthrough(),
-      },
-    ],
-    response: Costumes_Costume,
-  },
-  {
-    method: "patch",
-    path: "/costumes/:costumeId",
-    alias: "CostumeOperations_update",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: z
-          .object({ name: z.string().min(2) })
-          .partial()
-          .passthrough(),
-      },
-      {
-        name: "costumeId",
-        type: "Path",
-        schema: z.number().int(),
-      },
-    ],
-    response: Costumes_Costume,
-  },
-  {
-    method: "delete",
-    path: "/costumes/:costumeId",
-    alias: "CostumeOperations_delete",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "costumeId",
-        type: "Path",
-        schema: z.number().int(),
-      },
-    ],
-    response: z.void(),
-  },
-  {
-    method: "get",
-    path: "/costumes/:costumeId/availability",
-    alias: "CostumeOperations_getDetailedAvailability",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "costumeId",
-        type: "Path",
-        schema: z.number().int(),
-      },
-    ],
-    response: Costumes_CostumeFullAvailability,
-  },
-  {
-    method: "get",
-    path: "/costumes/list",
-    alias: "CostumeOperations_getCostumesList",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "page",
-        type: "Query",
-        schema: z.number().int().optional(),
-      },
-      {
-        name: "limit",
-        type: "Query",
-        schema: z.number().int().optional(),
-      },
-    ],
-    response: Costumes_GetCostumesList,
-  },
-  {
-    method: "get",
-    path: "/costumes/search",
-    alias: "CostumeOperations_searchAvailability",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "q",
-        type: "Query",
-        schema: z.string(),
-      },
-    ],
-    response: z.array(Costumes_CostumeSearchResult),
-  },
-  {
-    method: "get",
-    path: "/costumes/search-available",
-    alias: "CostumeOperations_searchAvailable",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "q",
-        type: "Query",
-        schema: z.string().optional(),
-      },
-      {
-        name: "startDate",
-        type: "Query",
-        schema: z.string(),
-      },
-      {
-        name: "endDate",
-        type: "Query",
-        schema: z.string(),
-      },
-    ],
-    response: z.array(Costumes_AvailableCostume),
-  },
-  {
-    method: "post",
-    path: "/visits",
-    alias: "VisitOperation_create",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: Visits_CreateVisitRequest,
-      },
-      {
-        name: "sendNotification",
-        type: "Query",
-        schema: z.boolean().optional().default(true),
-      },
-    ],
-    response: Visits_Visit,
-  },
-  {
-    method: "post",
-    path: "/visits/:orderId/mark-tag-written",
-    alias: "VisitOperation_markTagWritten",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "orderId",
-        type: "Path",
-        schema: z.number().int(),
-      },
-    ],
-    response: z.void(),
-  },
-  {
-    method: "post",
-    path: "/visits/:visitId/cancel",
-    alias: "VisitOperation_cancel",
-    description: `Отмена визита и всех связанных заказов`,
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        description: `Данные об отмене`,
-        type: "Body",
-        schema: z.object({ reason: z.string() }).partial().passthrough(),
-      },
-      {
-        name: "visitId",
-        type: "Path",
-        schema: z.number().int(),
-      },
-    ],
-    response: z.void(),
-    errors: [
-      {
-        status: 400,
-        description: `The server could not understand the request due to invalid syntax.`,
-        schema: z.object({ body: z.string() }).passthrough(),
-      },
-      {
-        status: 404,
-        description: `The server cannot find the requested resource.`,
-        schema: z.object({ body: z.string() }).passthrough(),
-      },
-    ],
-  },
-  {
-    method: "post",
-    path: "/visits/:visitId/complete-return",
-    alias: "VisitOperation_completeReturn",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: Visits_CompleteReturnRequest,
-      },
-      {
-        name: "visitId",
-        type: "Path",
-        schema: z.number().int(),
-      },
-    ],
-    response: Visits_CompleteReturnResponse,
-  },
-  {
-    method: "get",
-    path: "/visits/:visitId/for-issue",
-    alias: "VisitOperation_getForIssue",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "visitId",
-        type: "Path",
-        schema: z.number().int(),
-      },
-    ],
-    response: Visits_VisitForIssueResponse,
-  },
-  {
-    method: "get",
-    path: "/visits/:visitId/for-return",
-    alias: "VisitOperation_getForReturn",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "visitId",
-        type: "Path",
-        schema: z.number().int(),
-      },
-    ],
-    response: Visits_VisitForReturnResponse,
-  },
-  {
-    method: "post",
-    path: "/visits/:visitId/issue",
-    alias: "VisitOperation_issue",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: Visits_IssueVisitRequest,
-      },
-      {
-        name: "visitId",
-        type: "Path",
-        schema: z.number().int(),
-      },
-    ],
-    response: z.void(),
-  },
-  {
-    method: "post",
-    path: "/visits/:visitId/mark-deposit-returned",
-    alias: "VisitOperation_markDepositReturned",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "body",
-        type: "Body",
-        schema: z.object({ notes: z.string() }).partial().passthrough(),
-      },
-      {
-        name: "visitId",
-        type: "Path",
-        schema: z.number().int(),
-      },
-    ],
-    response: Visits_MarkDepositReturnedResponse,
-  },
-  {
-    method: "post",
-    path: "/visits/:visitId/unissue",
-    alias: "VisitOperation_unissue",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "visitId",
-        type: "Path",
-        schema: z.number().int(),
-      },
-    ],
-    response: z.void(),
-  },
-  {
-    method: "get",
-    path: "/visits/issued",
-    alias: "VisitOperation_getIssuedVisits",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "page",
-        type: "Query",
-        schema: z.number().int().optional(),
-      },
-      {
-        name: "limit",
-        type: "Query",
-        schema: z.number().int().optional(),
-      },
-    ],
-    response: Visits_GetIssuedResponse,
-  },
-  {
-    method: "get",
-    path: "/visits/issued-for-return",
-    alias: "VisitOperation_getIssuedForReturn",
-    requestFormat: "json",
-    response: z.array(Visits_IssuedForReturnResponse),
-  },
-  {
-    method: "get",
-    path: "/visits/not_written",
-    alias: "VisitOperation_getNotWritten",
-    requestFormat: "json",
-    response: Visits_NotWrittenOrdersResponse,
-  },
-  {
-    method: "get",
-    path: "/visits/notification",
-    alias: "VisitOperation_getVisitNotification",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "page",
-        type: "Query",
-        schema: z.number().int().optional(),
-      },
-      {
-        name: "limit",
-        type: "Query",
-        schema: z.number().int().optional(),
-      },
-    ],
-    response: Visits_GetNotificationResponse,
-  },
-  {
-    method: "get",
-    path: "/visits/notification-search",
-    alias: "VisitOperation_searchNotification",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "q",
-        type: "Query",
-        schema: z.string().min(2),
-      },
-    ],
-    response: z.array(Visits_NotificationItem),
-  },
-  {
-    method: "post",
-    path: "/visits/preview-code",
-    alias: "VisitOperation_previewCode",
-    requestFormat: "json",
-    response: z
-      .object({ visitCode: Costumes_VisitCode.regex(/^\d{4}$/) })
-      .passthrough(),
-  },
-  {
-    method: "get",
-    path: "/visits/reserved",
-    alias: "VisitOperation_getReserved",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "startDate",
-        type: "Query",
-        schema: z.string().optional(),
-      },
-      {
-        name: "endDate",
-        type: "Query",
-        schema: z.string().optional(),
-      },
-      {
-        name: "page",
-        type: "Query",
-        schema: z.number().int().optional(),
-      },
-      {
-        name: "limit",
-        type: "Query",
-        schema: z.number().int().optional(),
-      },
-    ],
-    response: Visits_PaginatedReservedResponse,
-  },
-  {
-    method: "get",
-    path: "/visits/return-search",
-    alias: "VisitOperation_searchForReturn",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "q",
-        type: "Query",
-        schema: z.string().min(2),
-      },
-    ],
-    response: z.array(Visits_VisitReturnSearchResponse),
-  },
-  {
-    method: "get",
-    path: "/visits/search",
-    alias: "VisitOperation_search",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "q",
-        type: "Query",
-        schema: z.string().min(2),
-      },
-    ],
-    response: z.array(Visits_VisitsSearchResponse),
-  },
-  {
-    method: "get",
-    path: "/visits/unreturned-deposits",
-    alias: "VisitOperation_getUnreturnedDeposits",
-    requestFormat: "json",
-    parameters: [
-      {
-        name: "page",
-        type: "Query",
-        schema: z.number().int().optional(),
-      },
-      {
-        name: "limit",
-        type: "Query",
-        schema: z.number().int().optional(),
-      },
-    ],
-    response: Visits_GetUnreturnedDepositsResponse,
-  },
-]);
+export type post_AuthOperations_logout = __TypedOpenapi.Endpoints.post_AuthOperations_logout;
+export const post_AuthOperations_logout = {
+  method: z.literal("POST"),
+  path: z.literal("/auth/logout"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: z.never(),
+  responses: { 204: z.unknown(), default: Common_Error },
+  responseHeaders: { 204: z.strictObject({ "Set-Cookie": z.string() }) },
+};
 
-export const api = new Zodios(endpoints);
+export type post_AuthOperations_refresh = __TypedOpenapi.Endpoints.post_AuthOperations_refresh;
+export const post_AuthOperations_refresh = {
+  method: z.literal("POST"),
+  path: z.literal("/auth/refresh"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { header: z.strictObject({ Cookie: z.string() }) },
+  responses: { 201: Auth_RefreshSuccessResponse, default: Common_Error },
+};
 
-export function createApiClient(baseUrl: string, options?: ZodiosOptions) {
-  return new Zodios(baseUrl, endpoints, options);
+export type post_ChildOperations_create = __TypedOpenapi.Endpoints.post_ChildOperations_create;
+export const post_ChildOperations_create = {
+  method: z.literal("POST"),
+  path: z.literal("/children"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { body: Children_CreateChildRequest },
+  responses: { 201: Children_ChildResponse, default: Common_Error },
+};
+
+export type patch_ChildOperations_update = __TypedOpenapi.Endpoints.patch_ChildOperations_update;
+export const patch_ChildOperations_update = {
+  method: z.literal("PATCH"),
+  path: z.literal("/children/{childId}"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { path: z.strictObject({ childId: z.coerce.number().int() }), body: Children_UpdateChildRequest },
+  responses: { 200: Children_ChildUpdateResponse, default: Common_Error },
+};
+
+export type delete_ChildOperations_delete = __TypedOpenapi.Endpoints.delete_ChildOperations_delete;
+export const delete_ChildOperations_delete = {
+  method: z.literal("DELETE"),
+  path: z.literal("/children/{childId}"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { path: z.strictObject({ childId: z.coerce.number().int() }) },
+  responses: { 204: z.unknown(), default: Common_Error },
+};
+
+export type post_ClientOperations_create = __TypedOpenapi.Endpoints.post_ClientOperations_create;
+export const post_ClientOperations_create = {
+  method: z.literal("POST"),
+  path: z.literal("/clients"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { body: Clients_CreateClientRequest },
+  responses: { 201: Clients_Client, default: Common_Error },
+};
+
+export type get_ClientOperations_getClientDetail = __TypedOpenapi.Endpoints.get_ClientOperations_getClientDetail;
+export const get_ClientOperations_getClientDetail = {
+  method: z.literal("GET"),
+  path: z.literal("/clients/detail/{clientId}"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { path: z.strictObject({ clientId: z.coerce.number().int() }) },
+  responses: { 200: Clients_GetClientDetailed, default: Common_Error },
+};
+
+export type get_ClientOperations_getClientList = __TypedOpenapi.Endpoints.get_ClientOperations_getClientList;
+export const get_ClientOperations_getClientList = {
+  method: z.literal("GET"),
+  path: z.literal("/clients/list"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: {
+    query: z.strictObject({ page: z.coerce.number().int(), limit: z.coerce.number().int() }).partial().optional(),
+  },
+  responses: { 200: Clients_GetClientList, default: Common_Error },
+};
+
+export type get_ClientOperations_search = __TypedOpenapi.Endpoints.get_ClientOperations_search;
+export const get_ClientOperations_search = {
+  method: z.literal("GET"),
+  path: z.literal("/clients/search"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { query: z.strictObject({ q: z.string().min(2) }) },
+  responses: { 200: z.array(Clients_Client), default: Common_Error },
+};
+
+export type patch_ClientOperations_update = __TypedOpenapi.Endpoints.patch_ClientOperations_update;
+export const patch_ClientOperations_update = {
+  method: z.literal("PATCH"),
+  path: z.literal("/clients/{clientId}"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { path: z.strictObject({ clientId: z.coerce.number().int() }), body: Clients_UpdateClientRequest },
+  responses: { 200: Clients_Client, default: Common_Error },
+};
+
+export type delete_ClientOperations_delete = __TypedOpenapi.Endpoints.delete_ClientOperations_delete;
+export const delete_ClientOperations_delete = {
+  method: z.literal("DELETE"),
+  path: z.literal("/clients/{clientId}"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { path: z.strictObject({ clientId: z.coerce.number().int() }) },
+  responses: { 204: z.unknown(), default: Common_Error },
+};
+
+export type post_ClientOperations_addClientInBlackList =
+  __TypedOpenapi.Endpoints.post_ClientOperations_addClientInBlackList;
+export const post_ClientOperations_addClientInBlackList = {
+  method: z.literal("POST"),
+  path: z.literal("/clients/{clientId}/blacklist"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { path: z.strictObject({ clientId: z.coerce.number().int() }), body: Clients_blacklistReason },
+  responses: { 201: z.unknown(), default: Common_Error },
+};
+
+export type delete_ClientOperations_removeClientFromBlackList =
+  __TypedOpenapi.Endpoints.delete_ClientOperations_removeClientFromBlackList;
+export const delete_ClientOperations_removeClientFromBlackList = {
+  method: z.literal("DELETE"),
+  path: z.literal("/clients/{clientId}/blacklist"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { path: z.strictObject({ clientId: z.coerce.number().int() }) },
+  responses: { 204: z.unknown(), default: Common_Error },
+};
+
+export type get_ClientOperations_checkWhatsappAvailability =
+  __TypedOpenapi.Endpoints.get_ClientOperations_checkWhatsappAvailability;
+export const get_ClientOperations_checkWhatsappAvailability = {
+  method: z.literal("GET"),
+  path: z.literal("/clients/{clientId}/whatsapp-availability"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: {
+    query: z
+      .strictObject({
+        force: z
+          .union([z.boolean(), z.string(), z.number()])
+          .transform((x) => x === true || x === "true" || x === 1 || x === "1"),
+      })
+      .partial()
+      .optional(),
+    path: z.strictObject({ clientId: z.coerce.number().int() }),
+  },
+  responses: { 200: Clients_WhatsappAvailability, default: Common_Error },
+};
+
+export type get_CostumeCategoryOperations_list = __TypedOpenapi.Endpoints.get_CostumeCategoryOperations_list;
+export const get_CostumeCategoryOperations_list = {
+  method: z.literal("GET"),
+  path: z.literal("/costume-categories"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: z.never(),
+  responses: { 200: z.array(Costumes_CostumeCategoryNode), default: Common_Error },
+};
+
+export type post_CostumeCategoryOperations_create = __TypedOpenapi.Endpoints.post_CostumeCategoryOperations_create;
+export const post_CostumeCategoryOperations_create = {
+  method: z.literal("POST"),
+  path: z.literal("/costume-categories"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { body: Costumes_CreateCostumeCategoryRequest },
+  responses: { 201: Costumes_CostumeCategory, default: Common_Error },
+};
+
+export type patch_CostumeCategoryOperations_update = __TypedOpenapi.Endpoints.patch_CostumeCategoryOperations_update;
+export const patch_CostumeCategoryOperations_update = {
+  method: z.literal("PATCH"),
+  path: z.literal("/costume-categories/{categoryId}"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: {
+    path: z.strictObject({ categoryId: z.coerce.number().int() }),
+    body: Costumes_UpdateCostumeCategoryRequest,
+  },
+  responses: { 200: Costumes_CostumeCategory, default: Common_Error },
+};
+
+export type delete_CostumeCategoryOperations_delete = __TypedOpenapi.Endpoints.delete_CostumeCategoryOperations_delete;
+export const delete_CostumeCategoryOperations_delete = {
+  method: z.literal("DELETE"),
+  path: z.literal("/costume-categories/{categoryId}"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { path: z.strictObject({ categoryId: z.coerce.number().int() }) },
+  responses: { 204: z.unknown(), default: Common_Error },
+};
+
+export type post_CostumeOperations_create = __TypedOpenapi.Endpoints.post_CostumeOperations_create;
+export const post_CostumeOperations_create = {
+  method: z.literal("POST"),
+  path: z.literal("/costumes"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { body: Costumes_CreateCostumeRequest },
+  responses: { 201: Costumes_Costume, default: Common_Error },
+};
+
+export type get_CostumeOperations_getCostumesList = __TypedOpenapi.Endpoints.get_CostumeOperations_getCostumesList;
+export const get_CostumeOperations_getCostumesList = {
+  method: z.literal("GET"),
+  path: z.literal("/costumes/list"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: {
+    query: z
+      .strictObject({
+        page: z.coerce.number().int(),
+        limit: z.coerce.number().int(),
+        categoryId: z.coerce.number().int(),
+        gender: Costumes_CostumeGender,
+        height: Costumes_HeightCm,
+        withoutCategory: z
+          .union([z.boolean(), z.string(), z.number()])
+          .transform((x) => x === true || x === "true" || x === 1 || x === "1"),
+      })
+      .partial()
+      .optional(),
+  },
+  responses: { 200: Costumes_GetCostumesList, default: Common_Error },
+};
+
+export type get_CostumeOperations_searchAvailability =
+  __TypedOpenapi.Endpoints.get_CostumeOperations_searchAvailability;
+export const get_CostumeOperations_searchAvailability = {
+  method: z.literal("GET"),
+  path: z.literal("/costumes/search"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: {
+    query: z.strictObject({
+      q: z.string(),
+      categoryId: z.coerce.number().int().optional(),
+      gender: Costumes_CostumeGender.optional(),
+      height: Costumes_HeightCm.optional(),
+      withoutCategory: z
+        .union([z.boolean(), z.string(), z.number()])
+        .transform((x) => x === true || x === "true" || x === 1 || x === "1")
+        .optional(),
+    }),
+  },
+  responses: { 200: z.array(Costumes_CostumeSearchResult), default: Common_Error },
+};
+
+export type get_CostumeOperations_searchAvailable = __TypedOpenapi.Endpoints.get_CostumeOperations_searchAvailable;
+export const get_CostumeOperations_searchAvailable = {
+  method: z.literal("GET"),
+  path: z.literal("/costumes/search-available"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: {
+    query: z.strictObject({
+      q: z.string().optional(),
+      startDate: z.string(),
+      endDate: z.string(),
+      excludeVisitId: z.coerce.number().int().optional(),
+      categoryId: z.coerce.number().int().optional(),
+      gender: Costumes_CostumeGender.optional(),
+      height: Costumes_HeightCm.optional(),
+      withoutCategory: z
+        .union([z.boolean(), z.string(), z.number()])
+        .transform((x) => x === true || x === "true" || x === 1 || x === "1")
+        .optional(),
+    }),
+  },
+  responses: { 200: z.array(Costumes_AvailableCostume), default: Common_Error },
+};
+
+export type patch_CostumeOperations_update = __TypedOpenapi.Endpoints.patch_CostumeOperations_update;
+export const patch_CostumeOperations_update = {
+  method: z.literal("PATCH"),
+  path: z.literal("/costumes/{costumeId}"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { path: z.strictObject({ costumeId: z.coerce.number().int() }), body: Costumes_UpdateCostumeRequest },
+  responses: { 200: Costumes_Costume, default: Common_Error },
+};
+
+export type delete_CostumeOperations_delete = __TypedOpenapi.Endpoints.delete_CostumeOperations_delete;
+export const delete_CostumeOperations_delete = {
+  method: z.literal("DELETE"),
+  path: z.literal("/costumes/{costumeId}"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { path: z.strictObject({ costumeId: z.coerce.number().int() }) },
+  responses: { 204: z.unknown(), default: Common_Error },
+};
+
+export type get_CostumeOperations_getDetailedAvailability =
+  __TypedOpenapi.Endpoints.get_CostumeOperations_getDetailedAvailability;
+export const get_CostumeOperations_getDetailedAvailability = {
+  method: z.literal("GET"),
+  path: z.literal("/costumes/{costumeId}/availability"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { path: z.strictObject({ costumeId: z.coerce.number().int() }) },
+  responses: { 200: Costumes_CostumeFullAvailability, default: Common_Error },
+};
+
+export type post_CostumePhotoOperations_upload = __TypedOpenapi.Endpoints.post_CostumePhotoOperations_upload;
+export const post_CostumePhotoOperations_upload = {
+  method: z.literal("POST"),
+  path: z.literal("/costumes/{costumeId}/photos"),
+  requestFormat: z.literal("form-data"),
+  responseFormat: z.literal("json"),
+  parameters: { path: z.strictObject({ costumeId: z.coerce.number().int() }), body: Costumes_UploadCostumePhotoForm },
+  responses: { 201: Costumes_CostumePhoto, default: Common_Error },
+};
+
+export type get_CostumePhotoOperations_list = __TypedOpenapi.Endpoints.get_CostumePhotoOperations_list;
+export const get_CostumePhotoOperations_list = {
+  method: z.literal("GET"),
+  path: z.literal("/costumes/{costumeId}/photos"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { path: z.strictObject({ costumeId: z.coerce.number().int() }) },
+  responses: { 200: z.array(Costumes_CostumePhoto), default: Common_Error },
+};
+
+export type patch_CostumePhotoOperations_reorder = __TypedOpenapi.Endpoints.patch_CostumePhotoOperations_reorder;
+export const patch_CostumePhotoOperations_reorder = {
+  method: z.literal("PATCH"),
+  path: z.literal("/costumes/{costumeId}/photos/order"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: {
+    path: z.strictObject({ costumeId: z.coerce.number().int() }),
+    body: Costumes_ReorderCostumePhotosRequest,
+  },
+  responses: { 200: z.array(Costumes_CostumePhoto), default: Common_Error },
+};
+
+export type delete_CostumePhotoOperations_delete = __TypedOpenapi.Endpoints.delete_CostumePhotoOperations_delete;
+export const delete_CostumePhotoOperations_delete = {
+  method: z.literal("DELETE"),
+  path: z.literal("/costumes/{costumeId}/photos/{photoId}"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { path: z.strictObject({ costumeId: z.coerce.number().int(), photoId: z.coerce.number().int() }) },
+  responses: { 204: z.unknown(), default: Common_Error },
+};
+
+export type post_VisitOperation_create = __TypedOpenapi.Endpoints.post_VisitOperation_create;
+export const post_VisitOperation_create = {
+  method: z.literal("POST"),
+  path: z.literal("/visits"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: {
+    query: z
+      .strictObject({
+        sendNotification: z
+          .union([z.boolean(), z.string(), z.number()])
+          .transform((x) => x === true || x === "true" || x === 1 || x === "1")
+          .default(true),
+      })
+      .partial()
+      .optional(),
+    body: Visits_CreateVisitRequest,
+  },
+  responses: { 201: Visits_Visit, default: Common_Error },
+};
+
+export type get_VisitOperation_list = __TypedOpenapi.Endpoints.get_VisitOperation_list;
+export const get_VisitOperation_list = {
+  method: z.literal("GET"),
+  path: z.literal("/visits"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: {
+    query: z
+      .strictObject({
+        q: z.string().min(2),
+        status: Visits_VisitStatus,
+        startDateFrom: z.iso.date(),
+        startDateTo: z.iso.date(),
+        endDateFrom: z.iso.date(),
+        endDateTo: z.iso.date(),
+        page: z.coerce.number().int().min(1),
+        limit: z.coerce.number().int().min(1).max(100),
+      })
+      .partial()
+      .optional(),
+  },
+  responses: { 200: Visits_PaginatedVisitsResponse, default: Common_Error },
+};
+
+export type get_VisitOperation_getIssuedVisits = __TypedOpenapi.Endpoints.get_VisitOperation_getIssuedVisits;
+export const get_VisitOperation_getIssuedVisits = {
+  method: z.literal("GET"),
+  path: z.literal("/visits/issued"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: {
+    query: z.strictObject({ page: z.coerce.number().int(), limit: z.coerce.number().int() }).partial().optional(),
+  },
+  responses: { 200: Visits_GetIssuedResponse, default: Common_Error },
+};
+
+export type get_VisitOperation_getIssuedForReturn = __TypedOpenapi.Endpoints.get_VisitOperation_getIssuedForReturn;
+export const get_VisitOperation_getIssuedForReturn = {
+  method: z.literal("GET"),
+  path: z.literal("/visits/issued-for-return"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: z.never(),
+  responses: { 200: z.array(Visits_IssuedForReturnResponse), default: Common_Error },
+};
+
+export type get_VisitOperation_getNotWritten = __TypedOpenapi.Endpoints.get_VisitOperation_getNotWritten;
+export const get_VisitOperation_getNotWritten = {
+  method: z.literal("GET"),
+  path: z.literal("/visits/not_written"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: z.never(),
+  responses: { 200: Visits_NotWrittenOrdersResponse, default: Common_Error },
+};
+
+export type get_VisitOperation_getVisitNotification = __TypedOpenapi.Endpoints.get_VisitOperation_getVisitNotification;
+export const get_VisitOperation_getVisitNotification = {
+  method: z.literal("GET"),
+  path: z.literal("/visits/notification"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: {
+    query: z.strictObject({ page: z.coerce.number().int(), limit: z.coerce.number().int() }).partial().optional(),
+  },
+  responses: { 200: Visits_GetNotificationResponse, default: Common_Error },
+};
+
+export type get_VisitOperation_searchNotification = __TypedOpenapi.Endpoints.get_VisitOperation_searchNotification;
+export const get_VisitOperation_searchNotification = {
+  method: z.literal("GET"),
+  path: z.literal("/visits/notification-search"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { query: z.strictObject({ q: z.string().min(2) }) },
+  responses: { 200: z.array(Visits_NotificationItem), default: Common_Error },
+};
+
+export type post_VisitOperation_previewCode = __TypedOpenapi.Endpoints.post_VisitOperation_previewCode;
+export const post_VisitOperation_previewCode = {
+  method: z.literal("POST"),
+  path: z.literal("/visits/preview-code"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: z.never(),
+  responses: { 201: Costumes_VisitCode, default: Common_Error },
+};
+
+export type post_VisitOperation_quickIssue = __TypedOpenapi.Endpoints.post_VisitOperation_quickIssue;
+export const post_VisitOperation_quickIssue = {
+  method: z.literal("POST"),
+  path: z.literal("/visits/quick-issue"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { body: Visits_QuickIssueVisitRequest },
+  responses: { 201: Visits_QuickIssueVisitResponse, default: Common_Error },
+};
+
+export type get_VisitOperation_getReserved = __TypedOpenapi.Endpoints.get_VisitOperation_getReserved;
+export const get_VisitOperation_getReserved = {
+  method: z.literal("GET"),
+  path: z.literal("/visits/reserved"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: {
+    query: z
+      .strictObject({
+        startDate: z.string(),
+        endDate: z.string(),
+        page: z.coerce.number().int(),
+        limit: z.coerce.number().int(),
+      })
+      .partial()
+      .optional(),
+  },
+  responses: { 200: Visits_PaginatedReservedResponse, default: Common_Error },
+};
+
+export type get_VisitOperation_searchForReturn = __TypedOpenapi.Endpoints.get_VisitOperation_searchForReturn;
+export const get_VisitOperation_searchForReturn = {
+  method: z.literal("GET"),
+  path: z.literal("/visits/return-search"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { query: z.strictObject({ q: z.string().min(2) }) },
+  responses: { 200: z.array(Visits_VisitReturnSearchResponse), default: Common_Error },
+};
+
+export type get_VisitOperation_search = __TypedOpenapi.Endpoints.get_VisitOperation_search;
+export const get_VisitOperation_search = {
+  method: z.literal("GET"),
+  path: z.literal("/visits/search"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { query: z.strictObject({ q: z.string().min(2) }) },
+  responses: { 200: z.array(Visits_VisitsSearchResponse), default: Common_Error },
+};
+
+export type get_VisitOperation_getUnreturnedDeposits =
+  __TypedOpenapi.Endpoints.get_VisitOperation_getUnreturnedDeposits;
+export const get_VisitOperation_getUnreturnedDeposits = {
+  method: z.literal("GET"),
+  path: z.literal("/visits/unreturned-deposits"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: {
+    query: z.strictObject({ page: z.coerce.number().int(), limit: z.coerce.number().int() }).partial().optional(),
+  },
+  responses: { 200: Visits_GetUnreturnedDepositsResponse, default: Common_Error },
+};
+
+export type get_VisitOperation_getUnsettledBalances = __TypedOpenapi.Endpoints.get_VisitOperation_getUnsettledBalances;
+export const get_VisitOperation_getUnsettledBalances = {
+  method: z.literal("GET"),
+  path: z.literal("/visits/unsettled-balances"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: {
+    query: z.strictObject({ page: z.coerce.number().int(), limit: z.coerce.number().int() }).partial().optional(),
+  },
+  responses: { 200: Visits_PaginatedUnsettledVisitBalancesResponse, default: Common_Error },
+};
+
+export type post_VisitOperation_markTagWritten = __TypedOpenapi.Endpoints.post_VisitOperation_markTagWritten;
+export const post_VisitOperation_markTagWritten = {
+  method: z.literal("POST"),
+  path: z.literal("/visits/{orderId}/mark-tag-written"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { path: z.strictObject({ orderId: z.coerce.number().int() }) },
+  responses: { 204: z.unknown(), default: Common_Error },
+};
+
+export type patch_VisitOperation_updateReserved = __TypedOpenapi.Endpoints.patch_VisitOperation_updateReserved;
+export const patch_VisitOperation_updateReserved = {
+  method: z.literal("PATCH"),
+  path: z.literal("/visits/{visitId}"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { path: z.strictObject({ visitId: z.coerce.number().int() }), body: Visits_UpdateReservedVisitRequest },
+  responses: { 200: Visits_VisitReadDetail, default: Common_Error },
+};
+
+export type get_VisitOperation_getDetail = __TypedOpenapi.Endpoints.get_VisitOperation_getDetail;
+export const get_VisitOperation_getDetail = {
+  method: z.literal("GET"),
+  path: z.literal("/visits/{visitId}"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { path: z.strictObject({ visitId: z.coerce.number().int() }) },
+  responses: { 200: Visits_VisitReadDetail, default: Common_Error },
+};
+
+export type post_VisitOperation_addAndIssue = __TypedOpenapi.Endpoints.post_VisitOperation_addAndIssue;
+export const post_VisitOperation_addAndIssue = {
+  method: z.literal("POST"),
+  path: z.literal("/visits/{visitId}/add-and-issue"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { path: z.strictObject({ visitId: z.coerce.number().int() }), body: Visits_AddAndIssueVisitRequest },
+  responses: { 200: Visits_VisitReadDetail, default: Common_Error },
+};
+
+export type get_VisitOperation_getBalance = __TypedOpenapi.Endpoints.get_VisitOperation_getBalance;
+export const get_VisitOperation_getBalance = {
+  method: z.literal("GET"),
+  path: z.literal("/visits/{visitId}/balance"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { path: z.strictObject({ visitId: z.coerce.number().int() }) },
+  responses: { 200: Visits_VisitBalance, default: Common_Error },
+};
+
+export type post_VisitOperation_cancel = __TypedOpenapi.Endpoints.post_VisitOperation_cancel;
+export const post_VisitOperation_cancel = {
+  method: z.literal("POST"),
+  path: z.literal("/visits/{visitId}/cancel"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { path: z.strictObject({ visitId: z.coerce.number().int() }), body: Visits_VisitCancelRequest },
+  responses: {
+    204: z.unknown(),
+    400: z.object({ body: z.string() }).catchall(z.unknown()),
+    404: z.object({ body: z.string() }).catchall(z.unknown()),
+  },
+};
+
+export type post_VisitOperation_completeReturn = __TypedOpenapi.Endpoints.post_VisitOperation_completeReturn;
+export const post_VisitOperation_completeReturn = {
+  method: z.literal("POST"),
+  path: z.literal("/visits/{visitId}/complete-return"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { path: z.strictObject({ visitId: z.coerce.number().int() }), body: Visits_CompleteReturnRequest },
+  responses: { 201: Visits_CompleteReturnResponse, default: Common_Error },
+};
+
+export type get_VisitOperation_getForIssue = __TypedOpenapi.Endpoints.get_VisitOperation_getForIssue;
+export const get_VisitOperation_getForIssue = {
+  method: z.literal("GET"),
+  path: z.literal("/visits/{visitId}/for-issue"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { path: z.strictObject({ visitId: z.coerce.number().int() }) },
+  responses: { 200: Visits_VisitForIssueResponse, default: Common_Error },
+};
+
+export type get_VisitOperation_getForReturn = __TypedOpenapi.Endpoints.get_VisitOperation_getForReturn;
+export const get_VisitOperation_getForReturn = {
+  method: z.literal("GET"),
+  path: z.literal("/visits/{visitId}/for-return"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { path: z.strictObject({ visitId: z.coerce.number().int() }) },
+  responses: { 200: Visits_VisitForReturnResponse, default: Common_Error },
+};
+
+export type get_VisitOperation_getHistory = __TypedOpenapi.Endpoints.get_VisitOperation_getHistory;
+export const get_VisitOperation_getHistory = {
+  method: z.literal("GET"),
+  path: z.literal("/visits/{visitId}/history"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: {
+    query: z
+      .strictObject({ page: z.coerce.number().int().min(1), limit: z.coerce.number().int().min(1).max(100) })
+      .partial()
+      .optional(),
+    path: z.strictObject({ visitId: z.coerce.number().int() }),
+  },
+  responses: { 200: Visits_PaginatedVisitHistoryResponse, default: Common_Error },
+};
+
+export type post_VisitOperation_issue = __TypedOpenapi.Endpoints.post_VisitOperation_issue;
+export const post_VisitOperation_issue = {
+  method: z.literal("POST"),
+  path: z.literal("/visits/{visitId}/issue"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { path: z.strictObject({ visitId: z.coerce.number().int() }), body: Visits_IssueVisitRequest },
+  responses: { 204: z.unknown(), default: Common_Error },
+};
+
+export type post_VisitOperation_markDepositReturned = __TypedOpenapi.Endpoints.post_VisitOperation_markDepositReturned;
+export const post_VisitOperation_markDepositReturned = {
+  method: z.literal("POST"),
+  path: z.literal("/visits/{visitId}/mark-deposit-returned"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: {
+    path: z.strictObject({ visitId: z.coerce.number().int() }),
+    body: z.object({ notes: z.string() }).partial().catchall(z.unknown()).optional(),
+  },
+  responses: { 200: Visits_MarkDepositReturnedResponse, default: Common_Error },
+};
+
+export type post_VisitOperation_settle = __TypedOpenapi.Endpoints.post_VisitOperation_settle;
+export const post_VisitOperation_settle = {
+  method: z.literal("POST"),
+  path: z.literal("/visits/{visitId}/settlement"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { path: z.strictObject({ visitId: z.coerce.number().int() }), body: Visits_VisitSettlementRequest },
+  responses: { 200: Visits_VisitBalance, default: Common_Error },
+};
+
+export type post_VisitOperation_unissue = __TypedOpenapi.Endpoints.post_VisitOperation_unissue;
+export const post_VisitOperation_unissue = {
+  method: z.literal("POST"),
+  path: z.literal("/visits/{visitId}/unissue"),
+  requestFormat: z.literal("json"),
+  responseFormat: z.literal("json"),
+  parameters: { path: z.strictObject({ visitId: z.coerce.number().int() }) },
+  responses: { 204: z.unknown(), default: Common_Error },
+};
+
+// </Endpoints>
+
+// <EndpointByMethod>
+export const EndpointByMethod = {
+  post: {
+    "/auth/login": post_AuthOperations_login,
+    "/auth/logout": post_AuthOperations_logout,
+    "/auth/refresh": post_AuthOperations_refresh,
+    "/children": post_ChildOperations_create,
+    "/clients": post_ClientOperations_create,
+    "/clients/{clientId}/blacklist": post_ClientOperations_addClientInBlackList,
+    "/costume-categories": post_CostumeCategoryOperations_create,
+    "/costumes": post_CostumeOperations_create,
+    "/costumes/{costumeId}/photos": post_CostumePhotoOperations_upload,
+    "/visits": post_VisitOperation_create,
+    "/visits/preview-code": post_VisitOperation_previewCode,
+    "/visits/quick-issue": post_VisitOperation_quickIssue,
+    "/visits/{orderId}/mark-tag-written": post_VisitOperation_markTagWritten,
+    "/visits/{visitId}/add-and-issue": post_VisitOperation_addAndIssue,
+    "/visits/{visitId}/cancel": post_VisitOperation_cancel,
+    "/visits/{visitId}/complete-return": post_VisitOperation_completeReturn,
+    "/visits/{visitId}/issue": post_VisitOperation_issue,
+    "/visits/{visitId}/mark-deposit-returned": post_VisitOperation_markDepositReturned,
+    "/visits/{visitId}/settlement": post_VisitOperation_settle,
+    "/visits/{visitId}/unissue": post_VisitOperation_unissue,
+  },
+  patch: {
+    "/children/{childId}": patch_ChildOperations_update,
+    "/clients/{clientId}": patch_ClientOperations_update,
+    "/costume-categories/{categoryId}": patch_CostumeCategoryOperations_update,
+    "/costumes/{costumeId}": patch_CostumeOperations_update,
+    "/costumes/{costumeId}/photos/order": patch_CostumePhotoOperations_reorder,
+    "/visits/{visitId}": patch_VisitOperation_updateReserved,
+  },
+  delete: {
+    "/children/{childId}": delete_ChildOperations_delete,
+    "/clients/{clientId}": delete_ClientOperations_delete,
+    "/clients/{clientId}/blacklist": delete_ClientOperations_removeClientFromBlackList,
+    "/costume-categories/{categoryId}": delete_CostumeCategoryOperations_delete,
+    "/costumes/{costumeId}": delete_CostumeOperations_delete,
+    "/costumes/{costumeId}/photos/{photoId}": delete_CostumePhotoOperations_delete,
+  },
+  get: {
+    "/clients/detail/{clientId}": get_ClientOperations_getClientDetail,
+    "/clients/list": get_ClientOperations_getClientList,
+    "/clients/search": get_ClientOperations_search,
+    "/clients/{clientId}/whatsapp-availability": get_ClientOperations_checkWhatsappAvailability,
+    "/costume-categories": get_CostumeCategoryOperations_list,
+    "/costumes/list": get_CostumeOperations_getCostumesList,
+    "/costumes/search": get_CostumeOperations_searchAvailability,
+    "/costumes/search-available": get_CostumeOperations_searchAvailable,
+    "/costumes/{costumeId}/availability": get_CostumeOperations_getDetailedAvailability,
+    "/costumes/{costumeId}/photos": get_CostumePhotoOperations_list,
+    "/visits": get_VisitOperation_list,
+    "/visits/issued": get_VisitOperation_getIssuedVisits,
+    "/visits/issued-for-return": get_VisitOperation_getIssuedForReturn,
+    "/visits/not_written": get_VisitOperation_getNotWritten,
+    "/visits/notification": get_VisitOperation_getVisitNotification,
+    "/visits/notification-search": get_VisitOperation_searchNotification,
+    "/visits/reserved": get_VisitOperation_getReserved,
+    "/visits/return-search": get_VisitOperation_searchForReturn,
+    "/visits/search": get_VisitOperation_search,
+    "/visits/unreturned-deposits": get_VisitOperation_getUnreturnedDeposits,
+    "/visits/unsettled-balances": get_VisitOperation_getUnsettledBalances,
+    "/visits/{visitId}": get_VisitOperation_getDetail,
+    "/visits/{visitId}/balance": get_VisitOperation_getBalance,
+    "/visits/{visitId}/for-issue": get_VisitOperation_getForIssue,
+    "/visits/{visitId}/for-return": get_VisitOperation_getForReturn,
+    "/visits/{visitId}/history": get_VisitOperation_getHistory,
+  },
+} satisfies {
+  [M in keyof __TypedOpenapi.EndpointByMethod]: { [P in keyof __TypedOpenapi.EndpointByMethod[M]]: unknown };
+};
+export type EndpointByMethod = __TypedOpenapi.EndpointByMethod;
+// </EndpointByMethod>
+
+// <EndpointByMethod.Shorthands>
+export type PostEndpoints = EndpointByMethod["post"];
+export type PatchEndpoints = EndpointByMethod["patch"];
+export type DeleteEndpoints = EndpointByMethod["delete"];
+export type GetEndpoints = EndpointByMethod["get"];
+// </EndpointByMethod.Shorthands>
+
+// <ApiClientTypes>
+export type EndpointParameters = {
+  body?: unknown;
+  query?: unknown;
+  header?: unknown;
+  path?: unknown;
+  cookie?: unknown;
+};
+
+export type MutationMethod = "post" | "put" | "patch" | "delete";
+export type Method = "get" | "head" | "options" | "trace" | MutationMethod;
+
+export type RequestFormat = "json" | "form-data" | "form-url" | "binary" | "text";
+export type ResponseFormat = "json" | "sse";
+export type SecurityRequirements = readonly (readonly string[])[];
+
+// <EndpointRequestFormats>
+/** Non-json request body encodings; missing entries default to `"json"`. */
+export const endpointRequestFormats = {
+  post: {
+    "/costumes/{costumeId}/photos": "form-data",
+  },
+} as Partial<{ [M in keyof EndpointByMethod]: Partial<{ [P in keyof EndpointByMethod[M]]: RequestFormat }> }>;
+// </EndpointRequestFormats>
+
+// <EndpointParameterStyles>
+export type ParameterSerialization = { style: string; explode: boolean; allowReserved: boolean };
+export type EndpointParameterStyles = Partial<
+  Record<"query" | "path" | "header" | "cookie", Record<string, ParameterSerialization>>
+>;
+/** OpenAPI parameter styles used by the built-in encoders. */
+export const endpointParameterStyles = {
+  post: {
+    "/auth/refresh": { header: { Cookie: { style: "simple", explode: false, allowReserved: false } } },
+    "/clients/{clientId}/blacklist": { path: { clientId: { style: "simple", explode: false, allowReserved: false } } },
+    "/costumes/{costumeId}/photos": { path: { costumeId: { style: "simple", explode: false, allowReserved: false } } },
+    "/visits": { query: { sendNotification: { style: "form", explode: false, allowReserved: false } } },
+    "/visits/{orderId}/mark-tag-written": {
+      path: { orderId: { style: "simple", explode: false, allowReserved: false } },
+    },
+    "/visits/{visitId}/add-and-issue": { path: { visitId: { style: "simple", explode: false, allowReserved: false } } },
+    "/visits/{visitId}/cancel": { path: { visitId: { style: "simple", explode: false, allowReserved: false } } },
+    "/visits/{visitId}/complete-return": {
+      path: { visitId: { style: "simple", explode: false, allowReserved: false } },
+    },
+    "/visits/{visitId}/issue": { path: { visitId: { style: "simple", explode: false, allowReserved: false } } },
+    "/visits/{visitId}/mark-deposit-returned": {
+      path: { visitId: { style: "simple", explode: false, allowReserved: false } },
+    },
+    "/visits/{visitId}/settlement": { path: { visitId: { style: "simple", explode: false, allowReserved: false } } },
+    "/visits/{visitId}/unissue": { path: { visitId: { style: "simple", explode: false, allowReserved: false } } },
+  },
+  patch: {
+    "/children/{childId}": { path: { childId: { style: "simple", explode: false, allowReserved: false } } },
+    "/clients/{clientId}": { path: { clientId: { style: "simple", explode: false, allowReserved: false } } },
+    "/costume-categories/{categoryId}": {
+      path: { categoryId: { style: "simple", explode: false, allowReserved: false } },
+    },
+    "/costumes/{costumeId}": { path: { costumeId: { style: "simple", explode: false, allowReserved: false } } },
+    "/costumes/{costumeId}/photos/order": {
+      path: { costumeId: { style: "simple", explode: false, allowReserved: false } },
+    },
+    "/visits/{visitId}": { path: { visitId: { style: "simple", explode: false, allowReserved: false } } },
+  },
+  delete: {
+    "/children/{childId}": { path: { childId: { style: "simple", explode: false, allowReserved: false } } },
+    "/clients/{clientId}": { path: { clientId: { style: "simple", explode: false, allowReserved: false } } },
+    "/clients/{clientId}/blacklist": { path: { clientId: { style: "simple", explode: false, allowReserved: false } } },
+    "/costume-categories/{categoryId}": {
+      path: { categoryId: { style: "simple", explode: false, allowReserved: false } },
+    },
+    "/costumes/{costumeId}": { path: { costumeId: { style: "simple", explode: false, allowReserved: false } } },
+    "/costumes/{costumeId}/photos/{photoId}": {
+      path: {
+        costumeId: { style: "simple", explode: false, allowReserved: false },
+        photoId: { style: "simple", explode: false, allowReserved: false },
+      },
+    },
+  },
+  get: {
+    "/clients/detail/{clientId}": { path: { clientId: { style: "simple", explode: false, allowReserved: false } } },
+    "/clients/list": {
+      query: {
+        page: { style: "form", explode: false, allowReserved: false },
+        limit: { style: "form", explode: false, allowReserved: false },
+      },
+    },
+    "/clients/search": { query: { q: { style: "form", explode: false, allowReserved: false } } },
+    "/clients/{clientId}/whatsapp-availability": {
+      query: { force: { style: "form", explode: false, allowReserved: false } },
+      path: { clientId: { style: "simple", explode: false, allowReserved: false } },
+    },
+    "/costumes/list": {
+      query: {
+        page: { style: "form", explode: false, allowReserved: false },
+        limit: { style: "form", explode: false, allowReserved: false },
+        categoryId: { style: "form", explode: false, allowReserved: false },
+        gender: { style: "form", explode: false, allowReserved: false },
+        height: { style: "form", explode: false, allowReserved: false },
+        withoutCategory: { style: "form", explode: false, allowReserved: false },
+      },
+    },
+    "/costumes/search": {
+      query: {
+        q: { style: "form", explode: false, allowReserved: false },
+        categoryId: { style: "form", explode: false, allowReserved: false },
+        gender: { style: "form", explode: false, allowReserved: false },
+        height: { style: "form", explode: false, allowReserved: false },
+        withoutCategory: { style: "form", explode: false, allowReserved: false },
+      },
+    },
+    "/costumes/search-available": {
+      query: {
+        q: { style: "form", explode: false, allowReserved: false },
+        startDate: { style: "form", explode: false, allowReserved: false },
+        endDate: { style: "form", explode: false, allowReserved: false },
+        excludeVisitId: { style: "form", explode: false, allowReserved: false },
+        categoryId: { style: "form", explode: false, allowReserved: false },
+        gender: { style: "form", explode: false, allowReserved: false },
+        height: { style: "form", explode: false, allowReserved: false },
+        withoutCategory: { style: "form", explode: false, allowReserved: false },
+      },
+    },
+    "/costumes/{costumeId}/availability": {
+      path: { costumeId: { style: "simple", explode: false, allowReserved: false } },
+    },
+    "/costumes/{costumeId}/photos": { path: { costumeId: { style: "simple", explode: false, allowReserved: false } } },
+    "/visits": {
+      query: {
+        q: { style: "form", explode: false, allowReserved: false },
+        status: { style: "form", explode: false, allowReserved: false },
+        startDateFrom: { style: "form", explode: false, allowReserved: false },
+        startDateTo: { style: "form", explode: false, allowReserved: false },
+        endDateFrom: { style: "form", explode: false, allowReserved: false },
+        endDateTo: { style: "form", explode: false, allowReserved: false },
+        page: { style: "form", explode: false, allowReserved: false },
+        limit: { style: "form", explode: false, allowReserved: false },
+      },
+    },
+    "/visits/issued": {
+      query: {
+        page: { style: "form", explode: false, allowReserved: false },
+        limit: { style: "form", explode: false, allowReserved: false },
+      },
+    },
+    "/visits/notification": {
+      query: {
+        page: { style: "form", explode: false, allowReserved: false },
+        limit: { style: "form", explode: false, allowReserved: false },
+      },
+    },
+    "/visits/notification-search": { query: { q: { style: "form", explode: false, allowReserved: false } } },
+    "/visits/reserved": {
+      query: {
+        startDate: { style: "form", explode: false, allowReserved: false },
+        endDate: { style: "form", explode: false, allowReserved: false },
+        page: { style: "form", explode: false, allowReserved: false },
+        limit: { style: "form", explode: false, allowReserved: false },
+      },
+    },
+    "/visits/return-search": { query: { q: { style: "form", explode: false, allowReserved: false } } },
+    "/visits/search": { query: { q: { style: "form", explode: false, allowReserved: false } } },
+    "/visits/unreturned-deposits": {
+      query: {
+        page: { style: "form", explode: false, allowReserved: false },
+        limit: { style: "form", explode: false, allowReserved: false },
+      },
+    },
+    "/visits/unsettled-balances": {
+      query: {
+        page: { style: "form", explode: false, allowReserved: false },
+        limit: { style: "form", explode: false, allowReserved: false },
+      },
+    },
+    "/visits/{visitId}": { path: { visitId: { style: "simple", explode: false, allowReserved: false } } },
+    "/visits/{visitId}/balance": { path: { visitId: { style: "simple", explode: false, allowReserved: false } } },
+    "/visits/{visitId}/for-issue": { path: { visitId: { style: "simple", explode: false, allowReserved: false } } },
+    "/visits/{visitId}/for-return": { path: { visitId: { style: "simple", explode: false, allowReserved: false } } },
+    "/visits/{visitId}/history": {
+      query: {
+        page: { style: "form", explode: false, allowReserved: false },
+        limit: { style: "form", explode: false, allowReserved: false },
+      },
+      path: { visitId: { style: "simple", explode: false, allowReserved: false } },
+    },
+  },
+} as Partial<Record<string, Partial<Record<string, EndpointParameterStyles>>>>;
+// </EndpointParameterStyles>
+
+// <EndpointResponseFormats>
+/** Non-json response body modes; missing entries default to `"json"`. SSE skips JSON parse + output validation. */
+export const endpointResponseFormats = {} as Partial<{
+  [M in keyof EndpointByMethod]: Partial<{ [P in keyof EndpointByMethod[M]]: ResponseFormat }>;
+}>;
+// </EndpointResponseFormats>
+
+// <EndpointSecurityRequirements>
+/** OpenAPI security requirements applied when an endpoint has no explicit entry. */
+export const defaultSecurityRequirements = [["BearerAuth"]] as SecurityRequirements;
+/** Endpoint-specific security requirements that differ from the default. */
+export const endpointSecurityRequirements = {
+  post: { "/auth/login": [[]], "/auth/refresh": [[]] },
+} as Partial<{ [M in keyof EndpointByMethod]: Partial<{ [P in keyof EndpointByMethod[M]]: SecurityRequirements }> }>;
+// </EndpointSecurityRequirements>
+
+export type DefaultEndpoint = {
+  parameters?: EndpointParameters | undefined;
+  responses?: Record<string, unknown>;
+  responseHeaders?: Record<string, unknown>;
+};
+
+export type Endpoint<TConfig extends DefaultEndpoint = DefaultEndpoint> = {
+  operationId: string;
+  method: Method;
+  path: string;
+  requestFormat: RequestFormat;
+  responseFormat: ResponseFormat;
+  parameters?: TConfig["parameters"];
+  meta: {
+    alias: string;
+    hasParameters: boolean;
+    areParametersRequired: boolean;
+  };
+  responses?: TConfig["responses"];
+  responseHeaders?: TConfig["responseHeaders"];
+};
+
+/**
+ * Minimal response surface used by ApiClient — avoids depending on the DOM `Response`
+ * global (helpful for Node without DOM lib). Structural typing accepts fetch Response.
+ */
+export interface FetcherResponse {
+  ok: boolean;
+  status: number;
+  statusText: string;
+  headers: {
+    get(name: string): string | null;
+    getSetCookie?: () => string[];
+  };
+  /** Present on fetch Response; used for SSE / streaming bodies. */
+  body?: ReadableStream<Uint8Array> | null;
+  json(): Promise<unknown>;
+  text(): Promise<string>;
+  arrayBuffer(): Promise<ArrayBuffer>;
+  clone(): FetcherResponse;
 }
+
+export interface Fetcher {
+  decodePathParams?: (path: string, pathParams: unknown, styles?: Record<string, ParameterSerialization>) => string;
+  encodeSearchParams?: (
+    searchParams: unknown,
+    styles?: Record<string, ParameterSerialization>,
+  ) => URLSearchParams | undefined;
+  /** Merge cookie params into request headers (default: Cookie header). */
+  encodeCookies?: (cookies: unknown, headers: Headers) => void;
+  //
+  fetch: (input: {
+    method: Method;
+    url: URL;
+    urlSearchParams?: URLSearchParams | undefined;
+    parameters?: EndpointParameters | undefined;
+    path: string;
+    /** How to encode `parameters.body` (from OpenAPI requestBody content type). */
+    requestFormat: RequestFormat;
+    /** OpenAPI parameter serialization metadata for the current endpoint. */
+    parameterStyles?: EndpointParameterStyles;
+    /** OpenAPI security requirements for this operation. Empty means no credentials are required. */
+    security?: SecurityRequirements;
+    overrides?: RequestInit;
+    throwOnStatusError?: boolean;
+  }) => Promise<FetcherResponse>;
+  parseResponseData?: (response: FetcherResponse) => Promise<unknown>;
+}
+
+export const successStatusCodes = [
+  200, 201, 202, 203, 204, 205, 206, 207, 208, 226, 300, 301, 302, 303, 304, 305, 306, 307, 308,
+] as const;
+export type SuccessStatusCode = (typeof successStatusCodes)[number];
+
+export const errorStatusCodes = [
+  400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 417, 418, 421, 422, 423, 424,
+  425, 426, 428, 429, 431, 451, 500, 501, 502, 503, 504, 505, 506, 507, 508, 510, 511,
+] as const;
+export type ErrorStatusCode = (typeof errorStatusCodes)[number];
+
+// Taken from https://github.com/unjs/fetchdts/blob/ec4eaeab5d287116171fc1efd61f4a1ad34e4609/src/fetch.ts#L3
+export interface TypedHeaders<TypedHeaderValues = unknown> extends Omit<
+  Headers,
+  "append" | "delete" | "get" | "getSetCookie" | "has" | "set" | "forEach"
+> {
+  /** [MDN Reference](https://developer.mozilla.org/docs/Web/API/Headers/append) */
+  append: <Name extends Extract<keyof TypedHeaderValues, string> | (string & {})>(
+    name: Name,
+    value: Lowercase<Name> extends keyof TypedHeaderValues ? TypedHeaderValues[Lowercase<Name>] : string,
+  ) => void;
+  /** [MDN Reference](https://developer.mozilla.org/docs/Web/API/Headers/delete) */
+  delete: <Name extends Extract<keyof TypedHeaderValues, string> | (string & {})>(name: Name) => void;
+  /** [MDN Reference](https://developer.mozilla.org/docs/Web/API/Headers/get) */
+  get: <Name extends Extract<keyof TypedHeaderValues, string> | (string & {})>(
+    name: Name,
+  ) => (Lowercase<Name> extends keyof TypedHeaderValues ? TypedHeaderValues[Lowercase<Name>] : string) | null;
+  /** [MDN Reference](https://developer.mozilla.org/docs/Web/API/Headers/getSetCookie) */
+  getSetCookie: () => string[];
+  /** [MDN Reference](https://developer.mozilla.org/docs/Web/API/Headers/has) */
+  has: <Name extends Extract<keyof TypedHeaderValues, string> | (string & {})>(name: Name) => boolean;
+  /** [MDN Reference](https://developer.mozilla.org/docs/Web/API/Headers/set) */
+  set: <Name extends Extract<keyof TypedHeaderValues, string> | (string & {})>(
+    name: Name,
+    value: Lowercase<Name> extends keyof TypedHeaderValues ? TypedHeaderValues[Lowercase<Name>] : string,
+  ) => void;
+  forEach: (
+    callbackfn: (
+      value: TypedHeaderValues[keyof TypedHeaderValues] | (string & {}),
+      key: Extract<keyof TypedHeaderValues, string> | (string & {}),
+      parent: TypedHeaders<TypedHeaderValues>,
+    ) => void,
+    thisArg?: unknown,
+  ) => void;
+}
+
+/** @see https://developer.mozilla.org/en-US/docs/Web/API/Response */
+export interface TypedSuccessResponse<TSuccess, TStatusCode, THeaders> extends Omit<
+  FetcherResponse,
+  "ok" | "status" | "json" | "headers"
+> {
+  ok: true;
+  status: TStatusCode;
+  headers: never extends THeaders ? FetcherResponse["headers"] : TypedHeaders<THeaders>;
+  data: TSuccess;
+  /** [MDN Reference](https://developer.mozilla.org/en-US/docs/Web/API/Response/json) */
+  json: () => Promise<TSuccess>;
+}
+
+/** @see https://developer.mozilla.org/en-US/docs/Web/API/Response */
+export interface TypedErrorResponse<TData, TStatusCode, THeaders> extends Omit<
+  FetcherResponse,
+  "ok" | "status" | "json" | "headers"
+> {
+  ok: false;
+  status: TStatusCode;
+  headers: never extends THeaders ? FetcherResponse["headers"] : TypedHeaders<THeaders>;
+  data: TData;
+  /** [MDN Reference](https://developer.mozilla.org/en-US/docs/Web/API/Response/json) */
+  json: () => Promise<TData>;
+}
+
+type StatusCodeFromKey<TKey> = TKey extends `${infer TStatusCode extends number}`
+  ? TStatusCode
+  : TKey extends number
+    ? TKey
+    : never;
+
+export type TypedApiResponse<TAllResponses = {}, THeaders = {}> = {
+  [K in keyof TAllResponses]: StatusCodeFromKey<K> extends infer TStatusCode extends number
+    ? TStatusCode extends SuccessStatusCode
+      ? TypedSuccessResponse<TAllResponses[K], TStatusCode, K extends keyof THeaders ? THeaders[K] : never>
+      : TypedErrorResponse<TAllResponses[K], TStatusCode, K extends keyof THeaders ? THeaders[K] : never>
+    : never;
+}[keyof TAllResponses];
+
+type __TypedOpenapiSchema<TOutput, TInput = TOutput> = {
+  readonly __typedOpenapiOutput: TOutput;
+  readonly __typedOpenapiInput: TInput;
+};
+type OptionalUndefinedKeys<T> = {
+  [K in keyof T as undefined extends T[K] ? never : K]: T[K];
+} & {
+  [K in keyof T as undefined extends T[K] ? K : never]?: Exclude<T[K], undefined>;
+};
+export type InferSchemaValue<T> = T extends string | number | boolean | bigint | symbol | null | undefined
+  ? T
+  : T extends __TypedOpenapiSchema<infer O>
+    ? O
+    : T extends z.ZodType
+      ? z.infer<T>
+      : T extends (...args: never[]) => unknown
+        ? T
+        : T extends object
+          ? { [K in keyof T]: InferSchemaValue<T[K]> }
+          : T;
+type InferSchemaInputRaw<T> = T extends string | number | boolean | bigint | symbol | null | undefined
+  ? T
+  : T extends __TypedOpenapiSchema<infer _O, infer I>
+    ? I
+    : T extends z.ZodType
+      ? z.input<T>
+      : T extends (...args: never[]) => unknown
+        ? T
+        : T extends object
+          ? { [K in keyof T]: InferSchemaInputRaw<T[K]> }
+          : T;
+type InferSchemaInput<T> = OptionalUndefinedKeys<InferSchemaInputRaw<T>>;
+
+export type SafeApiResponse<TEndpoint> = TEndpoint extends { responses: infer TResponses }
+  ? TResponses extends Record<string | number, unknown>
+    ? TypedApiResponse<
+        InferSchemaValue<TResponses>,
+        TEndpoint extends { responseHeaders: infer THeaders } ? InferSchemaValue<THeaders> : never
+      >
+    : never
+  : never;
+
+export type InferResponseByStatus<TEndpoint, TStatusCode> = Extract<
+  SafeApiResponse<TEndpoint>,
+  { status: TStatusCode }
+>;
+
+/**
+ * Success-body payload — InferSchemaValue only on success statuses.
+ * Filter with extends {} like the old Extract { data: {} } so unknown bodies (e.g. 304) drop out.
+ */
+export type InferSuccessData<TEndpoint> = TEndpoint extends { responses: infer TResponses }
+  ? {
+      [K in keyof TResponses]: StatusCodeFromKey<K> extends infer TStatusCode extends number
+        ? TStatusCode extends SuccessStatusCode
+          ? Extract<InferSchemaValue<TResponses[K]>, {}>
+          : never
+        : never;
+    }[keyof TResponses]
+  : never;
+
+type RequiredKeys<T> = {
+  [P in keyof T]-?: undefined extends T[P] ? never : P;
+}[keyof T];
+
+type MaybeOptionalArg<T> = RequiredKeys<T> extends never ? [config?: T] : [config: T];
+type NotNever<T> = [T] extends [never] ? false : true;
+
+export type ApiQueryOptions = {
+  /** Override whether a generated TanStack Query consumes TanStack Query's AbortSignal. */
+  consumeQuerySignal?: boolean;
+};
+
+/** Call options merged onto inferred endpoint parameters. */
+type ApiRequestOptions = {
+  overrides?: RequestInit;
+  queryOptions?: ApiQueryOptions;
+  withResponse?: boolean;
+  throwOnStatusError?: boolean;
+  validate?: ValidateSide;
+};
+
+/** Parameter bag for an endpoint + request options. */
+export type ApiCallParams<TEndpoint> = TEndpoint extends { parameters: infer UParams }
+  ? NotNever<InferSchemaInput<UParams>> extends true
+    ? InferSchemaInput<UParams> & ApiRequestOptions
+    : ApiRequestOptions
+  : ApiRequestOptions;
+
+/** Resolve response type from withResponse flag on the call config. */
+export type ApiCallResult<TEndpoint, TParams> = TParams extends { withResponse: true }
+  ? SafeApiResponse<TEndpoint>
+  : InferSuccessData<TEndpoint>;
+
+export type ValidateSide = "none" | "input" | "output" | "both";
+export type OnValidate = (ctx: {
+  side: "input" | "output";
+  method: string;
+  path: string;
+  schema: unknown;
+  value: unknown;
+}) => unknown | Promise<unknown>;
+
+// </ApiClientTypes>
+
+// <TypedStatusError>
+export class TypedStatusError<TData = unknown> extends Error {
+  response: TypedErrorResponse<TData, ErrorStatusCode, unknown>;
+  status: number;
+  constructor(response: TypedErrorResponse<TData, ErrorStatusCode, unknown>) {
+    super(`HTTP ${response.status}: ${response.statusText}`);
+    this.name = "TypedStatusError";
+    this.response = response;
+    this.status = response.status;
+  }
+}
+// </TypedStatusError>
+
+// <ValidateHelpers>
+const defaultParse = (schema: unknown, value: unknown): unknown => {
+  return (schema as { parse: (v: unknown) => unknown }).parse(value);
+};
+
+const runValidate = async (ctx: {
+  side: "input" | "output";
+  method: string;
+  path: string;
+  schema: unknown;
+  value: unknown;
+  onValidate?: OnValidate;
+}): Promise<unknown> => {
+  if (ctx.onValidate) return ctx.onValidate(ctx);
+  return defaultParse(ctx.schema, ctx.value);
+};
+// </ValidateHelpers>
+
+// <ApiClient>
+const isPlainObject = (value: unknown): value is Record<string, unknown> => {
+  if (value === null || typeof value !== "object") return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
+};
+
+export class ApiClient {
+  baseUrl: string = "";
+  successStatusCodes = successStatusCodes;
+  errorStatusCodes = errorStatusCodes;
+  validate: ValidateSide = "both";
+  onValidate?: OnValidate;
+
+  constructor(
+    public fetcher: Fetcher,
+    options?: { validate?: ValidateSide; onValidate?: OnValidate },
+  ) {
+    if (options?.validate !== undefined) this.validate = options.validate;
+    if (options?.onValidate) this.onValidate = options.onValidate;
+  }
+
+  setBaseUrl(baseUrl: string) {
+    this.baseUrl = baseUrl;
+    return this;
+  }
+
+  setValidate(validate: ValidateSide) {
+    this.validate = validate;
+    return this;
+  }
+
+  setOnValidate(onValidate: OnValidate | undefined) {
+    if (onValidate === undefined) {
+      delete this.onValidate;
+    } else {
+      this.onValidate = onValidate;
+    }
+    return this;
+  }
+
+  /**
+   * Replace path parameters in URL
+   * Supports both OpenAPI format {param} and Express format :param
+   */
+  defaultDecodePathParams = (url: string, params: unknown, styles?: Record<string, ParameterSerialization>): string => {
+    const record = (params ?? {}) as Record<string, unknown>;
+    const encode = (value: unknown) => encodeURIComponent(String(value));
+    const serialize = (key: string, value: unknown): string => {
+      const parameterStyle = styles?.[key];
+      const style = parameterStyle?.style ?? "simple";
+      const explode = parameterStyle?.explode ?? false;
+      if (style === "label") {
+        if (Array.isArray(value))
+          return (
+            "." +
+            value
+              .filter((item) => item != null)
+              .map(encode)
+              .join(explode ? "." : ",")
+          );
+        if (isPlainObject(value)) {
+          const entries = Object.entries(value as Record<string, unknown>).filter(([, item]) => item != null);
+          return (
+            "." +
+            (explode
+              ? entries.map(([name, item]) => encode(name) + "=" + encode(item)).join(".")
+              : entries.flatMap(([name, item]) => [encode(name), encode(item)]).join(","))
+          );
+        }
+        return "." + encode(value);
+      }
+      if (style === "matrix") {
+        if (Array.isArray(value))
+          return explode
+            ? value
+                .filter((item) => item != null)
+                .map((item) => ";" + key + "=" + encode(item))
+                .join("")
+            : ";" +
+                key +
+                "=" +
+                value
+                  .filter((item) => item != null)
+                  .map(encode)
+                  .join(",");
+        if (isPlainObject(value)) {
+          const entries = Object.entries(value as Record<string, unknown>).filter(([, item]) => item != null);
+          return explode
+            ? entries.map(([name, item]) => ";" + encode(name) + "=" + encode(item)).join("")
+            : ";" + key + "=" + entries.flatMap(([name, item]) => [encode(name), encode(item)]).join(",");
+        }
+        return ";" + key + "=" + encode(value);
+      }
+      if (Array.isArray(value))
+        return value
+          .filter((item) => item != null)
+          .map(encode)
+          .join(",");
+      if (isPlainObject(value)) {
+        return Object.entries(value as Record<string, unknown>)
+          .filter(([, item]) => item != null)
+          .map(([name, item]) => (explode ? encode(name) + "=" + encode(item) : [encode(name), encode(item)]))
+          .flat()
+          .join(",");
+      }
+      return encode(value);
+    };
+    return url
+      .replace(/{([^}]+)}/g, (_, key: string) => (record[key] != null ? serialize(key, record[key]) : `{${key}}`))
+      .replace(/:([a-zA-Z0-9_]+)/g, (_, key: string) =>
+        record[key] != null ? serialize(key, record[key]) : `:${key}`,
+      );
+  };
+
+  /** Uses URLSearchParams, skips null/undefined values */
+  defaultEncodeSearchParams = (
+    queryParams: unknown,
+    styles?: Record<string, ParameterSerialization>,
+  ): URLSearchParams | undefined => {
+    if (!queryParams || typeof queryParams !== "object") return;
+
+    const searchParams = new URLSearchParams();
+    const rawEntries: Array<{ key: string; value: string; allowReserved: boolean }> = [];
+    const append = (key: string, value: unknown, allowReserved = false) => {
+      const stringValue = String(value);
+      searchParams.append(key, stringValue);
+      rawEntries.push({ key, value: stringValue, allowReserved });
+    };
+    const encodeQueryComponent = (value: string, allowReserved: boolean) => {
+      const encoded = encodeURIComponent(value);
+      return allowReserved
+        ? encoded.replace(/%3A|%2F|%3F|%40|%21|%24|%26|%27|%28|%29|%2A|%2B|%2C|%3B|%3D|%5B|%5D/gi, (part) =>
+            decodeURIComponent(part),
+          )
+        : encoded;
+    };
+    Object.defineProperty(searchParams, "toString", {
+      value: () =>
+        rawEntries
+          .map(
+            ({ key, value, allowReserved }) =>
+              `${encodeQueryComponent(key, false)}=${encodeQueryComponent(value, allowReserved)}`,
+          )
+          .join("&"),
+    });
+    Object.entries(queryParams as Record<string, unknown>).forEach(([key, value]) => {
+      if (value != null) {
+        // Skip null/undefined values
+        const parameterStyle = styles?.[key];
+        const style = parameterStyle?.style ?? "form";
+        const explode = parameterStyle?.explode ?? true;
+        const allowReserved = parameterStyle?.allowReserved === true;
+        if (Array.isArray(value)) {
+          if (style === "spaceDelimited")
+            append(
+              key,
+              value
+                .filter((item) => item != null)
+                .map(String)
+                .join(" "),
+              allowReserved,
+            );
+          else if (style === "pipeDelimited")
+            append(
+              key,
+              value
+                .filter((item) => item != null)
+                .map(String)
+                .join("|"),
+              allowReserved,
+            );
+          else if (explode) value.forEach((val) => val != null && append(key, val, allowReserved));
+          else
+            append(
+              key,
+              value
+                .filter((item) => item != null)
+                .map(String)
+                .join(","),
+              allowReserved,
+            );
+        } else if (isPlainObject(value)) {
+          const entries = Object.entries(value as Record<string, unknown>).filter(
+            ([, nestedValue]) => nestedValue != null,
+          );
+          if (style === "deepObject") {
+            for (const [nestedKey, nestedValue] of entries) {
+              if (Array.isArray(nestedValue))
+                nestedValue.forEach((item) => item != null && append(`${key}[${nestedKey}]`, item, allowReserved));
+              else append(`${key}[${nestedKey}]`, nestedValue, allowReserved);
+            }
+          } else if (explode) {
+            for (const [nestedKey, nestedValue] of entries) {
+              if (Array.isArray(nestedValue))
+                nestedValue.forEach((item) => item != null && append(nestedKey, item, allowReserved));
+              else append(nestedKey, nestedValue, allowReserved);
+            }
+          } else {
+            append(
+              key,
+              entries
+                .flatMap(([nestedKey, nestedValue]) => [
+                  nestedKey,
+                  ...(Array.isArray(nestedValue) ? nestedValue : [nestedValue]),
+                ])
+                .map(String)
+                .join(","),
+              allowReserved,
+            );
+          }
+        } else {
+          append(key, value, allowReserved);
+        }
+      }
+    });
+
+    return searchParams;
+  };
+
+  /** Append cookie params as a Cookie header (or merge into existing). */
+  defaultEncodeCookies = (cookies: unknown, headers: Headers): void => {
+    if (!cookies || typeof cookies !== "object") return;
+    const parts = Object.entries(cookies as Record<string, unknown>)
+      .filter(([, value]) => value != null)
+      .map(([key, value]) => `${key}=${String(value)}`);
+    if (!parts.length) return;
+    const existing = headers.get("cookie");
+    headers.set("cookie", existing ? `${existing}; ${parts.join("; ")}` : parts.join("; "));
+  };
+
+  defaultParseResponseData = async (response: FetcherResponse): Promise<unknown> => {
+    const contentType = response.headers.get("content-type") ?? "";
+    const normalizedContentType = contentType.toLowerCase();
+    if (normalizedContentType.includes("text/event-stream")) {
+      return response.body ?? null;
+    }
+    if (normalizedContentType.startsWith("text/")) {
+      return await response.text();
+    }
+
+    if (normalizedContentType.startsWith("application/octet-stream")) {
+      return new Blob([await response.arrayBuffer()]);
+    }
+
+    if (
+      normalizedContentType.includes("application/json") ||
+      (normalizedContentType.includes("application/") && normalizedContentType.includes("json")) ||
+      normalizedContentType === "*/*"
+    ) {
+      try {
+        return await response.json();
+      } catch {
+        return undefined;
+      }
+    }
+
+    return;
+  };
+
+  // <ApiClient.post>
+  post<Path extends keyof PostEndpoints, TEndpoint extends PostEndpoints[Path]>(
+    path: Path,
+    ...params: MaybeOptionalArg<
+      TEndpoint extends { parameters: infer UParams }
+        ? NotNever<InferSchemaInput<UParams>> extends true
+          ? InferSchemaInput<UParams> & {
+              overrides?: RequestInit;
+              queryOptions?: ApiQueryOptions;
+              withResponse: true;
+              throwOnStatusError?: boolean;
+              validate?: ValidateSide;
+            }
+          : {
+              overrides?: RequestInit;
+              queryOptions?: ApiQueryOptions;
+              withResponse: true;
+              throwOnStatusError?: boolean;
+              validate?: ValidateSide;
+            }
+        : {
+            overrides?: RequestInit;
+            queryOptions?: ApiQueryOptions;
+            withResponse: true;
+            throwOnStatusError?: boolean;
+            validate?: ValidateSide;
+          }
+    >
+  ): Promise<SafeApiResponse<TEndpoint>>;
+
+  post<Path extends keyof PostEndpoints, TEndpoint extends PostEndpoints[Path]>(
+    path: Path,
+    ...params: MaybeOptionalArg<
+      TEndpoint extends { parameters: infer UParams }
+        ? NotNever<InferSchemaInput<UParams>> extends true
+          ? InferSchemaInput<UParams> & {
+              overrides?: RequestInit;
+              queryOptions?: ApiQueryOptions;
+              withResponse?: false;
+              throwOnStatusError?: boolean;
+              validate?: ValidateSide;
+            }
+          : {
+              overrides?: RequestInit;
+              queryOptions?: ApiQueryOptions;
+              withResponse?: false;
+              throwOnStatusError?: boolean;
+              validate?: ValidateSide;
+            }
+        : {
+            overrides?: RequestInit;
+            queryOptions?: ApiQueryOptions;
+            withResponse?: false;
+            throwOnStatusError?: boolean;
+            validate?: ValidateSide;
+          }
+    >
+  ): Promise<InferSuccessData<TEndpoint>>;
+
+  post<Path extends keyof PostEndpoints>(path: Path, ...params: [config?: unknown]): Promise<unknown> {
+    return this.request("post", path, params[0] as never) as Promise<unknown>;
+  }
+  // </ApiClient.post>
+
+  // <ApiClient.patch>
+  patch<Path extends keyof PatchEndpoints, TEndpoint extends PatchEndpoints[Path]>(
+    path: Path,
+    ...params: MaybeOptionalArg<
+      TEndpoint extends { parameters: infer UParams }
+        ? NotNever<InferSchemaInput<UParams>> extends true
+          ? InferSchemaInput<UParams> & {
+              overrides?: RequestInit;
+              queryOptions?: ApiQueryOptions;
+              withResponse: true;
+              throwOnStatusError?: boolean;
+              validate?: ValidateSide;
+            }
+          : {
+              overrides?: RequestInit;
+              queryOptions?: ApiQueryOptions;
+              withResponse: true;
+              throwOnStatusError?: boolean;
+              validate?: ValidateSide;
+            }
+        : {
+            overrides?: RequestInit;
+            queryOptions?: ApiQueryOptions;
+            withResponse: true;
+            throwOnStatusError?: boolean;
+            validate?: ValidateSide;
+          }
+    >
+  ): Promise<SafeApiResponse<TEndpoint>>;
+
+  patch<Path extends keyof PatchEndpoints, TEndpoint extends PatchEndpoints[Path]>(
+    path: Path,
+    ...params: MaybeOptionalArg<
+      TEndpoint extends { parameters: infer UParams }
+        ? NotNever<InferSchemaInput<UParams>> extends true
+          ? InferSchemaInput<UParams> & {
+              overrides?: RequestInit;
+              queryOptions?: ApiQueryOptions;
+              withResponse?: false;
+              throwOnStatusError?: boolean;
+              validate?: ValidateSide;
+            }
+          : {
+              overrides?: RequestInit;
+              queryOptions?: ApiQueryOptions;
+              withResponse?: false;
+              throwOnStatusError?: boolean;
+              validate?: ValidateSide;
+            }
+        : {
+            overrides?: RequestInit;
+            queryOptions?: ApiQueryOptions;
+            withResponse?: false;
+            throwOnStatusError?: boolean;
+            validate?: ValidateSide;
+          }
+    >
+  ): Promise<InferSuccessData<TEndpoint>>;
+
+  patch<Path extends keyof PatchEndpoints>(path: Path, ...params: [config?: unknown]): Promise<unknown> {
+    return this.request("patch", path, params[0] as never) as Promise<unknown>;
+  }
+  // </ApiClient.patch>
+
+  // <ApiClient.delete>
+  delete<Path extends keyof DeleteEndpoints, TEndpoint extends DeleteEndpoints[Path]>(
+    path: Path,
+    ...params: MaybeOptionalArg<
+      TEndpoint extends { parameters: infer UParams }
+        ? NotNever<InferSchemaInput<UParams>> extends true
+          ? InferSchemaInput<UParams> & {
+              overrides?: RequestInit;
+              queryOptions?: ApiQueryOptions;
+              withResponse: true;
+              throwOnStatusError?: boolean;
+              validate?: ValidateSide;
+            }
+          : {
+              overrides?: RequestInit;
+              queryOptions?: ApiQueryOptions;
+              withResponse: true;
+              throwOnStatusError?: boolean;
+              validate?: ValidateSide;
+            }
+        : {
+            overrides?: RequestInit;
+            queryOptions?: ApiQueryOptions;
+            withResponse: true;
+            throwOnStatusError?: boolean;
+            validate?: ValidateSide;
+          }
+    >
+  ): Promise<SafeApiResponse<TEndpoint>>;
+
+  delete<Path extends keyof DeleteEndpoints, TEndpoint extends DeleteEndpoints[Path]>(
+    path: Path,
+    ...params: MaybeOptionalArg<
+      TEndpoint extends { parameters: infer UParams }
+        ? NotNever<InferSchemaInput<UParams>> extends true
+          ? InferSchemaInput<UParams> & {
+              overrides?: RequestInit;
+              queryOptions?: ApiQueryOptions;
+              withResponse?: false;
+              throwOnStatusError?: boolean;
+              validate?: ValidateSide;
+            }
+          : {
+              overrides?: RequestInit;
+              queryOptions?: ApiQueryOptions;
+              withResponse?: false;
+              throwOnStatusError?: boolean;
+              validate?: ValidateSide;
+            }
+        : {
+            overrides?: RequestInit;
+            queryOptions?: ApiQueryOptions;
+            withResponse?: false;
+            throwOnStatusError?: boolean;
+            validate?: ValidateSide;
+          }
+    >
+  ): Promise<InferSuccessData<TEndpoint>>;
+
+  delete<Path extends keyof DeleteEndpoints>(path: Path, ...params: [config?: unknown]): Promise<unknown> {
+    return this.request("delete", path, params[0] as never) as Promise<unknown>;
+  }
+  // </ApiClient.delete>
+
+  // <ApiClient.get>
+  get<Path extends keyof GetEndpoints, TEndpoint extends GetEndpoints[Path]>(
+    path: Path,
+    ...params: MaybeOptionalArg<
+      TEndpoint extends { parameters: infer UParams }
+        ? NotNever<InferSchemaInput<UParams>> extends true
+          ? InferSchemaInput<UParams> & {
+              overrides?: RequestInit;
+              queryOptions?: ApiQueryOptions;
+              withResponse: true;
+              throwOnStatusError?: boolean;
+              validate?: ValidateSide;
+            }
+          : {
+              overrides?: RequestInit;
+              queryOptions?: ApiQueryOptions;
+              withResponse: true;
+              throwOnStatusError?: boolean;
+              validate?: ValidateSide;
+            }
+        : {
+            overrides?: RequestInit;
+            queryOptions?: ApiQueryOptions;
+            withResponse: true;
+            throwOnStatusError?: boolean;
+            validate?: ValidateSide;
+          }
+    >
+  ): Promise<SafeApiResponse<TEndpoint>>;
+
+  get<Path extends keyof GetEndpoints, TEndpoint extends GetEndpoints[Path]>(
+    path: Path,
+    ...params: MaybeOptionalArg<
+      TEndpoint extends { parameters: infer UParams }
+        ? NotNever<InferSchemaInput<UParams>> extends true
+          ? InferSchemaInput<UParams> & {
+              overrides?: RequestInit;
+              queryOptions?: ApiQueryOptions;
+              withResponse?: false;
+              throwOnStatusError?: boolean;
+              validate?: ValidateSide;
+            }
+          : {
+              overrides?: RequestInit;
+              queryOptions?: ApiQueryOptions;
+              withResponse?: false;
+              throwOnStatusError?: boolean;
+              validate?: ValidateSide;
+            }
+        : {
+            overrides?: RequestInit;
+            queryOptions?: ApiQueryOptions;
+            withResponse?: false;
+            throwOnStatusError?: boolean;
+            validate?: ValidateSide;
+          }
+    >
+  ): Promise<InferSuccessData<TEndpoint>>;
+
+  get<Path extends keyof GetEndpoints>(path: Path, ...params: [config?: unknown]): Promise<unknown> {
+    return this.request("get", path, params[0] as never) as Promise<unknown>;
+  }
+  // </ApiClient.get>
+
+  // <ApiClient.request>
+  /**
+   * Generic request method with full type-safety for any endpoint
+   */
+  request<
+    TMethod extends keyof EndpointByMethod,
+    TPath extends keyof EndpointByMethod[TMethod],
+    TEndpoint extends EndpointByMethod[TMethod][TPath],
+  >(
+    method: TMethod,
+    path: TPath,
+    ...params: MaybeOptionalArg<
+      TEndpoint extends { parameters: infer UParams }
+        ? NotNever<InferSchemaInput<UParams>> extends true
+          ? InferSchemaInput<UParams> & {
+              overrides?: RequestInit;
+              queryOptions?: ApiQueryOptions;
+              withResponse: true;
+              throwOnStatusError?: boolean;
+              validate?: ValidateSide;
+            }
+          : {
+              overrides?: RequestInit;
+              queryOptions?: ApiQueryOptions;
+              withResponse: true;
+              throwOnStatusError?: boolean;
+              validate?: ValidateSide;
+            }
+        : {
+            overrides?: RequestInit;
+            queryOptions?: ApiQueryOptions;
+            withResponse: true;
+            throwOnStatusError?: boolean;
+            validate?: ValidateSide;
+          }
+    >
+  ): Promise<SafeApiResponse<TEndpoint>>;
+
+  request<
+    TMethod extends keyof EndpointByMethod,
+    TPath extends keyof EndpointByMethod[TMethod],
+    TEndpoint extends EndpointByMethod[TMethod][TPath],
+  >(
+    method: TMethod,
+    path: TPath,
+    ...params: MaybeOptionalArg<
+      TEndpoint extends { parameters: infer UParams }
+        ? NotNever<InferSchemaInput<UParams>> extends true
+          ? InferSchemaInput<UParams> & {
+              overrides?: RequestInit;
+              queryOptions?: ApiQueryOptions;
+              withResponse?: false;
+              throwOnStatusError?: boolean;
+              validate?: ValidateSide;
+            }
+          : {
+              overrides?: RequestInit;
+              queryOptions?: ApiQueryOptions;
+              withResponse?: false;
+              throwOnStatusError?: boolean;
+              validate?: ValidateSide;
+            }
+        : {
+            overrides?: RequestInit;
+            queryOptions?: ApiQueryOptions;
+            withResponse?: false;
+            throwOnStatusError?: boolean;
+            validate?: ValidateSide;
+          }
+    >
+  ): Promise<InferSuccessData<TEndpoint>>;
+
+  request<
+    TMethod extends keyof EndpointByMethod,
+    TPath extends keyof EndpointByMethod[TMethod],
+    TEndpoint extends EndpointByMethod[TMethod][TPath],
+  >(method: TMethod, path: TPath, ...params: [config?: unknown]): Promise<unknown> {
+    return (async () => {
+      const requestParams = params[0] as
+        | (EndpointParameters & {
+            overrides?: RequestInit;
+            queryOptions?: ApiQueryOptions;
+            withResponse?: boolean;
+            throwOnStatusError?: boolean;
+            validate?: ValidateSide;
+          })
+        | undefined;
+      const withResponse = requestParams?.withResponse;
+      const throwOnStatusError = requestParams?.throwOnStatusError ?? (withResponse ? false : true);
+      let overrides = requestParams?.overrides;
+      const validateSide: ValidateSide = requestParams?.validate ?? this.validate;
+
+      const parametersToSend: EndpointParameters = {};
+      if (requestParams?.body !== undefined) parametersToSend.body = requestParams.body;
+      if (requestParams?.query !== undefined) parametersToSend.query = requestParams.query;
+      if (requestParams?.header !== undefined) parametersToSend.header = requestParams.header;
+      if (requestParams?.path !== undefined) parametersToSend.path = requestParams.path;
+      if (requestParams?.cookie !== undefined) parametersToSend.cookie = requestParams.cookie;
+
+      type RuntimeEndpoint = {
+        parameters?: Partial<Record<"body" | "query" | "header" | "path" | "cookie", unknown>>;
+        responses?: Record<string, unknown>;
+      };
+      const endpointSchema = EndpointByMethod[method][path] as RuntimeEndpoint;
+      const shouldValidateInput = validateSide === "input" || validateSide === "both";
+      if (shouldValidateInput && endpointSchema.parameters) {
+        const paramSchema = endpointSchema.parameters;
+        for (const key of ["body", "query", "header", "path", "cookie"] as const) {
+          const schema = paramSchema[key];
+          const value = parametersToSend[key];
+          if (schema !== undefined && value !== undefined) {
+            parametersToSend[key] = await runValidate({
+              side: "input",
+              method: String(method),
+              path: String(path),
+              schema,
+              value,
+              ...(this.onValidate ? { onValidate: this.onValidate } : {}),
+            });
+          }
+        }
+      }
+
+      const resolvedPath = (this.fetcher.decodePathParams ?? this.defaultDecodePathParams)(
+        this.baseUrl + (path as string),
+        parametersToSend.path ?? {},
+        endpointParameterStyles[method]?.[path]?.path,
+      );
+      const url = new URL(resolvedPath);
+      const urlSearchParams = (this.fetcher.encodeSearchParams ?? this.defaultEncodeSearchParams)(
+        parametersToSend.query,
+        endpointParameterStyles[method]?.[path]?.query,
+      );
+
+      if (parametersToSend.cookie) {
+        const headers = new Headers((overrides as RequestInit | undefined)?.headers);
+        (this.fetcher.encodeCookies ?? this.defaultEncodeCookies)(parametersToSend.cookie, headers);
+        overrides = { ...overrides, headers };
+      }
+
+      const parameterStyles = endpointParameterStyles[method]?.[path as string];
+      const response = await this.fetcher.fetch({
+        method: method,
+        path: path as string,
+        url,
+        ...(urlSearchParams ? { urlSearchParams } : {}),
+        ...(Object.keys(parametersToSend).length ? { parameters: parametersToSend } : {}),
+        requestFormat: endpointRequestFormats[method]?.[path] ?? "json",
+        ...(parameterStyles ? { parameterStyles } : {}),
+        security: endpointSecurityRequirements[method]?.[path] ?? defaultSecurityRequirements,
+        ...(overrides ? { overrides } : {}),
+        throwOnStatusError,
+      });
+      const responseFormat = endpointResponseFormats[method]?.[path] ?? "json";
+      let data =
+        responseFormat === "sse"
+          ? (response.body ?? null)
+          : await (this.fetcher.parseResponseData ?? this.defaultParseResponseData)(response);
+      const shouldValidateOutput = validateSide === "output" || validateSide === "both";
+      if (
+        shouldValidateOutput &&
+        responseFormat !== "sse" &&
+        (response.ok || !(errorStatusCodes as readonly number[]).includes(response.status)) &&
+        endpointSchema?.responses
+      ) {
+        const responseSchema =
+          endpointSchema.responses[String(response.status)] ??
+          endpointSchema.responses[String(Math.floor(response.status / 100)) + "xx"] ??
+          endpointSchema.responses[String(Math.floor(response.status / 100)) + "XX"] ??
+          endpointSchema.responses["default"];
+        if (responseSchema) {
+          data = await runValidate({
+            side: "output",
+            method: String(method),
+            path: String(path),
+            schema: responseSchema,
+            value: data,
+            ...(this.onValidate ? { onValidate: this.onValidate } : {}),
+          });
+        }
+      }
+      const typedResponse = Object.assign(response, {
+        data: data,
+        json: () => Promise.resolve(data),
+      }) as SafeApiResponse<TEndpoint>;
+
+      if (throwOnStatusError && (errorStatusCodes as readonly number[]).includes(response.status)) {
+        throw new TypedStatusError(typedResponse as TypedErrorResponse<unknown, ErrorStatusCode, unknown>);
+      }
+
+      return withResponse ? typedResponse : data;
+    })();
+  }
+  // </ApiClient.request>
+}
+
+export function createApiClient(
+  fetcher: Fetcher,
+  baseUrl?: string,
+  options?: { validate?: ValidateSide; onValidate?: OnValidate },
+) {
+  return new ApiClient(fetcher, options).setBaseUrl(baseUrl ?? "");
+}
+
+/**
+ Example usage:
+ const api = createApiClient((method, url, params) =>
+   fetch(url, { method, body: JSON.stringify(params) }).then((res) => res.json()),
+ );
+ api.get("/users").then((users) => console.log(users));
+ api.post("/users", { body: { name: "John" } }).then((user) => console.log(user));
+ api.put("/users/:id", { path: { id: 1 }, body: { name: "John" } }).then((user) => console.log(user));
+
+ // With error handling
+ const result = await api.get("/users/{id}", { path: { id: "123" }, withResponse: true });
+ if (result.ok) {
+   // Access data directly
+   const user = result.data;
+   console.log(user);
+
+   // Or use the json() method for compatibility
+   const userFromJson = await result.json();
+   console.log(userFromJson);
+ } else {
+   const error = result.data;
+   console.error(`Error ${result.status}:`, error);
+ }
+*/
+
+// </ApiClient>

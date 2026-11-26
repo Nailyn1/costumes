@@ -8,6 +8,7 @@ export interface SelectedClientData {
   phone: string;
   children?: SelectedChild[];
   isBlacklisted?: boolean;
+  whatsappConfirmed?: boolean;
 }
 
 export interface ClientSearchFieldProps {
@@ -20,6 +21,7 @@ export interface SelectedClientCardProps {
   client: SelectedClientData;
   onClearSelection: () => void;
   onUpdate: (updated: SelectedClientData) => void;
+  showWhatsappAvailability?: boolean;
 }
 
 export interface ClientCreateFormProps {
@@ -30,6 +32,7 @@ export interface ClientSelectorProps {
   value?: string | null;
   onChange: (value: string | null) => void;
   error?: React.ReactNode;
+  showWhatsappAvailability?: boolean;
 }
 
 export interface ClientUpdateFormProps {

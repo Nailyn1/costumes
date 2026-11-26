@@ -1,4 +1,4 @@
-import { schemas } from "./openapi-client.js";
+import { schemas } from "./schemas.js";
 import { z } from "zod";
 
 export type CreateChildRequestDto = z.infer<
@@ -32,6 +32,9 @@ export type GetListClientResponseDto = z.infer<
 >;
 export type GetDetailedClientResponseDto = z.infer<
   typeof schemas.Clients_GetClientDetailed
+>;
+export type WhatsappAvailabilityResponseDto = z.infer<
+  typeof schemas.Clients_WhatsappAvailability
 >;
 export type AddClientInBlackListRequestDto = z.infer<
   typeof schemas.Clients_blacklistReason

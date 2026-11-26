@@ -1,0 +1,29 @@
+packages:
+  - apps/*
+  - shared
+
+catalog:
+  '@eslint/js': ^10.0.1
+  eslint: ^10.13.0
+  globals: ^17.13.0
+  typescript: ^6.0.3
+  typescript-eslint: ^8.71.2
+  zod: ^4.6.5
+
+forceLegacyDeploy: true
+
+onlyBuiltDependencies:
+  - '@nestjs/core'
+  - '@prisma/client'
+  - '@prisma/engines'
+  - '@sentry-internal/node-cpu-profiler'
+  - '@sentry/node-cpu-profiler'
+  - argon2
+  - esbuild
+  - msgpackr-extract
+  - prisma
+  - protobufjs
+  - unrs-resolver
+
+overrides:
+  zod: ^4.6.5

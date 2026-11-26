@@ -5,6 +5,7 @@ import * as argon2 from 'argon2';
 import { LoginRequestDto } from '@costumes/shared';
 import Redis from 'ioredis';
 import { REDIS_CLIENT } from '../redis/redis.constants';
+import { randomUUID } from 'node:crypto';
 
 @Injectable()
 export class AuthService {
@@ -62,7 +63,7 @@ export class AuthService {
     const savedToken = await this.redis.get(`rf:${userId}`);
 
     if (!savedToken || savedToken !== oldRefreshToken) {
-      throw new UnauthorizedException('Invalid or expired refresh token');
+      throw new UnauthorizedException('Недействительный токен обновления');
     }
 
     const user = await this.prisma.user.findUnique({
@@ -70,7 +71,7 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new UnauthorizedException('User no longer exists');
+      throw new UnauthorizedException('Недействительный токен обновления');
     }
 
     const { accessToken, refreshToken } = await this.issueTokens(
@@ -104,6 +105,7 @@ export class AuthService {
       }),
       this.jwtService.signAsync(payload, {
         expiresIn: '7d',
+        jwtid: randomUUID(),
       }),
     ]);
 

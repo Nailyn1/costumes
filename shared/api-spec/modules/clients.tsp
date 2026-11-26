@@ -20,6 +20,8 @@ model Client {
   children?: CostumeApp.Children.Child[];
   isBlacklisted: boolean;
   blacklistReason?: string;
+  /** A delivered, read, or confirmed message proves WhatsApp on the current phone. */
+  whatsappConfirmed: boolean;
 }
 model CreateClientRequest {
   name: ClientName;
@@ -78,8 +80,19 @@ model GetClientDetailed {
 model blacklistReason {
   blacklistReason?: string
 }
+
+model WhatsappAvailability {
+  status: "exists" | "absent" | "unknown";
+}
 @route("/clients")
 interface ClientOperations {
+  @get
+  @route("{clientId}/whatsapp-availability")
+  checkWhatsappAvailability(@path clientId: int32, @query force?: boolean): {
+    @statusCode statusCode: 200;
+    @body body: WhatsappAvailability;
+  } | Common.Error;
+
   @get
   @route("search")
   search(

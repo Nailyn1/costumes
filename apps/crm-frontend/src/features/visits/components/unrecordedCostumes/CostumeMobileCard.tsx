@@ -17,7 +17,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   formatPhoneNumberForCostumes,
   formatStayDates,
-} from "src/utills/formatters";
+} from "src/utils/formatters";
 
 export function CostumeMobileCard({ items }: CostumeDesktopAndMobileProps) {
   const [exitingId, setExitingId] = useState<number | null>(null);

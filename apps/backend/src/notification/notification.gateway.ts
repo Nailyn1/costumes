@@ -15,6 +15,7 @@ import { WsJwtGuard } from '../auth/jwt/ws-jwt.guard';
 import { ActiveUserData, SocketWithAuth } from '../auth/active-user.interface';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { socketCorsOrigin } from '../config/cors.config';
 
 interface StatusUpdate {
   notificationId: number;
@@ -23,7 +24,7 @@ interface StatusUpdate {
 }
 
 @UseGuards(WsJwtGuard)
-@WebSocketGateway({ cors: true })
+@WebSocketGateway({ cors: { origin: socketCorsOrigin } })
 export class NotificationGateway implements OnGatewayConnection {
   @WebSocketServer()
   server!: Server;

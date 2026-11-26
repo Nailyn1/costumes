@@ -1,10 +1,14 @@
 import {
   CreateVisitRequestSchema,
   CreateVisitResponseSchema,
+  QuickIssueVisitRequestSchema,
   OrdersNotWrittenResponseSchema,
   VisitCancelRequestSchema,
   VisitCompleteReturnRequestSchema,
   VisitIssueRequestSchema,
+  VisitSettlementRequestSchema,
+  UpdateReservedVisitRequestSchema,
+  AddAndIssueVisitRequestSchema,
 } from '@costumes/shared';
 import { createZodDto } from '../../common/zod-dto';
 import { z } from 'zod';
@@ -19,6 +23,15 @@ export class CreateVisitRequest extends createZodDto(
 ) {}
 export class CreateVisitResponse extends createZodDto(
   CreateVisitResponseSchema,
+) {}
+export class QuickIssueVisitRequest extends createZodDto(
+  QuickIssueVisitRequestSchema,
+) {}
+export class UpdateReservedVisitRequest extends createZodDto(
+  UpdateReservedVisitRequestSchema,
+) {}
+export class AddAndIssueVisitRequest extends createZodDto(
+  AddAndIssueVisitRequestSchema,
 ) {}
 
 export class OrdersNotWrittenResponse extends createZodDto(
@@ -35,4 +48,8 @@ export class CompleteReturnRequest extends createZodDto(
 
 export class VisitCancelRequest extends createZodDto(
   VisitCancelRequestSchema,
+) {}
+
+export class VisitSettlementRequest extends createZodDto(
+  VisitSettlementRequestSchema,
 ) {}

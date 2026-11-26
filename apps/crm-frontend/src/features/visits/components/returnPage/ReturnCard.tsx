@@ -1,4 +1,4 @@
-import type { visitIssuedRepsonseDto } from "@costumes/shared";
+import type { visitIssuedResponseDto } from "@costumes/shared";
 import {
   Paper,
   Group,
@@ -10,10 +10,11 @@ import {
   Button,
 } from "@mantine/core";
 import { IconArrowRight } from "@tabler/icons-react";
+import { Link } from "react-router-dom";
 import { WhatsAppButton } from "src/components/WhatsAppButton";
-import { formatPhoneNumber, formatStayDates } from "src/utills/formatters";
+import { formatPhoneNumber, formatStayDates } from "src/utils/formatters";
 
-export type VisitIssuedItemDto = visitIssuedRepsonseDto["items"][number];
+export type VisitIssuedItemDto = visitIssuedResponseDto["items"][number];
 
 interface ReturnCardProps {
   visit: VisitIssuedItemDto;
@@ -59,19 +60,17 @@ export function ReturnCard({ visit, onClick }: ReturnCardProps) {
 
         <Divider variant="dashed" />
 
-        <Group justify="space-between" align="center">
+        <Group justify="space-between" align="center" wrap="wrap">
           <Text size="lg" c="dimmed">
             {formatStayDates(visit.startDateTime, visit.endDateTime)}
           </Text>
 
-          <Button
-            size="md"
-            variant="light"
-            rightSection={<IconArrowRight size={14} />}
-            onClick={onClick}
-          >
-            Оформить
-          </Button>
+          <Group gap="xs">
+            <Button component={Link} to={`/bookings/visits/${visit.visitId}`} variant="subtle" size="sm">Карточка</Button>
+            <Button size="md" variant="light" rightSection={<IconArrowRight size={14} />} onClick={onClick}>
+              Оформить
+            </Button>
+          </Group>
         </Group>
       </Stack>
     </Paper>

@@ -1,0 +1,484 @@
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
+import { Button, MantineProvider } from "@mantine/core";
+import { Notifications } from "@mantine/notifications";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
+import userEvent from "@testing-library/user-event";
+import { HttpResponse, http } from "msw";
+import { MemoryRouter, Navigate, Route, Routes } from "react-router-dom";
+import { describe, expect, it, vi } from "vitest";
+import type {
+  PaginatedVisitsResponseDto,
+  VisitReadDetailDto,
+} from "@costumes/shared";
+import { API_URL, server } from "../../test/server";
+import { createTestQueryClient, renderWithProviders } from "../../test/render";
+import { VisitsPage } from "./VisitsPage";
+import { VisitDetailPage } from "./VisitDetailPage";
+import { useMarkCostumeAsWritten } from "src/features/visits/hooks/useVisits";
+import { useAuthStore } from "src/stores/auth.store";
+
+const emptyHistory = {
+  items: [],
+  total: 0,
+  page: 1,
+  limit: 20,
+  hasMore: false,
+};
+
+function MarkTagTrigger() {
+  const mutation = useMarkCostumeAsWritten();
+  return (
+    <Button onClick={() => mutation.mutate(51)}>Тест: записать бирку</Button>
+  );
+}
+
+function RefetchDetailTrigger() {
+  const queryClient = useQueryClient();
+  return (
+    <Button
+      onClick={() =>
+        void queryClient.invalidateQueries({
+          queryKey: ["visit", "detail", 41],
+        })
+      }
+    >
+      Тест: обновить визит
+    </Button>
+  );
+}
+
+function visitDetail(
+  overrides: Partial<VisitReadDetailDto> = {},
+): VisitReadDetailDto {
+  return {
+    id: 41,
+    visitCode: "0041",
+    status: "reserved",
+    version: 1,
+    client: { id: 7, name: "Алия", phone: "+77001234567" },
+    startDateTime: "2026-12-20",
+    endDateTime: "2026-12-21",
+    issueTimeFrom: "10:00",
+    issueTimeTo: "12:00",
+    returnTimeUntil: "18:00",
+    notes: "Позвонить перед выдачей",
+    createdAt: "2026-10-22T08:00:00.000Z",
+    orders: [
+      {
+        orderId: 51,
+        childId: 8,
+        childName: "София",
+        costumeId: 9,
+        costumeName: "Эльза",
+        inventoryCode: "C-0123",
+        photoCount: 0,
+        status: "reserved",
+        tagStatus: "written",
+        rentPrice: 8000,
+        prepaymentAmount: 2000,
+      },
+    ],
+    moneyOperations: [],
+    deposits: [],
+    totals: { totalRent: 8000, totalPrepayment: 2000, totalRemaining: 6000 },
+    ...overrides,
+  };
+}
+
+function listResponse(
+  page: number,
+  items: PaginatedVisitsResponseDto["items"],
+): PaginatedVisitsResponseDto {
+  return { items, total: 21, page, limit: 20, hasMore: page === 1 };
+}
+
+function listItem(id: number): PaginatedVisitsResponseDto["items"][number] {
+  return {
+    id,
+    visitCode: String(id).padStart(4, "0"),
+    status: "reserved",
+    client: { id: 7, name: "Алия", phone: "+77001234567" },
+    startDateTime: "2026-12-20",
+    endDateTime: "2026-12-21",
+    issueTimeFrom: "10:00",
+    issueTimeTo: "12:00",
+    returnTimeUntil: "18:00",
+    childrenNames: "София",
+    costumesNames: "Эльза",
+    orderCount: 1,
+    totalRent: 8000,
+    totalPrepayment: 2000,
+    totalRemaining: 6000,
+    createdAt: "2026-10-22T08:00:00.000Z",
+  };
+}
+
+function renderVisits() {
+  return renderWithProviders(<VisitsPage />);
+}
+
+function renderDetail() {
+  const queryClient = createTestQueryClient();
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <MantineProvider env="test">
+        <Notifications />
+        <MemoryRouter initialEntries={["/bookings/visits/41"]}>
+          <Routes>
+            <Route
+              path="/bookings/visits/:visitId"
+              element={<VisitDetailPage />}
+            />
+          </Routes>
+        </MemoryRouter>
+      </MantineProvider>
+    </QueryClientProvider>,
+  );
+}
+
+describe("visit read pages", () => {
+  it("opens a modal from the entire row and preserves the list search after closing", async () => {
+    server.use(
+      http.get(`${API_URL}/visits`, () =>
+        HttpResponse.json(listResponse(1, [listItem(41)])),
+      ),
+      http.get(`${API_URL}/visits/41`, () => HttpResponse.json(visitDetail())),
+      http.get(`${API_URL}/visits/41/history`, () =>
+        HttpResponse.json(emptyHistory),
+      ),
+    );
+    const user = userEvent.setup();
+    renderWithProviders(
+      <Routes>
+        <Route path="/" element={<Navigate to="/bookings/visits" replace />} />
+        <Route path="/bookings/visits" element={<VisitsPage />}>
+          <Route path=":visitId" element={<VisitDetailPage />} />
+        </Route>
+      </Routes>,
+    );
+    await screen.findByRole("row", { name: "Открыть визит 0041" });
+    await user.type(screen.getByLabelText("Поиск визитов"), "София");
+    await user.click(screen.getByRole("row", { name: "Открыть визит 0041" }));
+    const dialog = await screen.findByRole("dialog", { name: /Алия · #0041/ });
+    await user.click(
+      within(dialog).getByRole("button", { name: "Закрыть визит" }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    expect(screen.getByLabelText("Поиск визитов")).toHaveValue("София");
+  });
+
+  it("includes prepayment in total receipts and hides zero refund and debt amounts", async () => {
+    const detail = visitDetail({
+      status: "completed",
+      totals: { totalRent: 3800, totalPrepayment: 2000, totalRemaining: 1800 },
+      moneyOperations: [
+        {
+          id: 1,
+          kind: "issue_payment",
+          amount: 1800,
+          createdAt: "2026-10-25T07:00:00.000Z",
+          legacyImported: true,
+        },
+      ],
+      balance: {
+        totalRent: 3800,
+        totalPrepayment: 2000,
+        totalReceived: 1800,
+        totalRefunded: 0,
+        signedBalance: 0,
+        debt: 0,
+        refundDue: 0,
+      },
+    });
+    server.use(
+      http.get(`${API_URL}/visits/41`, () => HttpResponse.json(detail)),
+      http.get(`${API_URL}/visits/41/history`, () =>
+        HttpResponse.json(emptyHistory),
+      ),
+    );
+    renderDetail();
+    expect(
+      await screen.findByText(/Всего получено: 3.800 ₸/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/^Долг:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^К возврату:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Возвращено клиенту:/)).not.toBeInTheDocument();
+  });
+  it("sends debounced search, issue-date period, status and server pagination with clickable rows", async () => {
+    const requestedUrls: URL[] = [];
+    server.use(
+      http.get(`${API_URL}/visits`, ({ request }) => {
+        requestedUrls.push(new URL(request.url));
+        const page = Number(new URL(request.url).searchParams.get("page") ?? 1);
+        return HttpResponse.json(
+          listResponse(page, page === 1 ? [listItem(41)] : []),
+        );
+      }),
+    );
+    const user = userEvent.setup();
+    renderVisits();
+
+    expect(await screen.findByText("#0041")).toBeInTheDocument();
+    expect(screen.getByText("София")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Карточка" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("row", { name: "Открыть визит 0041" }),
+    ).toHaveAttribute("tabindex", "0");
+    expect(screen.getByText("За всё время")).toBeInTheDocument();
+    expect(requestedUrls[0].searchParams.has("startDateFrom")).toBe(false);
+    await user.type(screen.getByLabelText("Поиск визитов"), "Алия");
+    await user.click(screen.getByRole("button", { name: "Фильтр периода" }));
+    await user.click(
+      await screen.findByRole("radio", { name: "Выбрать период" }),
+    );
+    fireEvent.change(screen.getByLabelText("Выдача с"), {
+      target: { value: "2026-12-01" },
+    });
+    fireEvent.change(screen.getByLabelText("Выдача по"), {
+      target: { value: "2026-12-31" },
+    });
+    await user.click(screen.getByRole("button", { name: "Применить" }));
+    await user.click(screen.getByRole("radio", { name: "Забронирован" }));
+
+    await waitFor(() => {
+      const request = requestedUrls.find(
+        (url) =>
+          url.searchParams.get("q") === "Алия" &&
+          url.searchParams.get("status") === "reserved" &&
+          url.searchParams.get("startDateFrom") === "2026-12-01",
+      );
+      expect(request).toBeDefined();
+      expect(request?.searchParams.get("status")).toBe("reserved");
+      expect(request?.searchParams.get("startDateFrom")).toBe("2026-12-01");
+      expect(request?.searchParams.get("startDateTo")).toBe("2026-12-31");
+      expect(request?.searchParams.has("endDateFrom")).toBe(false);
+      expect(request?.searchParams.has("endDateTo")).toBe(false);
+      expect(request?.searchParams.get("page")).toBe("1");
+    });
+
+    await user.click(screen.getByRole("button", { name: "2" }));
+    await waitFor(() =>
+      expect(requestedUrls.at(-1)?.searchParams.get("page")).toBe("2"),
+    );
+  });
+
+  it("shows only planned due for reserved visits and omits balance actions without a balance", async () => {
+    server.use(
+      http.get(`${API_URL}/visits/41`, () => HttpResponse.json(visitDetail())),
+      http.get(`${API_URL}/visits/41/history`, () =>
+        HttpResponse.json(emptyHistory),
+      ),
+    );
+    renderDetail();
+
+    expect(
+      await screen.findByRole("dialog", { name: /Алия · #0041/ }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Доплата: 6.000 ₸/)).toBeInTheDocument();
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: "Действия визита" }));
+    expect(
+      await screen.findByRole("menuitem", { name: "Выдать костюмы" }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole("menuitem", { name: "Отменить визит" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: "Записать расчёт" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: "Отметить возврат залога" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText(/C-0123/)).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        /Внутренний ID|версия 1|распределённая итоговая оплата/i,
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not present the migration timestamp as the receipt date of imported money", async () => {
+    const imported = visitDetail({
+      status: "completed",
+      totals: { totalRent: 8000, totalPrepayment: 2000, totalRemaining: 0 },
+      moneyOperations: [
+        {
+          id: 4,
+          kind: "issue_payment",
+          amount: 6000,
+          createdAt: "2099-12-31T23:59:00.000Z",
+          legacyImported: true,
+        },
+      ],
+    });
+    server.use(
+      http.get(`${API_URL}/visits/41`, () => HttpResponse.json(imported)),
+      http.get(`${API_URL}/visits/41/history`, () =>
+        HttpResponse.json(emptyHistory),
+      ),
+    );
+    renderDetail();
+
+    expect(
+      (await screen.findAllByText(/Дата получения неизвестна/)).length,
+    ).toBeGreaterThan(0);
+    expect(screen.queryByText(/2100/)).not.toBeInTheDocument();
+  });
+
+  it("refreshes detail and history after an action while preserving the server-updated state", async () => {
+    let tagWritten = false;
+    const detailRequests = vi.fn(() =>
+      HttpResponse.json(
+        visitDetail({
+          orders: [
+            {
+              ...visitDetail().orders[0],
+              tagStatus: tagWritten ? "written" : "not_written",
+            },
+          ],
+        }),
+      ),
+    );
+    const historyRequests = vi.fn(() => HttpResponse.json(emptyHistory));
+    server.use(
+      http.get(`${API_URL}/visits/41`, detailRequests),
+      http.get(`${API_URL}/visits/41/history`, historyRequests),
+      http.post(`${API_URL}/visits/51/mark-tag-written`, () => {
+        tagWritten = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MantineProvider env="test">
+          <Notifications />
+          <MemoryRouter initialEntries={["/bookings/visits/41"]}>
+            <>
+              <Routes>
+                <Route
+                  path="/bookings/visits/:visitId"
+                  element={<VisitDetailPage />}
+                />
+              </Routes>
+              <MarkTagTrigger />
+            </>
+          </MemoryRouter>
+        </MantineProvider>
+      </QueryClientProvider>,
+    );
+
+    expect(
+      (await screen.findAllByText("Забронирован")).length,
+    ).toBeGreaterThanOrEqual(2);
+    await waitFor(() =>
+      expect(
+        queryClient.getQueryData<VisitReadDetailDto>(["visit", "detail", 41])
+          ?.orders[0].tagStatus,
+      ).toBe("not_written"),
+    );
+    expect(
+      await screen.findByText(
+        "История для старого визита может быть неполной.",
+      ),
+    ).toBeInTheDocument();
+    await userEvent
+      .setup()
+      .click(screen.getByRole("button", { name: "Тест: записать бирку" }));
+    await waitFor(() =>
+      expect(
+        queryClient.getQueryData<VisitReadDetailDto>(["visit", "detail", 41])
+          ?.orders[0].tagStatus,
+      ).toBe("written"),
+    );
+    await waitFor(() => {
+      expect(detailRequests).toHaveBeenCalledTimes(2);
+      expect(historyRequests).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it("keeps the opening version when detail refetches while the edit draft is open", async () => {
+    useAuthStore
+      .getState()
+      .setAuth({
+        accessToken: "test-token",
+        user: { login: "worker1", name: "Алия" },
+      });
+    let reads = 0;
+    let submittedBody: Record<string, unknown> | undefined;
+    server.use(
+      http.get(`${API_URL}/visits/41`, () => {
+        reads += 1;
+        return HttpResponse.json(
+          visitDetail({
+            version: reads > 1 ? 2 : 1,
+            notes: reads > 1 ? "Другая версия" : "Позвонить перед выдачей",
+          }),
+        );
+      }),
+      http.get(`${API_URL}/visits/41/history`, () =>
+        HttpResponse.json(emptyHistory),
+      ),
+      http.patch(`${API_URL}/visits/41`, async ({ request }) => {
+        submittedBody = (await request.json()) as Record<string, unknown>;
+        return HttpResponse.json(visitDetail({ version: 2 }));
+      }),
+    );
+    const queryClient = createTestQueryClient();
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MantineProvider env="test">
+          <Notifications />
+          <MemoryRouter initialEntries={["/bookings/visits/41"]}>
+            <>
+              <Routes>
+                <Route
+                  path="/bookings/visits/:visitId"
+                  element={<VisitDetailPage />}
+                />
+              </Routes>
+              <RefetchDetailTrigger />
+            </>
+          </MemoryRouter>
+        </MantineProvider>
+      </QueryClientProvider>,
+    );
+
+    await screen.findByRole("dialog", { name: /Алия · #0041/ });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Действия визита" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Редактировать бронь" }),
+    );
+    const visitNotes = await screen.findByLabelText("Примечание к визиту");
+    await user.clear(visitNotes);
+    await user.type(visitNotes, "Моё изменение");
+    await user.click(
+      screen.getByRole("button", { name: "Тест: обновить визит" }),
+    );
+    await waitFor(() => expect(reads).toBeGreaterThanOrEqual(2));
+    await user.click(
+      screen.getByRole("button", { name: "Сохранить изменения" }),
+    );
+
+    await waitFor(() => expect(submittedBody).toBeDefined());
+    expect(submittedBody).toEqual(
+      expect.objectContaining({
+        expectedVersion: 1,
+        notes: "Моё изменение",
+      }),
+    );
+  });
+});

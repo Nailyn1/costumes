@@ -9,7 +9,7 @@ import {
   Divider,
 } from "@mantine/core";
 import { IconCash, IconFileDescription, IconCheck } from "@tabler/icons-react";
-import { formatPhoneNumber, formatStayDates } from "src/utills/formatters";
+import { formatPhoneNumber, formatStayDates } from "src/utils/formatters";
 import type { UnreturnedDepositItem } from "../../types/visitTypes";
 
 interface DepositCardProps {
@@ -34,7 +34,7 @@ export function DepositCard({ visit, onMarkReturned }: DepositCardProps) {
               <IconFileDescription size={16} color="blue" />
             )}
             <Text fw={700} c={isCash ? "green" : "blue"}>
-              {isCash ? `${visit.deposit.amount} ₽` : "Документ"}
+              {isCash ? `${visit.deposit.amount} ₸` : "Документ"}
             </Text>
           </Group>
         </Group>

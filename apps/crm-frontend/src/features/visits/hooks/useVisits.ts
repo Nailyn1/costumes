@@ -5,6 +5,7 @@ import {
   useQuery,
   useQueryClient,
   type InfiniteData,
+  type QueryClient,
 } from "@tanstack/react-query";
 import {
   visitsService,
@@ -15,14 +16,27 @@ import type {
   GetVisitReservedDto,
   visitCancelRequestDto,
   visitCompleteReturnRequestDto,
-  visitIssuedRepsonseDto,
+  visitIssuedResponseDto,
   VisitIssueRequestDto,
+  VisitSettlementRequestDto,
 } from "@costumes/shared";
 import { notifications } from "@mantine/notifications";
+import { visitHistoryKeys } from "./useVisitHistory";
+import { visitReadKeys } from "./useVisitReads";
 
 interface CreateVisitVariables {
   data: CreateVisitRequestDto;
   sendNotification: boolean;
+}
+
+function invalidateVisitReadViews(queryClient: QueryClient) {
+  // Mark existing queues stale without undoing their local remove/update on success.
+  queryClient.invalidateQueries({ queryKey: ["visits"], refetchType: "none" });
+  queryClient.invalidateQueries({ queryKey: ["visit"], refetchType: "none" });
+  queryClient.invalidateQueries({ queryKey: ["costumes"] });
+  queryClient.invalidateQueries({ queryKey: visitReadKeys.listPrefix() });
+  queryClient.invalidateQueries({ queryKey: visitReadKeys.detailPrefix() });
+  queryClient.invalidateQueries({ queryKey: visitHistoryKeys.all });
 }
 
 export function useVisitPreviewCode() {
@@ -68,8 +82,10 @@ export function useNotWrittenCostumes() {
 }
 
 export function useMarkCostumeAsWritten() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (orderId: number) => visitsService.markTagVisitWritten(orderId),
+    onSuccess: () => invalidateVisitReadViews(queryClient),
   });
 }
 
@@ -125,6 +141,7 @@ export function useIssueVisit() {
       data,
     }: {
       visitId: number;
+      visitCode: string;
       data: VisitIssueRequestDto;
     }) => visitsService.issueVisit(data, visitId),
     onSuccess: (_, variables) => {
@@ -146,9 +163,10 @@ export function useIssueVisit() {
       queryClient.removeQueries({
         queryKey: ["visit", "for-issue", variables.visitId],
       });
+      invalidateVisitReadViews(queryClient);
       notifications.show({
         title: "Успешно",
-        message: "Заказ успешно выданы клиенту!",
+        message: `Визит ${variables.visitCode} успешно выдан!`,
         color: "green",
       });
     },
@@ -188,6 +206,7 @@ export function useCancelVisit() {
       queryClient.removeQueries({
         queryKey: ["visit", "for-issue", variables.visitId],
       });
+      invalidateVisitReadViews(queryClient);
       notifications.show({
         title: "Визит отменен",
         message: "",
@@ -207,7 +226,7 @@ export function useUnissueVisit() {
     onSuccess: (_, variables) => {
       queryClient.setQueriesData(
         { queryKey: ["visits", "issued"] },
-        (oldData: InfiniteData<visitIssuedRepsonseDto>) => {
+        (oldData: InfiniteData<visitIssuedResponseDto>) => {
           if (!oldData || !oldData.pages) return oldData;
           return {
             ...oldData,
@@ -232,6 +251,9 @@ export function useUnissueVisit() {
       queryClient.removeQueries({
         queryKey: ["visit", "for-return", variables.visitId],
       });
+
+      queryClient.invalidateQueries({ queryKey: ["visits", "unsettled-balances"] });
+      invalidateVisitReadViews(queryClient);
 
       notifications.show({
         title: "Отмена выдачи",
@@ -297,7 +319,7 @@ export function useCompleteReturnVisit() {
     }) => visitsService.completeReturnVisit(data, visitId),
 
     onSuccess: (_, variables) => {
-      queryClient.setQueriesData<InfiniteData<visitIssuedRepsonseDto>>(
+      queryClient.setQueriesData<InfiniteData<visitIssuedResponseDto>>(
         { queryKey: ["visits", "issued"] },
         (oldData) => {
           if (!oldData || !oldData.pages) return oldData;
@@ -316,6 +338,9 @@ export function useCompleteReturnVisit() {
       queryClient.removeQueries({
         queryKey: ["visit", "for-return", variables.visitId],
       });
+
+      queryClient.invalidateQueries({ queryKey: ["visits", "unsettled-balances"] });
+      invalidateVisitReadViews(queryClient);
 
       notifications.show({
         title: "Возврат оформлен",
@@ -361,11 +386,51 @@ export function useMarkDepositReturned() {
       queryClient.invalidateQueries({
         queryKey: ["visits", "unreturned-deposits"],
       });
+      invalidateVisitReadViews(queryClient);
       notifications.show({
         title: "Залог возвращён",
         message: "",
         color: "green",
       });
+    },
+  });
+}
+
+export function useUnsettledBalances(enabled = true) {
+  return useInfiniteQuery({
+    queryKey: ["visits", "unsettled-balances"],
+    queryFn: ({ pageParam }) =>
+      visitsService.getUnsettledBalances({ page: pageParam }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.hasMore ? lastPage.page + 1 : undefined,
+    enabled,
+    refetchInterval: 15000,
+    refetchOnWindowFocus: true,
+  });
+}
+
+export function useVisitBalance(visitId: number | null) {
+  return useQuery({
+    queryKey: ["visit", "balance", visitId],
+    queryFn: () => {
+      if (!visitId) throw new Error("visitId обязателен для выполнения запроса");
+      return visitsService.getVisitBalance(visitId);
+    },
+    enabled: !!visitId,
+  });
+}
+
+export function useSettleVisit() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ visitId, data }: { visitId: number; data: VisitSettlementRequestDto }) =>
+      visitsService.settleVisit(visitId, data),
+    onSuccess: (_, { visitId }) => {
+      queryClient.invalidateQueries({ queryKey: ["visit", "balance", visitId] });
+      queryClient.invalidateQueries({ queryKey: ["visits", "unsettled-balances"] });
+      invalidateVisitReadViews(queryClient);
+      notifications.show({ title: "Расчёт записан", message: "Баланс визита обновлён", color: "green" });
     },
   });
 }
