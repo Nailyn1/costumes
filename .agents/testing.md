@@ -127,4 +127,12 @@ Vitest + `@testing-library/react` + `@testing-library/user-event` + jsdom + MSW.
 
 ## 5. План покрытия
 
-Покрытие по модулям — отдельные задачи в `tasks/backlog/` (T-041…T-049); приоритет у `visit-order` и формы брони. Прогон тестов в CI — [T-015](../tasks/backlog/T-015-proverki-v-ci-pered-deploem.md).
+Покрытие по модулям — отдельные задачи в `tasks/backlog/` (T-041…T-049); приоритет у `visit-order` и формы брони.
+
+## 6. CI перед деплоем
+
+В `.github/workflows/deploy.yaml` job `check` запускается на PR в `main` и push в `main`: общий `pnpm test` (backend unit + frontend), затем `pnpm test:int`. Typecheck backend включает integration-тесты (`pnpm --filter @costumes/backend typecheck`). Лимит job — 20 минут.
+
+PostgreSQL `postgres:15-alpine` и Redis `redis:7-alpine` работают как временные service containers с healthcheck. Job выполняется непосредственно на Ubuntu runner; сервисы доступны по `localhost:5432` / `localhost:6379`. Перед integration `.env.test.example` копируется в `.env.test`: БД `costumes_test`, Redis db 15, только тестовые значения. Значения пользователя/пароля/имени БД сервисов должны оставаться согласованными с шаблоном.
+
+Никакие production-дампы, секреты GitHub для деплоя или подключения к VPS тестам не нужны. Green API и S3 остаются заглушками. Ошибка в `check` блокирует `build-and-push`, а следовательно и `deploy`. Реализация — T-119.

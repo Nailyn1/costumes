@@ -15,6 +15,30 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: "123456"
+          POSTGRES_DB: costumes_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d costumes_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -39,8 +63,7 @@ jobs:
         working-directory: apps/backend
 
       - name: Typecheck backend
-        run: pnpm exec tsc --noEmit -p tsconfig.json
-        working-directory: apps/backend
+        run: pnpm --filter @costumes/backend typecheck
 
       - name: Typecheck frontend
         run: pnpm exec tsc -b
@@ -53,8 +76,14 @@ jobs:
         run: pnpm lint
         working-directory: apps/crm-frontend
 
-      - name: Test backend
-        run: pnpm --filter @costumes/backend test
+      - name: Test backend and frontend
+        run: pnpm test
+
+      - name: Configure integration test environment
+        run: cp apps/backend/.env.test.example apps/backend/.env.test
+
+      - name: Test backend integration
+        run: pnpm test:int
 
   build-and-push:
     if: github.event_name == 'push'
